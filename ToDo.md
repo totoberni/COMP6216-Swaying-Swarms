@@ -2,10 +2,10 @@
 
 ## TODOs:
 
-[] : Build Dependency System for C and FLEX
-[] : Implement Normal Boid swarm + rules
-[] : Implement Doctor Boid swarm + rules
-[] : Simulate and fuck around
+[] : Build Dependency System for C and FLEX\
+[] : Implement Normal Boid swarm + rules\
+[] : Implement Doctor Boid swarm + rules\
+[] : Simulate and fuck around\
 
 ## Languages
 * C/C# 
