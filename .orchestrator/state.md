@@ -82,3 +82,11 @@ None.
 - After fixing a worker mistake → append to `.orchestrator/mistakes.md` (worker's table) ✓
 - Before spawning a worker → check `.orchestrator/mistakes.md` for error history ✓
 - Before clearing session decisions → promote important ones to decisions.md ✓
+
+---
+**UPDATE 2025-02-07 22:17 UTC:** Phase 9 COMPLETE ✅
+- Worker: Opus (PID 36096, completed in ~3 minutes)
+- Integration: All systems wired (spatial grid, steering, movement, render)
+- Build: Clean (11M binary)
+- Commit: db71f56
+- Ready for Phase 10 (Behavior Rules)

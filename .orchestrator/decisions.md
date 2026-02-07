@@ -80,3 +80,16 @@ Should check #2 before terminating on timeout. 16-17 minutes is acceptable for c
 **Prevention rule for future:** Before terminating a long-running worker, check if binary exists and runs. If yes, wait for commit or 20-min hard timeout.
 
 <!-- Next decision: DEC-010 -->
+
+## DEC-010: Opus Worker for Phase 9 Integration
+**When:** Phase 9 (2025-02-07 22:14 UTC)
+**Context:** Initial worker spawning via `claude -p` within orchestrator session failed (created recursive loop). Needed proper independent worker process.
+**Decision:** Spawned Opus model worker using `nohup` + `&` backgrounding with PID capture (36096). Worker used Sonnet subagents for ecs-architect and cpp-builder.
+**Rationale:** 
+- Opus for complex integration work (touches all modules)
+- Sonnet for specialized subagents (cost-efficient for focused tasks)
+- `nohup` ensures process detachment from orchestrator session
+**Outcome:** Successful. Worker completed Phase 9 in ~3 minutes. All integration requirements met, clean build, 0 errors.
+**Note:** Opus usage is **exception for Phase 9 only**. Future phases return to Sonnet workers unless complexity requires escalation.
+
+<!-- Next decision: DEC-011 -->
