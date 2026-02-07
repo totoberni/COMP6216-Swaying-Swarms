@@ -4,42 +4,45 @@
 <!-- Sibling files: plan.md (mission), decisions.md (audit trail), mistakes.md (error patterns). -->
 
 ## Current Phase
-Phase 9 — Testing & Debug (SpatialGrid singleton crash)
+Phase 9 — COMPLETE ✅
+
+**Next:** Phase 10 — Behavior Rules (infection, death, cure, reproduction, aging, promotion)
 
 ## Active Workers
 <!-- Update when spawning/completing workers. Clear rows when done. -->
 | Worker | Task | Branch | Worktree | Session ID | PID | Status | Started |
 |--------|------|--------|----------|------------|-----|--------|---------|
-| Debugger | Fix SpatialGrid singleton crash | main | — | — | 39329 | Running | 22:30 UTC |
+| — | No active workers | — | — | — | — | — | — |
 
 ## Task Queue
 
 ### Ready
-1. **Debug SpatialGrid crash** — Fix SIGABRT during world.set<SpatialGrid>() — ACTIVE (PID 39329)
+1. **Phase 10: Behavior Rules** — Implement all simulation logic from context.md (infection, death, cure, reproduction, promotion, aging)
 
 ### Blocked
-2. **Phase 10 start** — Blocked on Phase 9 verification (crash must be fixed first)
+None
 
 ### Future
-3. Behavior rules: infection, death, cure, reproduction, aging, promotion — Phase 10
-4. Extensions via Ralph Loop: debuffs, sex, antivax, sliders, pause/reset, graphs — Phase 11
+2. Extensions via Ralph Loop: debuffs, sex, antivax, sliders, pause/reset, graphs — Phase 11
 
 ### Completed
 - [x] Phase 8: Parallel module development (ECS, Spatial, Render) — 1,123 lines
 - [x] Phase 9: Integration wiring (systems connected, main loop) — commit db71f56
-- [x] Build verified clean (11M binary)
+- [x] Phase 9: SpatialGrid crash fix (default constructor) — commit a54a21e
+- [x] Phase 9: Debug cleanup — commit 00a2118
+- [x] Build verified clean (11M binary, all 11 tests pass)
+- [x] Runtime verified: 60 FPS, 210 boids, flocking behavior working
 - [x] All previous phases (scaffolding, CMake, FLECS, headers, etc.)
 
 ## Blocking Issues
-**CRITICAL:** boid_swarm crashes with SIGABRT during init_world() at world.set<SpatialGrid>()
-- Location: src/ecs/world.cpp line 46
-- Cause: Unknown (investigating nested vector move semantics vs FLECS v4 singleton requirements)
-- Debugger worker PID 39329 investigating
+None. All Phase 9 blockers resolved.
 
 ## Session Decisions
 <!-- Ephemeral decisions made THIS session. Cleared on fresh session start. -->
-- Spawned debugger worker (Sonnet) to investigate SpatialGrid crash
-- Worker will report findings to .orchestrator/inbox/debugger-spatialgrid-fix.md
+- Reviewed debugger worker output (PID 39329, completed successfully)
+- Verified Phase 9 completion: build clean, tests pass, simulation runs correctly
+- Committed debug output cleanup (00a2118)
+- Ready to proceed to Phase 10 (awaiting operator instruction)
 
 ## Note-Taking Reminders
 <!-- These are your duties every cycle — do not skip. -->

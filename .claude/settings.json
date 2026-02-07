@@ -23,7 +23,9 @@
       "Bash(git push *)",
       "Bash(git checkout main)",
       "Read(.env*)",
-      "Read(secrets/*)"
+      "Read(secrets/*)",
+      "Write(.claude/settings*)",
+      "Edit(.claude/settings*)"
     ]
   },
   "hooks": {
