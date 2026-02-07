@@ -35,16 +35,36 @@ file(GLOB_RECURSE MAIN_SOURCES
     src/*.h
 )
 
+# Exclude render_demo.cpp from main sources
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*render_demo\\.cpp$")
+
 # --- Main executable ---
 add_executable(boid_swarm ${MAIN_SOURCES})
 
 target_include_directories(boid_swarm PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_BINARY_DIR}/_deps/raylib-src/examples/shapes
 )
 
 target_link_libraries(boid_swarm PRIVATE
     flecs::flecs_static
+    raylib
+)
+
+# --- Render demo executable ---
+add_executable(render_demo
+    src/render/render_demo.cpp
+    src/render/renderer.cpp
+)
+
+target_include_directories(render_demo PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_BINARY_DIR}/_deps/raylib-src/examples/shapes
+)
+
+target_link_libraries(render_demo PRIVATE
     raylib
 )
 
