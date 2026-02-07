@@ -1,0 +1,110 @@
+# Environment Variables
+# ======================
+# Exclude actual .env file and example to prevent committing secrets
+.env
+.env.example
+
+# Exclude the./scripts directory - only needed for Claude Code management (local)
+./scripts
+
+# C++ Build Artifacts
+# ===================
+# Build directories
+build/
+cmake-build-*/
+out/
+bin/
+lib/
+
+# Object files
+*.o
+*.obj
+*.lo
+*.slo
+
+# Compiled executables
+*.exe
+*.out
+*.app
+
+# Libraries
+*.lib
+*.a
+*.la
+*.so
+*.dylib
+*.dll
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# IDE and Editor Files
+# ====================
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# CLion / JetBrains
+.idea/
+cmake-build-*/
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+
+# macOS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Linux
+*~
+.directory
+
+# Agent and Orchestrator Runtime
+# ===============================
+# Agent working directories (if using git worktrees)
+.worktrees/
+
+# Orchestrator temporary files
+.orchestrator/inbox/*.tmp
+.orchestrator/outbox/*.tmp
+.orchestrator/status/*.tmp
+
+# Logs and Debug
+# ==============
+*.log
+*.dmp
+core
+vgcore.*
+
+# Test Coverage
+# =============
+*.gcda
+*.gcno
+*.gcov
+
+# Dependencies
+# ============
+# CPM.cmake cache
+cmake/CPM_*.cmake
+_deps/
+
+# Package managers
+conan_imports_manifest.txt
+conanbuildinfo.*
