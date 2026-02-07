@@ -1,11 +1,11 @@
 # Environment Variables
 # ======================
 # Exclude actual .env file and example to prevent committing secrets
-.env
-.env.example
+#.env
+#.env.example # Obsolete, who even uses examples
 
 # Exclude the./scripts directory - only needed for Claude Code management (local)
-./scripts
+#./scripts Need to clone elsewhere!
 
 # C++ Build Artifacts
 # ===================
