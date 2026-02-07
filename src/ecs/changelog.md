@@ -1,9 +1,6 @@
 # Changelog — ecs
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-07
-- **21:04Z** | `src/ecs/spawn.h` | File written/created | session:`cefb983f`
-- **21:04Z** | `src/ecs/stats.cpp` | File written/created | session:`cefb983f`
-- **21:04Z** | `src/ecs/stats.h` | File written/created | session:`cefb983f`
 - **21:05Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`
 - **21:07Z** | `src/ecs/spawn.cpp` | Edited: '        auto boid = world.entity()             .add<NormalBo' -> '        auto boid = world.entity()             .add<NormalBo' | session:`cefb983f`
 - **21:07Z** | `src/ecs/spawn.cpp` | Edited: '        auto boid = world.entity()             .add<DoctorBo' -> '        auto boid = world.entity()             .add<DoctorBo' | session:`cefb983f`
@@ -31,3 +28,6 @@
 - **21:18Z** | `src/ecs/stats.cpp` | Edited: 'void register_stats_system(flecs::world& world) {     world.' -> 'void register_stats_system(flecs::world& world) {     world.' | session:`cefb983f`
 - **21:18Z** | `src/ecs/stats.cpp` | Edited: 'void register_stats_system(flecs::world& world) {     world.' -> 'void register_stats_system(flecs::world& world) {     world.' | session:`cefb983f`
 - **21:19Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`
+- **22:15Z** | `src/ecs/world.cpp` | Edited: '#include "world.h" #include "components.h" #include "spatial' -> '#include "world.h" #include "components.h" #include "spatial' | session:`e9956e72`
+- **22:16Z** | `src/ecs/systems.cpp` | File written/created | session:`e9956e72`
+- **22:16Z** | `src/ecs/systems.cpp` | Edited: '#include <flecs.h> #include <cmath> ' -> '#include <flecs.h> #include <cmath> #include <algorithm> ' | session:`e9956e72`

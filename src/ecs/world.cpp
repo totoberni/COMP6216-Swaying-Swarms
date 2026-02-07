@@ -1,7 +1,9 @@
 #include "world.h"
 #include "components.h"
 #include "spatial_grid.h"
+#include "render_state.h"
 #include <flecs.h>
+#include <algorithm>
 
 void init_world(flecs::world& world) {
     // Register all components from components.h
@@ -27,9 +29,13 @@ void init_world(flecs::world& world) {
     // Set SimStats singleton (zeroed)
     world.set<SimStats>({});
 
-    // Create SpatialGrid singleton
+    // Set RenderState singleton (empty)
+    world.set<RenderState>({});
+
+    // Create SpatialGrid singleton — cell size matches largest interaction radius
     const SimConfig& config = world.get<SimConfig>();
+    float cell_size = std::max(config.r_interact_normal, config.r_interact_doctor);
     world.set<SpatialGrid>(
-        SpatialGrid(config.world_width, config.world_height, 50.0f)
+        SpatialGrid(config.world_width, config.world_height, cell_size)
     );
 }
