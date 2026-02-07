@@ -12,6 +12,11 @@
 
 ---
 
+### Orchestrator Self-Errors
+| # | Phase | What Went Wrong | Root Cause | Fix Applied | Prevention Rule |
+|---|-------|-----------------|------------|-------------|-----------------|
+| 1 | Phase 8-9 | Wrote state.md/decisions.md content as Bash() permission entries in settings.local.json | Orchestrator tried to write files using Bash heredoc, which got captured as permission allowlist entries | Deleted settings.local.json | "NEVER modify .claude/settings*.json. Your files are in .orchestrator/ only." |
+
 ### ECS Worker (code-worker on feature/ecs-core)
 
 | # | Phase | What Went Wrong | Root Cause | Fix Applied | Prevention Rule |
@@ -59,5 +64,3 @@
 ## Cross-Cutting Patterns
 <!-- Promote recurring mistakes here when they appear 3+ times across workers. -->
 <!-- These become permanent guardrails in CLAUDE.md or worker prompt templates. -->
-
-None identified yet.

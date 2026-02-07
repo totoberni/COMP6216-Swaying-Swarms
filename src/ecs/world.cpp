@@ -4,7 +4,6 @@
 #include "render_state.h"
 #include <flecs.h>
 #include <algorithm>
-#include <iostream>
 
 void init_world(flecs::world& world) {
     // Register all components from components.h
@@ -40,9 +39,6 @@ void init_world(flecs::world& world) {
     const SimConfig& config = world.get<SimConfig>();
     float cell_size = std::max(config.r_interact_normal, config.r_interact_doctor);
     
-    std::cout << "[WORLD] Creating SpatialGrid..." << std::endl;
     SpatialGrid grid(config.world_width, config.world_height, cell_size);
-    std::cout << "[WORLD] SpatialGrid created, setting as singleton..." << std::endl;
     world.set<SpatialGrid>(std::move(grid));
-    std::cout << "[WORLD] SpatialGrid singleton set!" << std::endl;
 }
