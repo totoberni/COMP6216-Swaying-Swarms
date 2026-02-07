@@ -93,3 +93,20 @@ Should check #2 before terminating on timeout. 16-17 minutes is acceptable for c
 **Note:** Opus usage is **exception for Phase 9 only**. Future phases return to Sonnet workers unless complexity requires escalation.
 
 <!-- Next decision: DEC-011 -->
+
+## DEC-011: SpatialGrid Crash Resolution
+**When:** 2026-02-07 22:30-22:35 UTC (Phase 9 verification)
+**Context:** boid_swarm crashed with SIGABRT during `world.set<SpatialGrid>()` in init_world()
+**Decision:** Spawned Sonnet debugger worker (PID 39329) to investigate and fix
+**Outcome:** Worker identified root cause (FLECS requires default-constructible singletons) and applied minimal fix
+**Rationale:** 
+- Complex C++ template metaprogramming issue requiring systematic investigation
+- Delegating to debugger agent more efficient than orchestrator trial-and-error
+- Worker produced excellent documentation for future reference
+**Fix Applied:**
+- Added `SpatialGrid() = default;` to header
+- Added member initializers (world_w_ = 0.0f, cols_ = 0, etc.)
+- No implementation changes needed
+**Verification:** Build clean, simulation runs at 60 FPS, 210 boids visible, all 11 tests pass
+**Lesson:** All FLECS singleton types must be default-constructible (document in CLAUDE.md FLECS Patterns)
+

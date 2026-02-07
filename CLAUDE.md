@@ -45,6 +45,8 @@ cd build && ctest --output-on-failure
 ## FLECS Patterns
 - Tag components: `struct NormalBoid {};`
 - Singletons: `world.set<T>()` for SimConfig, SpatialGrid, SimStats
+  - **CRITICAL:** Singleton types MUST be default-constructible (add `T() = default;` + member initializers)
+  - FLECS internally default-constructs storage before `world.set<T>()` can move/copy into it
 - Pipeline: PreUpdate→spatial rebuild, OnUpdate→steering, PostUpdate→collision/infection, OnStore→render
 - Deferred ops: `world.defer_begin()`/`defer_end()` for spawn/destroy during iteration
 
