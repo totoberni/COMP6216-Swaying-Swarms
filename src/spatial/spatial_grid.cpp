@@ -2,6 +2,11 @@
 #include <cmath>
 #include <algorithm>
 
+namespace {
+    // Small epsilon to prevent entities from landing exactly on upper boundary
+    constexpr float BOUNDARY_EPSILON = 0.001f;
+}
+
 SpatialGrid::SpatialGrid(float world_w, float world_h, float cell_size)
     : world_w_(world_w)
     , world_h_(world_h)
@@ -19,9 +24,9 @@ void SpatialGrid::clear() {
 }
 
 void SpatialGrid::insert(uint64_t entity_id, float x, float y) {
-    // Clamp to grid bounds
-    x = std::max(0.0f, std::min(x, world_w_ - 0.001f));
-    y = std::max(0.0f, std::min(y, world_h_ - 0.001f));
+    // Clamp to grid bounds (epsilon prevents exact boundary hits causing out-of-bounds indexing)
+    x = std::max(0.0f, std::min(x, world_w_ - BOUNDARY_EPSILON));
+    y = std::max(0.0f, std::min(y, world_h_ - BOUNDARY_EPSILON));
 
     int idx = cell_index(x, y);
     if (idx >= 0 && idx < static_cast<int>(cells_.size())) {
@@ -76,6 +81,7 @@ std::vector<std::pair<uint64_t, float>> SpatialGrid::query_neighbors(float x, fl
 }
 
 int SpatialGrid::cell_index(float x, float y) const {
+    // Cell indexing: row-major layout [col + cols_ * row]
     int col = static_cast<int>(x / cell_size_);
     int row = static_cast<int>(y / cell_size_);
     return col + cols_ * row;

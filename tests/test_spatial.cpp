@@ -216,3 +216,24 @@ TEST_F(SpatialGridTest, CrossCellBoundaryQueries) {
     EXPECT_EQ(neighbors[0].first, 1);
     EXPECT_EQ(neighbors[1].first, 2);
 }
+
+TEST_F(SpatialGridTest, QueryPointOutsideBoundsHandledCorrectly) {
+    SpatialGrid grid(WORLD_W, WORLD_H, CELL_SIZE);
+
+    grid.insert(1, 10.0f, 10.0f);
+    grid.insert(2, 50.0f, 50.0f);
+
+    // Query from outside bounds (negative coordinates)
+    auto neighbors1 = grid.query_neighbors(-50.0f, -50.0f, 100.0f);
+    EXPECT_EQ(neighbors1.size(), 1);  // Should find entity at (10, 10)
+    EXPECT_EQ(neighbors1[0].first, 1);
+
+    // Query from outside bounds (beyond world dimensions)
+    auto neighbors2 = grid.query_neighbors(WORLD_W + 100, WORLD_H + 100, 100.0f);
+    EXPECT_TRUE(neighbors2.empty());  // Too far from any entity
+
+    // Query from outside with large radius
+    auto neighbors3 = grid.query_neighbors(-10.0f, -10.0f, 30.0f);
+    EXPECT_EQ(neighbors3.size(), 1);  // Distance to (10, 10) is ~28.28
+    EXPECT_EQ(neighbors3[0].first, 1);
+}
