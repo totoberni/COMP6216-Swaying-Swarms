@@ -29,6 +29,15 @@ CPMAddPackage(
         "BUILD_GAMES OFF"
 )
 
+CPMAddPackage(
+    NAME googletest
+    GITHUB_REPOSITORY google/googletest
+    GIT_TAG v1.14.0
+    OPTIONS
+        "INSTALL_GTEST OFF"
+        "BUILD_GMOCK OFF"
+)
+
 # --- Collect sources ---
 file(GLOB_RECURSE MAIN_SOURCES
     src/*.cpp
@@ -54,9 +63,14 @@ file(GLOB_RECURSE TEST_SOURCES
     tests/*.h
 )
 
+# Collect spatial module sources for testing
+file(GLOB SPATIAL_SOURCES
+    src/spatial/*.cpp
+)
+
 # Only build tests if there are test source files
 if(TEST_SOURCES)
-    add_executable(tests ${TEST_SOURCES})
+    add_executable(tests ${TEST_SOURCES} ${SPATIAL_SOURCES})
 
     target_include_directories(tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -66,6 +80,8 @@ if(TEST_SOURCES)
     target_link_libraries(tests PRIVATE
         flecs::flecs_static
         raylib
+        gtest_main
+        gtest
     )
 
     enable_testing()
