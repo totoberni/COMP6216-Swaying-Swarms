@@ -1,2 +1,33 @@
 # Changelog — ecs
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
+## 2026-02-07
+- **21:04Z** | `src/ecs/spawn.h` | File written/created | session:`cefb983f`
+- **21:04Z** | `src/ecs/stats.cpp` | File written/created | session:`cefb983f`
+- **21:04Z** | `src/ecs/stats.h` | File written/created | session:`cefb983f`
+- **21:05Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`
+- **21:07Z** | `src/ecs/spawn.cpp` | Edited: '        auto boid = world.entity()             .add<NormalBo' -> '        auto boid = world.entity()             .add<NormalBo' | session:`cefb983f`
+- **21:07Z** | `src/ecs/spawn.cpp` | Edited: '        auto boid = world.entity()             .add<DoctorBo' -> '        auto boid = world.entity()             .add<DoctorBo' | session:`cefb983f`
+- **21:07Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_initial_population(flecs::world& world) {     con' -> 'void spawn_initial_population(flecs::world& world) {     con' | session:`cefb983f`
+- **21:07Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_normal_boids(flecs::world& world, int count) {   ' -> 'void spawn_normal_boids(flecs::world& world, int count) {   ' | session:`cefb983f`
+- **21:07Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_doctor_boids(flecs::world& world, int count) {   ' -> 'void spawn_doctor_boids(flecs::world& world, int count) {   ' | session:`cefb983f`
+- **21:09Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_normal_boids(flecs::world& world, int count) {   ' -> 'void spawn_normal_boids(flecs::world& world, int count) {   ' | session:`cefb983f`
+- **21:09Z** | `src/ecs/spawn.cpp` | Edited: '        // Initial infection         if (dist_infect(rng) < ' -> '        // Initial infection         if (dist_infect(rng) < ' | session:`cefb983f`
+- **21:09Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_doctor_boids(flecs::world& world, int count) {   ' -> 'void spawn_doctor_boids(flecs::world& world, int count) {   ' | session:`cefb983f`
+- **21:09Z** | `src/ecs/spawn.cpp` | Edited: '        // Initial infection         if (dist_infect(rng) < ' -> '        // Initial infection         if (dist_infect(rng) < ' | session:`cefb983f`
+- **21:09Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_initial_population(flecs::world& world) {     con' -> 'void spawn_initial_population(flecs::world& world) {     con' | session:`cefb983f`
+- **21:09Z** | `src/ecs/world.cpp` | Edited: '    // Create SpatialGrid singleton     const auto* config =' -> '    // Create SpatialGrid singleton     const SimConfig& con' | session:`cefb983f`
+- **21:09Z** | `src/ecs/systems.cpp` | Edited: 'void register_movement_system(flecs::world& world) {     wor' -> 'void register_movement_system(flecs::world& world) {     wor' | session:`cefb983f`
+- **21:12Z** | `src/ecs/stats.cpp` | Edited: 'void register_stats_system(flecs::world& world) {     world.' -> 'void register_stats_system(flecs::world& world) {     world.' | session:`cefb983f`
+- **21:12Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`
+- **21:12Z** | `src/ecs/stats.cpp` | Edited: 'void register_stats_system(flecs::world& world) {     world.' -> 'void register_stats_system(flecs::world& world) {     world.' | session:`cefb983f`
+- **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`
+- **21:13Z** | `src/ecs/systems.cpp` | Edited: '            // Update heading based on velocity             ' -> '            // Update heading based on velocity             ' | session:`cefb983f`
+- **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_movement_system(flecs::world& world) {     wor' -> 'void register_movement_system(flecs::world& world) {     wor' | session:`cefb983f`
+- **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_reproduction_system(flecs::world& world) {    ' -> 'void register_reproduction_system(flecs::world& world) {    ' | session:`cefb983f`
+- **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_render_sync_system(flecs::world& world) {     ' -> 'void register_render_sync_system(flecs::world& world) {     ' | session:`cefb983f`
+- **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_movement_system(flecs::world& world) {     wor' -> 'void register_movement_system(flecs::world& world) {     wor' | session:`cefb983f`
+- **21:14Z** | `src/ecs/systems.cpp` | Edited: 'void register_reproduction_system(flecs::world& world) {    ' -> 'void register_reproduction_system(flecs::world& world) {    ' | session:`cefb983f`
+- **21:15Z** | `src/ecs/spatial_grid_stub.cpp` | File written/created | session:`cefb983f`
+- **21:18Z** | `src/ecs/stats.cpp` | Edited: 'void register_stats_system(flecs::world& world) {     world.' -> 'void register_stats_system(flecs::world& world) {     world.' | session:`cefb983f`
+- **21:18Z** | `src/ecs/stats.cpp` | Edited: 'void register_stats_system(flecs::world& world) {     world.' -> 'void register_stats_system(flecs::world& world) {     world.' | session:`cefb983f`
+- **21:19Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`

@@ -1,0 +1,97 @@
+#include "spawn.h"
+#include "components.h"
+#include <flecs.h>
+#include <random>
+#include <cmath>
+
+namespace {
+    // Seeded random engine for reproducible spawning
+    std::mt19937 rng(42);
+}
+
+void spawn_normal_boids(flecs::world& world, int count) {
+    const SimConfig& config = world.get<SimConfig>();
+
+    std::uniform_real_distribution<float> dist_x(0.0f, config.world_width);
+    std::uniform_real_distribution<float> dist_y(0.0f, config.world_height);
+    std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
+    std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
+    std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
+    std::uniform_real_distribution<float> dist_infect(0.0f, 1.0f);
+
+    for (int i = 0; i < count; ++i) {
+        float x = dist_x(rng);
+        float y = dist_y(rng);
+        float angle = dist_angle(rng);
+        float speed = dist_speed(rng);
+
+        auto boid = world.entity()
+            .add<NormalBoid>()
+            .add<Alive>()
+            .set(Position{x, y})
+            .set(Velocity{speed * std::cos(angle), speed * std::sin(angle)})
+            .set(Heading{angle})
+            .set(Health{0.0f, 60.0f}) // age=0, lifespan=60s
+            .set(ReproductionCooldown{0.0f});
+
+        // Assign sex
+        if (dist_sex(rng) < 0.5f) {
+            boid.add<Male>();
+        } else {
+            boid.add<Female>();
+        }
+
+        // Initial infection
+        if (dist_infect(rng) < config.p_initial_infect_normal) {
+            boid.add<Infected>();
+            boid.set(InfectionState{0.0f, config.t_death});
+        }
+    }
+}
+
+void spawn_doctor_boids(flecs::world& world, int count) {
+    const SimConfig& config = world.get<SimConfig>();
+
+    std::uniform_real_distribution<float> dist_x(0.0f, config.world_width);
+    std::uniform_real_distribution<float> dist_y(0.0f, config.world_height);
+    std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
+    std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
+    std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
+    std::uniform_real_distribution<float> dist_infect(0.0f, 1.0f);
+
+    for (int i = 0; i < count; ++i) {
+        float x = dist_x(rng);
+        float y = dist_y(rng);
+        float angle = dist_angle(rng);
+        float speed = dist_speed(rng);
+
+        auto boid = world.entity()
+            .add<DoctorBoid>()
+            .add<Alive>()
+            .set(Position{x, y})
+            .set(Velocity{speed * std::cos(angle), speed * std::sin(angle)})
+            .set(Heading{angle})
+            .set(Health{0.0f, 60.0f}) // age=0, lifespan=60s
+            .set(ReproductionCooldown{0.0f});
+
+        // Assign sex
+        if (dist_sex(rng) < 0.5f) {
+            boid.add<Male>();
+        } else {
+            boid.add<Female>();
+        }
+
+        // Initial infection
+        if (dist_infect(rng) < config.p_initial_infect_doctor) {
+            boid.add<Infected>();
+            boid.set(InfectionState{0.0f, config.t_death});
+        }
+    }
+}
+
+void spawn_initial_population(flecs::world& world) {
+    const SimConfig& config = world.get<SimConfig>();
+
+    spawn_normal_boids(world, config.initial_normal_count);
+    spawn_doctor_boids(world, config.initial_doctor_count);
+}

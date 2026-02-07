@@ -1,22 +1,13 @@
-#include "components.h"
+#include <iostream>
 #include <flecs.h>
-#include <raylib.h>
 
 int main() {
+    std::cout << "[DEBUG] Starting...\n" << std::flush;
+
+    std::cout << "[DEBUG] Creating world...\n" << std::flush;
     flecs::world world;
-    world.set<SimConfig>({});
-    world.set<SimStats>({});
 
-    InitWindow(800, 600, "Boid Swarm - COMP6216");
-    SetTargetFPS(60);
+    std::cout << "[DEBUG] World created successfully!\n" << std::flush;
 
-    while (!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(DARKGRAY);
-        DrawText("Boid Swarm Simulation", 240, 280, 30, RAYWHITE);
-        EndDrawing();
-    }
-
-    CloseWindow();
     return 0;
 }
