@@ -64,15 +64,15 @@ struct SimConfig {
     // --- Cure & transition probabilities ---
     float p_cure                   = 0.8f;
     float p_become_doctor          = 0.05f;
-    float p_antivax                = 0.02f;
+    float p_antivax                = 0.1f;
 
-    // --- Interaction radii ---
-    float r_interact_normal        = 50.0f;
-    float r_interact_doctor        = 60.0f;
+    // --- Interaction radii (pixels) ---
+    float r_interact_normal        = 30.0f;
+    float r_interact_doctor        = 40.0f;
 
-    // --- Time parameters ---
-    float t_death                  = 10.0f;  // seconds after infection until death
-    float t_adult                  = 30.0f;  // seconds until eligible for doctor transition
+    // --- Time parameters (seconds; converted from master plan frame counts @ 60fps) ---
+    float t_death                  = 5.0f;   // 300 frames / 60fps = 5s
+    float t_adult                  = 8.33f;  // 500 frames / 60fps ≈ 8.33s
 
     // --- Offspring count distributions (Normal distribution params) ---
     float offspring_mean_normal    = 2.0f;
@@ -86,11 +86,11 @@ struct SimConfig {
 
     // --- Initial population ---
     int initial_normal_count       = 200;
-    int initial_doctor_count       = 20;
+    int initial_doctor_count       = 10;
 
-    // --- Boid movement parameters ---
-    float max_speed                = 200.0f;
-    float max_force                = 10.0f;
+    // --- Boid movement parameters (per-second; converted from master plan per-frame @ 60fps) ---
+    float max_speed                = 180.0f;  // 3.0 px/frame * 60fps
+    float max_force                = 6.0f;    // 0.1 force/frame * 60fps
 
     float separation_weight        = 1.5f;
     float alignment_weight         = 1.0f;

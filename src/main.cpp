@@ -1,6 +1,6 @@
+#include "components.h"
 #include <flecs.h>
 #include <raylib.h>
-#include "components.h"
 
 int main() {
     flecs::world world;
