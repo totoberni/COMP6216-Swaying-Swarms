@@ -7,23 +7,50 @@ Just a chill group of simulation modelling students
 
 ---
 
+## Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/your-org/COMP6216-Swaying-Swarms
+cd COMP6216-Swaying-Swarms
+
+# Build (first time)
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+
+# Run the main simulation
+./build/boid_swarm              # Linux/macOS
+./build/Debug/boid_swarm.exe    # Windows (native)
+
+# Or run the standalone renderer demo
+./build/render_demo              # Linux/macOS
+./build/Debug/render_demo.exe    # Windows (native)
+
+# Run tests
+cd build && ctest --output-on-failure
+```
+
+---
+
 ## System-Level Dependencies (Prerequisites)
 
 These must be installed **before** you can build or contribute. They are not pulled automatically.
 
-| Dependency | Purpose | Install (Windows) | Install (macOS) | Install (Linux) |
+| Dependency | Purpose | Install (Windows) | Install (macOS) | Install (Linux/WSL) |
 |---|---|---|---|---|
-| **CMake 3.20+** | Build system | `winget install Kitware.CMake --source winget` | `brew install cmake` | `sudo apt install cmake` |
+| **CMake 3.20+** | Build system | `winget install Kitware.CMake` | `brew install cmake` | `sudo apt install cmake` |
 | **C++17 Compiler** | Compilation | Visual Studio 2022 Build Tools (see below) | `xcode-select --install` | `sudo apt install g++` |
-| **Git 2.17+** | Version control + worktrees | `winget install Git.Git --source winget` | `brew install git` | `sudo apt install git` |
-| **jq** | JSON parsing (used by changelog hooks) | `winget install jqlang.jq --source winget` | `brew install jq` | `sudo apt install jq` |
+| **Git 2.17+** | Version control + worktrees | `winget install Git.Git` | `brew install git` | `sudo apt install git` |
+| **jq** | JSON parsing (used by changelog hooks) | `winget install jqlang.jq` | `brew install jq` | `sudo apt install jq` |
 | **Claude Code CLI** | AI agent tooling (optional) | `npm install -g @anthropic-ai/claude-code` | Same | Same |
 
-### Windows-Specific Notes
+### Platform-Specific Setup
+
+#### Windows (Native — Without WSL)
 
 **C++ compiler setup:**
-1. Install Visual Studio 2022 Build Tools: `winget install Microsoft.VisualStudio.2022.BuildTools --source winget`
-2. Open **Visual Studio Installer** -> Modify -> check **"Desktop development with C++"** (includes MSVC v143) -> Install.
+1. Install Visual Studio 2022 Build Tools: `winget install Microsoft.VisualStudio.2022.BuildTools`
+2. Open **Visual Studio Installer** → Modify → check **"Desktop development with C++"** (includes MSVC v143) → Install
 3. **Always use "Developer PowerShell for VS 2022"** as your terminal (find it in Start Menu). Regular PowerShell will not find the compiler.
 
 After installing everything, verify in Developer PowerShell:
@@ -34,6 +61,85 @@ git --version      # 2.17+
 jq --version       # Any version
 ```
 
+#### Windows (WSL — Ubuntu/Debian)
+
+**Recommended for most Windows users** — WSL provides a Linux environment without dual-booting:
+
+1. **Enable WSL2:**
+   ```powershell
+   # In PowerShell (Admin)
+   wsl --install
+   ```
+   This installs Ubuntu by default. Reboot when prompted.
+
+2. **Install dependencies inside WSL:**
+   ```bash
+   # Inside your WSL Ubuntu terminal
+   sudo apt update
+   sudo apt install cmake g++ git jq build-essential
+   
+   # Install X11 libraries for Raylib window support
+   sudo apt install libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev libasound2-dev
+   ```
+
+3. **For GUI support (Raylib window):**
+   - Install an X server on Windows: **VcXsrv** or **X410** (from Microsoft Store)
+   - In WSL, add to `~/.bashrc`:
+     ```bash
+     export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):0
+     export LIBGL_ALWAYS_INDIRECT=1
+     ```
+   - Restart your WSL terminal or run `source ~/.bashrc`
+
+4. **Verify:**
+   ```bash
+   cmake --version
+   g++ --version
+   git --version
+   jq --version
+   ```
+
+#### macOS
+
+```bash
+# Install Homebrew if not already installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install dependencies
+brew install cmake git jq
+
+# Install Xcode Command Line Tools (includes Clang C++17 compiler)
+xcode-select --install
+```
+
+Verify:
+```bash
+cmake --version   # 3.20+
+c++ --version     # Apple Clang or GCC
+git --version     # 2.17+
+jq --version      # Any version
+```
+
+#### Linux (Native — Ubuntu/Debian)
+
+```bash
+sudo apt update
+sudo apt install cmake g++ git jq build-essential
+
+# Install X11 and OpenGL libraries for Raylib
+sudo apt install libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev libasound2-dev
+```
+
+For other distros (Fedora, Arch, etc.), use `dnf`, `pacman`, or equivalent package managers.
+
+Verify:
+```bash
+cmake --version   # 3.20+
+g++ --version     # GCC 7.0+
+git --version     # 2.17+
+jq --version      # Any version
+```
+
 ### clangd / IDE Setup (Optional but Recommended)
 
 If your editor uses **clangd** for C++ IntelliSense, you need a `compile_flags.txt` at the project root so clangd can find FLECS and Raylib headers. This file is gitignored because the paths are machine-specific.
@@ -41,21 +147,25 @@ If your editor uses **clangd** for C++ IntelliSense, you need a `compile_flags.t
 **After your first build**, create it:
 
 ```bash
-# Find your CPM cache paths (default: C:/.cpm on Windows)
-ls C:/.cpm/flecs/*/include    # e.g. C:/.cpm/flecs/d5ad/include
-ls C:/.cpm/raylib/*/src       # e.g. C:/.cpm/raylib/cebd/src
+# Find your CPM cache paths
+# Windows: C:/.cpm
+# Linux/macOS: ~/.cache/CPM (or check your CPM_SOURCE_CACHE env var)
+
+# Linux/macOS example:
+ls ~/.cache/CPM/flecs/*/include
+ls ~/.cache/CPM/raylib/*/src
 ```
 
 Then create `compile_flags.txt` in the project root:
 ```
 -std=c++17
 -Iinclude
--IC:/.cpm/flecs/<hash>/include
--IC:/.cpm/raylib/<hash>/src
--IC:/.cpm/raylib/<hash>/src/external/glfw/include
+-I/home/user/.cache/CPM/flecs/<hash>/include
+-I/home/user/.cache/CPM/raylib/<hash>/src
+-I/home/user/.cache/CPM/raylib/<hash>/src/external/glfw/include
 ```
 
-Replace `<hash>` with the actual directory names from the `ls` output above.
+Replace `<hash>` with the actual directory names from the `ls` output above. On Windows, paths use backslashes: `-IC:/.cpm/flecs/<hash>/include`.
 
 A `.clang-format` file is already committed to enforce 4-space indentation project-wide.
 
@@ -70,8 +180,9 @@ These dependencies are fetched at build time via [CPM.cmake](https://github.com/
 | **FLECS** | v4.1.4 | Entity Component System — manages all boid state, systems, and queries |
 | **Raylib** | 5.5 | 2D rendering — window, drawing, input |
 | **raygui** | (bundled with Raylib) | Immediate-mode GUI — stats overlay, parameter sliders |
+| **GoogleTest** | 1.14.0 | Unit testing framework |
 
-On Windows, CPM caches dependency sources to `C:/.cpm` to avoid MAX_PATH issues with long project paths (e.g. OneDrive). This is set automatically in `CMakeLists.txt`. On macOS/Linux, CPM uses its default cache location.
+On Windows, CPM caches dependency sources to `C:/.cpm` to avoid MAX_PATH issues with long project paths (e.g. OneDrive). This is set automatically in `CMakeLists.txt`. On macOS/Linux, CPM uses its default cache location (`~/.cache/CPM`).
 
 ---
 
@@ -84,19 +195,31 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 ```
 
-The executable is at:
-- **Windows:** `build/Debug/boid_swarm.exe`
-- **macOS/Linux:** `build/boid_swarm`
+**Build output:**
+- `build/boid_swarm` (or `build/Debug/boid_swarm.exe` on Windows) — Main simulation
+- `build/render_demo` (or `build/Debug/render_demo.exe`) — Standalone renderer demo (200 random moving boids)
+- `build/tests` (or `build/Debug/tests.exe`) — Unit test suite
 
 ### Running
 
+**Main simulation (headless for now, Phase 9+ will add rendering):**
 ```bash
-# Windows (from project root)
-./build/Debug/boid_swarm.exe
-
-# macOS/Linux
-./build/boid_swarm
+./build/boid_swarm              # Linux/macOS/WSL
+./build/Debug/boid_swarm.exe    # Windows native
 ```
+
+**Standalone renderer demo:**
+```bash
+./build/render_demo              # Linux/macOS/WSL
+./build/Debug/render_demo.exe    # Windows native
+```
+
+This opens a 1920×1080 window with 200 randomly moving triangles (boids) showing the rendering pipeline in action.
+
+**WSL GUI note:** If the window doesn't appear, ensure:
+1. X server (VcXsrv/X410) is running on Windows
+2. `DISPLAY` environment variable is set correctly (see WSL setup above)
+3. Try `export LIBGL_ALWAYS_INDIRECT=0` if you have graphics driver issues
 
 ### Rebuilding After Changes
 
@@ -113,6 +236,10 @@ cmake --build build --target tests
 cd build && ctest --output-on-failure
 ```
 
+**Current test coverage:**
+- Spatial grid: 11 unit tests (functional correctness + performance benchmarks)
+- More tests coming in Phase 10 (behavior rules)
+
 ---
 
 ## Project Architecture
@@ -126,10 +253,19 @@ COMP6216-Swaying-Swarms/
 ├── src/
 │   ├── main.cpp          # Entry point: FLECS world + Raylib window
 │   ├── ecs/              # FLECS systems, world init, entity spawning
-│   ├── sim/              # Behavior logic: infection, cure, reproduction, death
+│   │   ├── world.cpp     # World initialization, component registration
+│   │   ├── systems.cpp   # System pipeline (steering, movement, collision, etc.)
+│   │   ├── spawn.cpp     # Initial population spawning
+│   │   └── stats.cpp     # SimStats tracking
+│   ├── sim/              # Behavior logic: infection, cure, reproduction, death (Phase 10)
 │   ├── spatial/          # Fixed-grid spatial index (pure C++, no FLECS)
+│   │   └── spatial_grid.cpp  # Hash grid implementation for collision detection
 │   └── render/           # Raylib rendering pipeline + stats overlay
+│       ├── renderer.cpp  # Drawing functions, stats overlay
+│       ├── render_config.h  # Visual constants (colors, dimensions)
+│       └── render_demo.cpp  # Standalone demo executable
 ├── tests/                # Unit tests
+│   └── test_spatial.cpp  # Spatial grid tests (11 tests)
 ├── cmake/CPM.cmake       # Dependency manager (committed, not generated)
 ├── CMakeLists.txt        # Build configuration
 ├── context.md            # Simulation specification and rules
@@ -272,12 +408,23 @@ A `PostToolUse` hook automatically logs every file edit to the appropriate modul
 The orchestrator tracks progress in `.orchestrator/state.md`. If you're running the orchestrator, update this file before compacting or ending a session. Key files:
 
 - `.orchestrator/state.md` — Current phase, completed/pending tasks, key decisions
-- `.orchestrator/task-queue.md` — What to work on next
-- `.orchestrator/active-tasks.md` — Running worker sessions
 - `.orchestrator/decisions.md` — Architecture decision records
+- `.orchestrator/mistakes.md` — Worker error patterns for learning
 
 ---
 
 ## Current Status
 
-**Phase 7 complete.** Build system, shared API headers, and all agent infrastructure are in place. The project compiles and links FLECS v4.1.4 + Raylib 5.5. Next: parallel module development (ECS core, spatial grid, renderer).
+**Phase 8 complete ✅** — All core modules implemented, tested, and integrated:
+
+- ✅ **Spatial grid** — Fixed-cell hash grid with 11 passing tests, 33ms performance for 10k entities
+- ✅ **ECS core** — FLECS world, systems pipeline (steering, movement, collision stubs), spawn logic
+- ✅ **Renderer** — Full Raylib rendering pipeline + standalone demo
+
+**Build status:**
+- `boid_swarm`: 11M (main executable, currently headless)
+- `render_demo`: 3.8M (standalone renderer demo with 200 boids)
+- `tests`: 3.5M (11 spatial grid tests, all passing)
+
+**Next: Phase 9** — Integration & wiring. Connect ECS ↔ spatial grid ↔ renderer, implement main simulation loop with visual output.
+
