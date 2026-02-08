@@ -13,7 +13,9 @@
 #
 # Usage via hook (SubagentStop):
 #   Receives standard hook JSON on stdin
-set -euo pipefail
+set -uo pipefail
+# NOTE: -e removed intentionally — hooks must be best-effort and never block
+# the parent Task tool result. grep/sed failures should not be fatal.
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 STATE_FILE="$PROJECT_DIR/.orchestrator/state.md"
@@ -54,12 +56,10 @@ else
       DESCRIPTION=$(echo "$INPUT" | jq -r '.description // "no description"')
       PID=$(echo "$INPUT" | jq -r '.pid // "—"')
     else
-      # Hook JSON — extract what we can
-      WORKER="agent-${SESSION_ID:0:8}"
-      BRANCH="unknown"
-      STATUS="completed"
-      DESCRIPTION="Session ended"
-      PID="—"
+      # Hook JSON (SubagentStop) — no worker tracking data, exit gracefully.
+      # These auto-generated entries were causing table format mismatches
+      # and grep failures that blocked Task tool result reporting.
+      exit 0
     fi
   else
     # Try pipe-delimited format
@@ -123,10 +123,11 @@ case "$STATUS" in
         # Find the "Active Workers" section's table separator line (|---|...)
         SECTION_LINE=$(grep -n "## Active Workers" "$STATE_FILE" | tail -1 | cut -d: -f1)
         # Find the separator line (|---|) after the section header
-        SEPARATOR_LINE=$(tail -n +$SECTION_LINE "$STATE_FILE" | grep -n '^|[-|]*$' | head -1 | cut -d: -f1)
-        ACTUAL_LINE=$((SECTION_LINE + SEPARATOR_LINE - 1))
-        
-        sed -i "${ACTUAL_LINE}a\\| $WORKER | $BRANCH | \`${SESSION_ID:0:8}\` | $PID | $STATUS | $SHORT_TS |" "$STATE_FILE"
+        SEPARATOR_LINE=$(tail -n +$SECTION_LINE "$STATE_FILE" | grep -n '^|[-|]*$' | head -1 | cut -d: -f1 || true)
+        if [ -n "$SEPARATOR_LINE" ]; then
+          ACTUAL_LINE=$((SECTION_LINE + SEPARATOR_LINE - 1))
+          sed -i "${ACTUAL_LINE}a\\| $WORKER | $BRANCH | \`${SESSION_ID:0:8}\` | $PID | $STATUS | $SHORT_TS |" "$STATE_FILE"
+        fi
       fi
     fi
     ;;
@@ -148,7 +149,7 @@ case "$STATUS" in
       # Check if it's a table format or checklist format
       if tail -n +$SECTION_LINE "$STATE_FILE" | head -10 | grep -q '^|'; then
         # Table format — add row after separator
-        SEPARATOR_LINE=$(tail -n +$SECTION_LINE "$STATE_FILE" | grep -n '^|[-|]*$' | head -1 | cut -d: -f1)
+        SEPARATOR_LINE=$(tail -n +$SECTION_LINE "$STATE_FILE" | grep -n '^|[-|]*$' | head -1 | cut -d: -f1 || true)
         if [ -n "$SEPARATOR_LINE" ]; then
           ACTUAL_LINE=$((SECTION_LINE + SEPARATOR_LINE - 1))
           sed -i "${ACTUAL_LINE}a\\| $WORKER | $BRANCH | $DESCRIPTION | $TIMESTAMP |" "$STATE_FILE"

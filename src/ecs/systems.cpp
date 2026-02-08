@@ -14,6 +14,11 @@
 #include <cmath>
 #include <algorithm>
 
+namespace {
+    constexpr float PI = 3.14159265f;
+    constexpr float TWO_PI = 2.0f * PI;
+}
+
 // ============================================================
 // PreUpdate Phase: Spatial Grid Rebuild
 // ============================================================
@@ -200,11 +205,10 @@ void register_aging_system(flecs::world& world) {
 // ============================================================
 
 void register_collision_system(flecs::world& world) {
-    world.system<const Position, const Alive>("CollisionSystem")
-        .kind(flecs::PostUpdate)
-        .each([](flecs::entity e, const Position& pos, const Alive&) {
-            // Stub: Could be used for collision detection if needed
-        });
+    // Collision system stub reserved for Phase 11 extensions.
+    // Currently all collision behavior is handled by infection and reproduction systems.
+    // This system can be extended in the future for direct boid-boid collision responses.
+    (void)world;  // Suppress unused parameter warning
 }
 
 void register_infection_system(flecs::world& world) {
@@ -396,7 +400,7 @@ void register_reproduction_system(flecs::world& world) {
                     }
 
                     // Spawn offspring
-                    std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
+                    std::uniform_real_distribution<float> dist_angle(0.0f, TWO_PI);
                     std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
                     std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
 
@@ -490,7 +494,7 @@ void register_reproduction_system(flecs::world& world) {
                     }
 
                     // Spawn offspring
-                    std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
+                    std::uniform_real_distribution<float> dist_angle(0.0f, TWO_PI);
                     std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
                     std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
 

@@ -21,9 +21,9 @@ raygui.h build error fixed (commit fa63385). Build clean, all 11 tests pass.
 
 ## Current Phase
 
-**Phase 10 — Behavior Rules — IN PROGRESS 🔧**
+**Phase 10 — Behavior Rules — COMPLETE ✅**
 
-**Current action:** Single worker implementing all behavior rules sequentially in src/sim/ + src/ecs/systems.cpp.
+**Next action:** Begin Phase 11 (Extensions via Ralph Loop). See plan.md § Phase 11.
 
 ---
 
@@ -49,16 +49,17 @@ Single integration worker connected all modules:
 - Build: 11M binary, all 11 tests pass, 60 FPS steady, no memory leaks
 - Key commits: db71f56 (integration), a54a21e (SpatialGrid crash fix), 00a2118 (debug cleanup)
 
-### Phase 10: Behavior Rules — IN PROGRESS 🔧
-
-Tasks (from plan.md):
-- [ ] Aging system (increment Health.age and InfectionState.time_infected)
-- [ ] Death system (time_infected >= t_death → entity dies)
-- [ ] Infection mechanics (p_infect per frame within r_interact, same-swarm only)
-- [ ] Cure behavior (Doctor proximity, p_cure)
-- [ ] Reproduction system (same-swarm collision → offspring)
-- [ ] Promotion (Normal → Doctor after t_adult, p_become_doctor)
-- [ ] Integration test: 5000 frames, verify stats sane
+### Phase 10: Behavior Rules — COMPLETE ✅
+Single worker (Option A, DEC-013) implemented all rules in one commit (c0a3aef, 516 lines):
+- Aging — Health.age and InfectionState.time_infected incremented per frame
+- Death — time_infected >= t_death removes Alive tag, updates dead counters
+- Infection — same-swarm only, p_infect probability, spatial grid neighbor queries
+- Cure — doctors cure ANY infected boid (cross-swarm), p_cure probability
+- Reproduction — same-swarm, offspring from N(mean,stddev), cooldown, deferred spawning
+- Promotion — Normal boid age >= t_adult, p_become_doctor per frame
+- Stats — cumulative death/newborn counters, per-frame alive recounting
+- 13 new files in src/sim/, systems.cpp filled in, stats.cpp updated
+- Build clean, all 11 tests pass, simulation runs at 60 FPS
 
 ### Phase 11: Extensions via Ralph Loop — FUTURE
 Depends on Phase 10 completion. Six extensions defined in plan.md.
@@ -83,6 +84,7 @@ Depends on Phase 10 completion. Six extensions defined in plan.md.
 | Integration Worker | Phase 9: SpatialGrid crash fix | main | ✅ commit a54a21e | Phase 9 |
 | Integration Worker | Phase 9: Debug cleanup | main | ✅ commit 00a2118 | Phase 9 |
 | cpp-builder | Fix raygui.h MSVC build error | main | ✅ commit fa63385 | Phase 10 pre |
+| Behavior Worker | Phase 10: All behavior rules | main | ✅ commit c0a3aef, 516 lines | Phase 10 |
 
 ---
 
@@ -97,4 +99,6 @@ Depends on Phase 10 completion. Six extensions defined in plan.md.
 ## Session Decisions
 <!-- Scratch space for this session. Promote to decisions.md before session end. -->
 
-(none yet)
+- DEC-012: raygui fix — CPM dependency added, hacky include path replaced (fa63385)
+- DEC-013: Phase 10 Option A chosen — single worker, sequential implementation
+- Phase 10 complete (c0a3aef) — code review pending
