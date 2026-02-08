@@ -2,6 +2,7 @@
 #include "render_config.h"
 #include <raylib.h>
 #include <cmath>
+#include <flecs.h>
 
 #define RAYGUI_IMPLEMENTATION
 #include <raygui.h>
@@ -80,21 +81,31 @@ void draw_interaction_radius(float x, float y, float radius, uint32_t color) {
 }
 
 // ============================================================
-// Stats overlay
+// Stats overlay with interactive controls
 // ============================================================
 
-void draw_stats_overlay(const SimStats& stats) {
+void draw_stats_overlay(const SimStats& stats, void* world_ptr) {
+    // Cast world pointer back to flecs::world (may be nullptr for demo)
+    flecs::world* world = static_cast<flecs::world*>(world_ptr);
+    SimConfig* config = nullptr;
+    if (world) {
+        config = &world->get_mut<SimConfig>();
+    }
+
+    // Draw stats panel
     GuiPanel(Rectangle{
         static_cast<float>(RenderConfig::STATS_PANEL_X),
         static_cast<float>(RenderConfig::STATS_PANEL_Y),
         static_cast<float>(RenderConfig::STATS_PANEL_WIDTH),
-        static_cast<float>(RenderConfig::STATS_PANEL_HEIGHT)
-    }, "Simulation Stats");
+        450.0f  // Increased height for sliders
+    }, "Simulation Stats & Controls");
 
     const int x = RenderConfig::STATS_PANEL_X + 10;
     int y = RenderConfig::STATS_PANEL_Y + 30;
     const int line_height = RenderConfig::STATS_LINE_HEIGHT;
+    const int slider_width = 150;
 
+    // --- Population stats ---
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20},
              TextFormat("Normal Alive: %d", stats.normal_alive));
     y += line_height;
@@ -125,13 +136,61 @@ void draw_stats_overlay(const SimStats& stats) {
 
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20},
              TextFormat("  Doctor: %d", stats.newborns_doctor));
+    y += line_height + 10;
+
+    // --- Interactive sliders (only active if world is available) ---
+    if (config) {
+        GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20}, "--- Live Controls ---");
+        y += line_height;
+
+        // p_infect_normal slider
+        GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 100, 20}, "p_infect_normal");
+        GuiSlider(
+            Rectangle{static_cast<float>(x + 100), static_cast<float>(y), static_cast<float>(slider_width), 20},
+            "0.0", "1.0", &config->p_infect_normal, 0.0f, 1.0f);
+        y += line_height;
+
+        // p_cure slider
+        GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 100, 20}, "p_cure");
+        GuiSlider(
+            Rectangle{static_cast<float>(x + 100), static_cast<float>(y), static_cast<float>(slider_width), 20},
+            "0.0", "1.0", &config->p_cure, 0.0f, 1.0f);
+        y += line_height;
+
+        // r_interact_normal slider
+        GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 100, 20}, "r_interact_normal");
+        GuiSlider(
+            Rectangle{static_cast<float>(x + 100), static_cast<float>(y), static_cast<float>(slider_width), 20},
+            "10", "100", &config->r_interact_normal, 10.0f, 100.0f);
+        y += line_height;
+
+        // r_interact_doctor slider
+        GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 100, 20}, "r_interact_doctor");
+        GuiSlider(
+            Rectangle{static_cast<float>(x + 100), static_cast<float>(y), static_cast<float>(slider_width), 20},
+            "10", "100", &config->r_interact_doctor, 10.0f, 100.0f);
+        y += line_height;
+
+        // Note: initial population counts are not editable during runtime
+        // They only affect spawn_initial_population() which runs once at startup
+        GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 220, 20},
+                 TextFormat("Initial Normal: %d (startup)", config->initial_normal_count));
+        y += line_height;
+
+        GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 220, 20},
+                 TextFormat("Initial Doctor: %d (startup)", config->initial_doctor_count));
+    } else {
+        GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20}, "--- Controls Disabled ---");
+        y += line_height;
+        GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 220, 20}, "(No world available)");
+    }
 }
 
 // ============================================================
 // Render complete frame
 // ============================================================
 
-void render_frame(const RenderState& state) {
+void render_frame(const RenderState& state, void* world_ptr) {
     begin_frame();
 
     // Draw interaction radii first (background layer)
@@ -147,8 +206,8 @@ void render_frame(const RenderState& state) {
         draw_boid(boid.x, boid.y, boid.angle, boid.color, RenderConfig::BOID_BASE_RADIUS);
     }
 
-    // Draw stats overlay
-    draw_stats_overlay(state.stats);
+    // Draw stats overlay with interactive controls
+    draw_stats_overlay(state.stats, world_ptr);
 
     end_frame();
 }

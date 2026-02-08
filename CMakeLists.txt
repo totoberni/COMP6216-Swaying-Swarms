@@ -77,10 +77,12 @@ target_include_directories(render_demo PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${raygui_SOURCE_DIR}/src
+    ${flecs_SOURCE_DIR}/include
 )
 
 target_link_libraries(render_demo PRIVATE
     raylib
+    flecs::flecs_static
 )
 
 # --- Test executable ---
