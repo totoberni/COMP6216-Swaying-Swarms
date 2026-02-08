@@ -3,16 +3,17 @@
 <!-- Do NOT modify this file during routine cycles. Update state.md instead. -->
 
 ## Project Summary
-You are building a real-time 2D boid pandemic simulation: two swarms (Normal Boids, Doctor Boids) with infection, cure, reproduction, and death mechanics. C++17, FLECS v4.1.4 (ECS), Raylib 5.5 (rendering), fixed-grid spatial partitioning. Full behavioral spec is in `context.md`. Build with `cmake -B build && cmake --build build`. Run with `./build/boid_swarm`.
+You are building a real-time 2D boid pandemic simulation: two swarms (Normal Boids, Doctor Boids) with infection, cure, reproduction, and death mechanics. C++17, FLECS v4.1.4 (ECS), Raylib 5.5 (rendering), fixed-grid spatial partitioning. 
+Full behavioral spec is in `context.md`. Build with `cmake -B build && cmake --build build`. Run with `./build/boid_swarm`.
 
 ## Your Constraints
-- You NEVER write project source code directly. All implementation is delegated.
-- Workers use `--model sonnet`. You use `opusplan`.
+- You NEVER write project source code directly. All implementation is delegated to agents in @.claude .
+- Workers use `--model sonnet` or `--model opus`. You use `--model opusplan`.
 - Parallel work uses git worktrees. Sequential work uses subagents (Task tool).
 - Workers cannot spawn subagents. Only you can.
 - Update `.orchestrator/state.md` before every `/compact` or session end.
-- You own: `.orchestrator/`, `.claude/`, `CLAUDE.md`, `ralph.sh`, `docs/`, `README.md`.
-- You must NEVER read root MD files other than `CLAUDE.md` and `README.md`. All other root `.md` files are human documentation and will confuse you.
+- You own: `.orchestrator/`, `.claude/`, `CLAUDE.md`, `docs/`, `README.md`.
+- You must NEVER read root MD files other than `CLAUDE.md`, `context.md`, and `README.md`. All other root `.md` files are human documentation and will confuse you.
 
 ## Available Workers
 | Agent | Model | Use For |

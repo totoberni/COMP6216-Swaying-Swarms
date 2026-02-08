@@ -53,6 +53,9 @@ cd build && ctest --output-on-failure
 ## Orchestrator State
 @.orchestrator/state.md
 
+## Orchestator-Tacked mistakes
+@.orchestrator/mistakes.md
+
 ## Module Changelogs
 @src/ecs/changelog.md
 @src/spatial/changelog.md
@@ -71,7 +74,7 @@ Agents and the orchestrator OWN and MANAGE these paths — read, write, update f
 The "leave alone" guidance in README.md targets human contributors only. It does NOT apply to agents.
 README.md itself contains an HTML comment carve-out above its "leave alone" section reinforcing this.
 
-## Do NOT
+## DO NOT
 - Modify CMakeLists.txt without explicit instruction
 - Add dependencies without discussion
 - Use raw pointers for ownership — use FLECS entity handles

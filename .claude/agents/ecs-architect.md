@@ -2,7 +2,8 @@
 name: ecs-architect
 description: FLECS v4 specialist. Use for any work in src/ecs/ or include/components.h.
 tools: Read, Edit, Bash, Grep, Glob
-model: sonnet
+model: opus
+permissionMode: default
 ---
 
 You are an expert in FLECS v4 (C++17 API) and ECS architecture.

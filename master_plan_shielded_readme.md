@@ -1,4 +1,5 @@
 # Master Plan — COMP6216 Swaying Swarms
+<!-- For Human Review ONLY, Not intended for Agents-->
 ## Orchestrator-Driven Agent Development Pipeline
 
 > **Audience:** A developer with Claude Code CLI and Claude Desktop installed (MAX subscription), starting from scratch.

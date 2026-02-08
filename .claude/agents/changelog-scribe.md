@@ -3,6 +3,7 @@ name: changelog-scribe
 description: Records module changes to per-directory changelog.md files. Use for enriching hook-generated entries.
 tools: Read, Edit, Write, Glob
 model: haiku
+permissionMode: default
 ---
 
 Changelog scribe for C++ boid simulation.

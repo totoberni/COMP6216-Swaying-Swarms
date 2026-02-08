@@ -3,6 +3,7 @@ name: cpp-builder
 description: C++17 build system specialist. Use for build errors, CMake changes, adding source files.
 tools: Read, Edit, Bash, Grep, Glob
 model: sonnet
+permissionMode: default
 ---
 
 You are a C++17 build system expert (CMake + CPM.cmake).

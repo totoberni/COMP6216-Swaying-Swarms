@@ -3,6 +3,7 @@ name: code-reviewer
 description: Code review specialist. Use after changes, before committing.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+permissionMode: default
 ---
 
 Senior C++ code reviewer for FLECS boid simulation.
