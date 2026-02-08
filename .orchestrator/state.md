@@ -5,7 +5,7 @@
 
 ## No Urgent Issues ✅
 
-raygui.h build error fixed (commit fa63385). Build clean, all 11 tests pass.
+Phase 11 complete. Build clean, 23 tests pass. Phase 12 ready.
 
 ---
 
@@ -21,9 +21,9 @@ raygui.h build error fixed (commit fa63385). Build clean, all 11 tests pass.
 
 ## Current Phase
 
-**Phase 11 — Extensions via Ralph Loop — ACTIVE 🔄**
+**Phase 11 — Extensions via Ralph Loop — COMPLETE ✅**
 
-Infrastructure created. Ralph Loop ready to execute.
+**Phase 12 — Refinements & Configuration — ACTIVE 🔄**
 
 ---
 
@@ -61,11 +61,16 @@ Single worker (Option A, DEC-013) implemented all rules in one commit (c0a3aef, 
 - 13 new files in src/sim/, systems.cpp filled in, stats.cpp updated
 - Build clean, all 11 tests pass, simulation runs at 60 FPS
 
-### Phase 11: Extensions via Ralph Loop — ACTIVE 🔄
-Infrastructure created:
-- `docs/current-task.md` — 6 extension tasks with guardrails
-- `ralph.sh` — Stateless loop script (--model sonnet, max 30 iterations)
-- Stray `ProjectsCOMP6216-Swaying-Swarmsbuild/` directory cleaned up
+### Phase 11: Extensions via Ralph Loop — COMPLETE ✅
+Ralph Loop completed 6/6 tasks in 6 iterations (~23 min):
+- Infected debuffs (70d36bd), Sex system (ac90f8c), Antivax (0a52cd0)
+- Parameter sliders (cebd9b8), Pause/Reset (889eeab), Population graph (caaafa9)
+- Code review: 3 critical fixes applied (d9a76ef)
+- Config loader: INI-based SimConfig loading with CLI arg support (d9a76ef)
+- Build clean, 23 tests pass (12 ConfigLoader + 11 SpatialGrid)
+
+### Phase 12: Refinements & Configuration — ACTIVE 🔄
+Remaining review findings + config loader refinements via Ralph Loop.
 
 ---
 
@@ -88,6 +93,10 @@ Infrastructure created:
 | Integration Worker | Phase 9: Debug cleanup | main | ✅ commit 00a2118 | Phase 9 |
 | cpp-builder | Fix raygui.h MSVC build error | main | ✅ commit fa63385 | Phase 10 pre |
 | Behavior Worker | Phase 10: All behavior rules | main | ✅ commit c0a3aef, 516 lines | Phase 10 |
+| Ralph Loop | Phase 11: 6 extensions (6 iters) | main | ✅ 6 commits, ~23 min | Phase 11 |
+| code-reviewer | Phase 11: Code review | main | ✅ 3 critical, 3 warnings | Phase 11 |
+| cpp-builder | Phase 11: Build verification | main | ✅ 23 tests pass | Phase 11 |
+| Orchestrator | Config loader + review fixes | main | ✅ commit d9a76ef | Phase 11 |
 
 ---
 
@@ -103,3 +112,6 @@ Infrastructure created:
 <!-- Scratch space for this session. Promote to decisions.md before session end. -->
 
 - DEC-014: Phase 11 Ralph Loop infrastructure created (docs/current-task.md + ralph.sh)
+- DEC-015: Config loader — INI format, no new dependency, optional file loading
+- Phase 11 complete — 6 extensions + config loader + review fixes (d9a76ef)
+- Phase 12 starting — remaining review findings via Ralph Loop

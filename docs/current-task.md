@@ -1,14 +1,13 @@
-# Current Task: Implement Extensions
+# Current Task: Phase 12 — Refinements & Review Fixes
 
 Read CLAUDE.md for full project context. Check src/*/changelog.md for recent changes.
 
 ## Requirements (implement ONE per session, in order)
-- [x] Infected debuffs — Doctors: reduce p_cure ×0.5, r_interact_doctor ×0.7, p_offspring_doctor ×0.5. Normal: r_interact_normal ×0.8, p_offspring_normal ×0.5. Store debuff multipliers in SimConfig.
-- [x] Sex system: add Male/Female tags. 50/50 at spawn. Reproduction requires one Male + one Female. Same-sex collisions skip reproduction.
-- [x] Antivax boids: p_antivax percentage of Normal boids get Antivax tag at spawn. Antivax boids add a strong repulsion force from DoctorBoid within visual range (ADDITIVE to existing flocking, not replacement). They can still be cured if a doctor reaches them.
-- [x] Parameter sliders: raygui sliders in stats overlay for p_infect_normal, p_cure, r_interact_normal, r_interact_doctor, initial_normal_count, initial_doctor_count. Slider changes update SimConfig singleton in real-time.
-- [x] Pause/Reset controls: Pause button (freezes simulation, rendering continues). Reset button (destroys all entities, re-spawns from SimConfig).
-- [x] Population graph: real-time line chart (raygui or manual) showing normal_alive and doctor_alive over last 500 frames.
+- [ ] Remove FLECS include from renderer — `src/render/renderer.cpp` line 5 includes `<flecs.h>`, violating module boundaries. Fix: pass `SimConfig*` and `SimulationState*` through `RenderState` (in `include/render_state.h`). Populate in `register_render_sync_system()` (in `src/ecs/systems.cpp`). Then remove `<flecs.h>` and the `flecs::world*` cast from renderer.cpp. The `void* world_ptr` parameter can become unused or removed.
+- [ ] Expand slider ranges — In `src/render/renderer.cpp`, change `r_interact_normal` and `r_interact_doctor` slider ranges from 10-100 to 5-200 to allow wider experimentation.
+- [ ] Smooth population graph Y-scale — In `src/render/renderer.cpp`, the population graph `max_pop` rescales every frame causing visual jumps. Use a smoothed/damped max: `smoothed_max = max(smoothed_max * 0.99, current_max)` so the graph settles gradually. Use a `static` variable inside `draw_population_graph()`. Reset it when `history_count < 2`.
+- [ ] Add keyboard shortcuts — In `src/main.cpp`, add `IsKeyPressed(KEY_SPACE)` for pause toggle and `IsKeyPressed(KEY_R)` for reset. Update the button labels in renderer.cpp to show the shortcuts: "Pause (SPACE)" / "Resume (SPACE)" and "Reset (R)".
+- [ ] Also delete dead boids on reset — In `src/ecs/spawn.cpp`, `reset_simulation()` only deletes entities with `Alive` tag. Dead boids (those without `Alive` but still existing) are left behind. Add a second query for entities WITHOUT `Alive` that have `NormalBoid` or `DoctorBoid` to clean them up too. Or use a simpler approach: query all entities with `Position` component.
 
 ## Guardrails
 - Do NOT break existing simulation rules
@@ -16,11 +15,11 @@ Read CLAUDE.md for full project context. Check src/*/changelog.md for recent cha
 - All new parameters go in SimConfig
 - Build and test after EACH change
 - Update the relevant module's changelog.md
-- Commit with descriptive message before finishing: "feat(scope): description"
-- Use `<random>` with seeded engine, never `std::rand()`
-- Antivax steering must be ADDITIVE to flocking rules, not a replacement
+- Commit with descriptive message before finishing: "fix(scope): description" or "feat(scope): description"
 - Do NOT add Raylib includes outside src/render/
+- Do NOT add FLECS includes in src/render/ (this is the WHOLE POINT of task 1)
 - If all tasks checked, output RALPH_COMPLETE
-- Always add header-only libs as explicit CPM dependencies (never use hacky include paths)
-- Hook scripts must not use `set -e` — use explicit error handling instead
 - All FLECS singleton types MUST be default-constructible (add `T() = default;` + member initializers)
+- The render module receives data ONLY through `RenderState` — no direct FLECS access
+- When modifying `render_state.h`, remember it is in `include/` (shared API contract)
+- `void* world_ptr` was a temporary workaround — task 1 eliminates it
