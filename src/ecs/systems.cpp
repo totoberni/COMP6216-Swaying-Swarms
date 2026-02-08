@@ -399,6 +399,11 @@ void register_reproduction_system(flecs::world& world) {
                     // Only reproduce with same swarm type
                     if (!ne.has<NormalBoid>()) continue;
 
+                    // Check opposite sex requirement
+                    bool parent_is_male = e.has<Male>();
+                    bool neighbor_is_male = ne.has<Male>();
+                    if (parent_is_male == neighbor_is_male) continue; // Same sex, skip
+
                     // Check neighbor's cooldown
                     if (!ne.has<ReproductionCooldown>()) continue;
                     const ReproductionCooldown& ncooldown = ne.get<ReproductionCooldown>();
@@ -504,6 +509,11 @@ void register_reproduction_system(flecs::world& world) {
 
                     // Only reproduce with same swarm type
                     if (!ne.has<DoctorBoid>()) continue;
+
+                    // Check opposite sex requirement
+                    bool parent_is_male = e.has<Male>();
+                    bool neighbor_is_male = ne.has<Male>();
+                    if (parent_is_male == neighbor_is_male) continue; // Same sex, skip
 
                     // Check neighbor's cooldown
                     if (!ne.has<ReproductionCooldown>()) continue;

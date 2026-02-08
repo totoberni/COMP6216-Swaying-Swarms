@@ -1,6 +1,7 @@
 # Changelog — ecs
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
+- **Sex system**: Added opposite-sex requirement to reproduction system. Boids now only reproduce when one parent is Male and the other is Female. Same-sex collisions skip reproduction logic.
 - **Infected debuffs**: Modified infection, cure, and reproduction systems in systems.cpp to apply debuff multipliers from SimConfig when boids are infected
 
 ## 2026-02-07
