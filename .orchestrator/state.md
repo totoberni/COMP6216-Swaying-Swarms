@@ -21,9 +21,9 @@ raygui.h build error fixed (commit fa63385). Build clean, all 11 tests pass.
 
 ## Current Phase
 
-**Phase 10 — Behavior Rules — COMPLETE ✅**
+**Phase 11 — Extensions via Ralph Loop — ACTIVE 🔄**
 
-**Next action:** Begin Phase 11 (Extensions via Ralph Loop). See plan.md § Phase 11.
+Infrastructure created. Ralph Loop ready to execute.
 
 ---
 
@@ -61,8 +61,11 @@ Single worker (Option A, DEC-013) implemented all rules in one commit (c0a3aef, 
 - 13 new files in src/sim/, systems.cpp filled in, stats.cpp updated
 - Build clean, all 11 tests pass, simulation runs at 60 FPS
 
-### Phase 11: Extensions via Ralph Loop — FUTURE
-Depends on Phase 10 completion. Six extensions defined in plan.md.
+### Phase 11: Extensions via Ralph Loop — ACTIVE 🔄
+Infrastructure created:
+- `docs/current-task.md` — 6 extension tasks with guardrails
+- `ralph.sh` — Stateless loop script (--model sonnet, max 30 iterations)
+- Stray `ProjectsCOMP6216-Swaying-Swarmsbuild/` directory cleaned up
 
 ---
 
@@ -99,6 +102,4 @@ Depends on Phase 10 completion. Six extensions defined in plan.md.
 ## Session Decisions
 <!-- Scratch space for this session. Promote to decisions.md before session end. -->
 
-- DEC-012: raygui fix — CPM dependency added, hacky include path replaced (fa63385)
-- DEC-013: Phase 10 Option A chosen — single worker, sequential implementation
-- Phase 10 complete (c0a3aef) — code review pending
+- DEC-014: Phase 11 Ralph Loop infrastructure created (docs/current-task.md + ralph.sh)

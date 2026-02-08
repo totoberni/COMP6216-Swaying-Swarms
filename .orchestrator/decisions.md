@@ -130,4 +130,14 @@ Should check #2 before terminating on timeout. 16-17 minutes is acceptable for c
 - Worktree overhead not justified for a single-file-heavy task.
 **Alternatives rejected:** Option B (parallel workers) — merge conflicts in systems.cpp would cost more time than parallel savings.
 
-<!-- Next decision: DEC-014 -->
+## DEC-014: Phase 11 Ralph Loop Infrastructure
+**When:** 2026-02-08 (Phase 11 start)
+**Context:** Phase 10 complete. Plan.md specifies a "Ralph Loop" — stateless `claude -p` iterations — for implementing 6 extensions.
+**Decision:** Created `docs/current-task.md` (task list + guardrails) and `ralph.sh` (loop controller) per plan.md templates.
+**Modifications from template:**
+- Added `--model sonnet` to `claude -p` invocation (cost efficiency for focused single-task work)
+- Added 3 extra guardrails from session lessons: CPM dependencies, hook `set -e` avoidance, FLECS default-constructible singletons
+**Rationale:** Ralph Loop gives each iteration a fresh 200K context window, preventing context rot. Stateless design means crashed iterations lose nothing — the task file is the single source of truth.
+**Alternatives rejected:** Single long-running worker (context rot after 3-4 tasks), parallel workers per extension (dependencies between tasks, e.g. sex system needs components before antivax can reference them).
+
+<!-- Next decision: DEC-015 -->
