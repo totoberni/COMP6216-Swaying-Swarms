@@ -15,3 +15,10 @@ Started: 2026-02-08 16:43Z
   
   The next unchecked task is **Task 3: Smooth population graph Y-scale**.
 
+## Iteration 2
+- Start: 16:44:57Z | End: 16:46:31Z
+- Output (last 3 lines):
+  **Next task:** Smooth population graph Y-scale (task 3)
+  
+  The slider ranges now allow users to experiment with much wider interaction radii (from as low as 5 pixels up to 200 pixels), enabling better exploration of boid behavior dynamics.
+

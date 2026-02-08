@@ -84,24 +84,33 @@ void draw_interaction_radius(float x, float y, float radius, uint32_t color) {
 // ============================================================
 
 static void draw_population_graph(const SimStats& stats, int x, int y, int width, int height) {
+    // Smoothed max for stable Y-axis scaling
+    static float smoothed_max = 1.0f;
+
     // Draw graph background
     DrawRectangle(x, y, width, height, Color{40, 40, 40, 255});
     DrawRectangleLines(x, y, width, height, Color{100, 100, 100, 255});
 
     if (stats.history_count < 2) {
-        // Not enough data to draw
+        // Not enough data to draw - reset smoothed max
+        smoothed_max = 1.0f;
         DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
         return;
     }
 
-    // Find max population for scaling
-    int max_pop = 1;  // Avoid division by zero
+    // Find current max population
+    int current_max = 1;  // Avoid division by zero
     for (int i = 0; i < stats.history_count; i++) {
         int total = stats.history[i].normal_alive + stats.history[i].doctor_alive;
-        if (total > max_pop) {
-            max_pop = total;
+        if (total > current_max) {
+            current_max = total;
         }
     }
+
+    // Apply smoothing: decay existing max, but snap up immediately to new peaks
+    smoothed_max = std::max(smoothed_max * 0.99f, static_cast<float>(current_max));
+
+    int max_pop = static_cast<int>(std::ceil(smoothed_max));
 
     // Scale factor for Y axis
     float y_scale = static_cast<float>(height - 4) / static_cast<float>(max_pop);
