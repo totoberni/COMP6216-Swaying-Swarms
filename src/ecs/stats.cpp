@@ -9,7 +9,7 @@ void register_stats_system(flecs::world& world) {
             flecs::world w = it.world();
             SimStats& stats = w.get_mut<SimStats>();
 
-            // Reset counters (deaths and newborns are incremental per frame)
+            // Reset per-frame counters (deaths and newborns are cumulative)
             stats.normal_alive = 0;
             stats.doctor_alive = 0;
 
@@ -24,5 +24,8 @@ void register_stats_system(flecs::world& world) {
             q_doctor.each([&stats](const DoctorBoid&, const Alive&) {
                 stats.doctor_alive++;
             });
+
+            // Note: dead_total, dead_normal, dead_doctor, newborns_* are cumulative
+            // and updated by the death and reproduction systems
         });
 }

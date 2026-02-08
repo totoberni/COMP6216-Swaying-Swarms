@@ -3,6 +3,13 @@
 #include "spatial_grid.h"
 #include "render_state.h"
 #include "render/render_config.h"
+#include "sim/aging.h"
+#include "sim/death.h"
+#include "sim/infection.h"
+#include "sim/cure.h"
+#include "sim/reproduction.h"
+#include "sim/promotion.h"
+#include "sim/rng.h"
 #include <flecs.h>
 #include <cmath>
 #include <algorithm>
@@ -164,57 +171,427 @@ void register_movement_system(flecs::world& world) {
 }
 
 // ============================================================
-// PostUpdate Phase: Collisions and Behavior (stubs for Phase 10)
+// PostUpdate Phase: Aging and Timers
+// ============================================================
+
+void register_aging_system(flecs::world& world) {
+    world.system("AgingSystem")
+        .kind(flecs::PostUpdate)
+        .run([](flecs::iter& it) {
+            flecs::world w = it.world();
+            float dt = it.delta_time();
+
+            // Age all alive entities
+            auto q_age = w.query<Health, const Alive>();
+            q_age.each([dt](Health& health, const Alive&) {
+                age_entity(health.age, dt);
+            });
+
+            // Tick infection timers
+            auto q_infected = w.query<InfectionState, const Infected, const Alive>();
+            q_infected.each([dt](InfectionState& infection, const Infected&, const Alive&) {
+                tick_infection(infection.time_infected, dt);
+            });
+        });
+}
+
+// ============================================================
+// PostUpdate Phase: Collisions and Behavior
 // ============================================================
 
 void register_collision_system(flecs::world& world) {
     world.system<const Position, const Alive>("CollisionSystem")
         .kind(flecs::PostUpdate)
         .each([](flecs::entity e, const Position& pos, const Alive&) {
-            // Stub: Phase 10 will implement infection/cure/reproduction triggers
+            // Stub: Could be used for collision detection if needed
         });
 }
 
 void register_infection_system(flecs::world& world) {
-    world.system<InfectionState, const Alive>("InfectionSystem")
+    world.system("InfectionSystem")
         .kind(flecs::PostUpdate)
-        .each([](flecs::entity e, InfectionState& infection, const Alive&) {
-            // Stub: Phase 10 — update infection timers, trigger death
+        .run([](flecs::iter& it) {
+            flecs::world w = it.world();
+            const SimConfig& config = w.get<SimConfig>();
+            const SpatialGrid& grid = w.get<SpatialGrid>();
+            std::mt19937& rng = sim_rng();
+
+            w.defer_begin();
+
+            // Process Normal Boids
+            auto q_normal = w.query<const Position, const NormalBoid, const Alive>();
+            q_normal.each([&](flecs::entity e, const Position& pos, const NormalBoid&, const Alive&) {
+                bool is_infected = e.has<Infected>();
+
+                // Only infected boids can spread infection
+                if (!is_infected) return;
+
+                // Query neighbors within interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.r_interact_normal);
+
+                for (const auto& [nid, dist] : neighbors) {
+                    if (nid == e.id()) continue;
+
+                    flecs::entity ne = w.entity(nid);
+                    if (!ne.is_alive() || !ne.has<Alive>()) continue;
+
+                    // Only infect same swarm type (NormalBoid -> NormalBoid)
+                    if (!ne.has<NormalBoid>()) continue;
+
+                    // Skip if already infected
+                    if (ne.has<Infected>()) continue;
+
+                    // Try to infect
+                    if (try_infect(config.p_infect_normal, rng)) {
+                        ne.add<Infected>();
+                        ne.set(InfectionState{0.0f, config.t_death});
+                    }
+                }
+            });
+
+            // Process Doctor Boids
+            auto q_doctor = w.query<const Position, const DoctorBoid, const Alive>();
+            q_doctor.each([&](flecs::entity e, const Position& pos, const DoctorBoid&, const Alive&) {
+                bool is_infected = e.has<Infected>();
+
+                // Only infected boids can spread infection
+                if (!is_infected) return;
+
+                // Query neighbors within interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.r_interact_doctor);
+
+                for (const auto& [nid, dist] : neighbors) {
+                    if (nid == e.id()) continue;
+
+                    flecs::entity ne = w.entity(nid);
+                    if (!ne.is_alive() || !ne.has<Alive>()) continue;
+
+                    // Only infect same swarm type (DoctorBoid -> DoctorBoid)
+                    if (!ne.has<DoctorBoid>()) continue;
+
+                    // Skip if already infected
+                    if (ne.has<Infected>()) continue;
+
+                    // Try to infect
+                    if (try_infect(config.p_infect_doctor, rng)) {
+                        ne.add<Infected>();
+                        ne.set(InfectionState{0.0f, config.t_death});
+                    }
+                }
+            });
+
+            w.defer_end();
         });
 }
 
 void register_cure_system(flecs::world& world) {
-    world.system<const Alive>("CureSystem")
+    world.system("CureSystem")
         .kind(flecs::PostUpdate)
-        .each([](flecs::entity e, const Alive&) {
-            // Stub: Phase 10 — doctor cures infected boids
+        .run([](flecs::iter& it) {
+            flecs::world w = it.world();
+            const SimConfig& config = w.get<SimConfig>();
+            const SpatialGrid& grid = w.get<SpatialGrid>();
+            std::mt19937& rng = sim_rng();
+
+            w.defer_begin();
+
+            // Only doctors can cure
+            auto q_doctor = w.query<const Position, const DoctorBoid, const Alive>();
+            q_doctor.each([&](flecs::entity e, const Position& pos, const DoctorBoid&, const Alive&) {
+                // Query neighbors within doctor interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.r_interact_doctor);
+
+                for (const auto& [nid, dist] : neighbors) {
+                    if (nid == e.id()) continue;
+
+                    flecs::entity ne = w.entity(nid);
+                    if (!ne.is_alive() || !ne.has<Alive>()) continue;
+
+                    // Skip if not infected
+                    if (!ne.has<Infected>()) continue;
+
+                    // Try to cure (doctors cure ANY infected boid, including other doctors)
+                    if (try_cure(config.p_cure, rng)) {
+                        ne.remove<Infected>();
+                        // Reset infection timer
+                        if (ne.has<InfectionState>()) {
+                            InfectionState& inf = ne.get_mut<InfectionState>();
+                            inf.time_infected = 0.0f;
+                        }
+                    }
+                }
+            });
+
+            w.defer_end();
         });
 }
 
 void register_reproduction_system(flecs::world& world) {
-    world.system<const Position, ReproductionCooldown, const Alive>("ReproductionSystem")
+    world.system("ReproductionSystem")
         .kind(flecs::PostUpdate)
-        .each([](flecs::iter& it, size_t index, const Position& pos, ReproductionCooldown& cooldown, const Alive&) {
+        .run([](flecs::iter& it) {
+            flecs::world w = it.world();
+            const SimConfig& config = w.get<SimConfig>();
+            const SpatialGrid& grid = w.get<SpatialGrid>();
+            SimStats& stats = w.get_mut<SimStats>();
+            std::mt19937& rng = sim_rng();
             float dt = it.delta_time();
-            if (cooldown.cooldown > 0.0f) {
-                cooldown.cooldown -= dt;
-            }
+
+            // First, update cooldowns for all alive boids
+            auto q_cooldown = w.query<ReproductionCooldown, const Alive>();
+            q_cooldown.each([dt](ReproductionCooldown& cooldown, const Alive&) {
+                if (cooldown.cooldown > 0.0f) {
+                    cooldown.cooldown -= dt;
+                }
+            });
+
+            w.defer_begin();
+
+            // Process Normal Boid reproduction
+            auto q_normal = w.query<const Position, const Velocity, ReproductionCooldown, const NormalBoid, const Alive>();
+            q_normal.each([&](flecs::entity e, const Position& pos, const Velocity& vel,
+                              ReproductionCooldown& cooldown, const NormalBoid&, const Alive&) {
+                // Skip if on cooldown
+                if (cooldown.cooldown > 0.0f) return;
+
+                bool is_infected = e.has<Infected>();
+
+                // Query neighbors within interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.r_interact_normal);
+
+                for (const auto& [nid, dist] : neighbors) {
+                    if (nid == e.id()) continue;
+
+                    flecs::entity ne = w.entity(nid);
+                    if (!ne.is_alive() || !ne.has<Alive>()) continue;
+
+                    // Only reproduce with same swarm type
+                    if (!ne.has<NormalBoid>()) continue;
+
+                    // Check neighbor's cooldown
+                    if (!ne.has<ReproductionCooldown>()) continue;
+                    const ReproductionCooldown& ncooldown = ne.get<ReproductionCooldown>();
+                    if (ncooldown.cooldown > 0.0f) continue;
+
+                    // Try to reproduce
+                    if (!try_reproduce(config.p_offspring_normal, rng)) continue;
+
+                    // Calculate offspring count
+                    int count = offspring_count(config.offspring_mean_normal,
+                                               config.offspring_stddev_normal, rng);
+
+                    if (count <= 0) continue;
+
+                    // Get neighbor position for midpoint calculation
+                    const Position& npos = ne.get<Position>();
+                    float spawn_x = (pos.x + npos.x) / 2.0f;
+                    float spawn_y = (pos.y + npos.y) / 2.0f;
+
+                    // Check if both parents are infected
+                    bool neighbor_infected = ne.has<Infected>();
+                    bool child_infected = false;
+                    if (is_infected && neighbor_infected) {
+                        // Child gets contagion from ONE parent only
+                        child_infected = try_infect(config.p_infect_normal, rng);
+                    }
+
+                    // Spawn offspring
+                    std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
+                    std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
+                    std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
+
+                    for (int i = 0; i < count; ++i) {
+                        float angle = dist_angle(rng);
+                        float speed = dist_speed(rng);
+
+                        auto child = w.entity()
+                            .add<NormalBoid>()
+                            .add<Alive>()
+                            .set(Position{spawn_x, spawn_y})
+                            .set(Velocity{speed * std::cos(angle), speed * std::sin(angle)})
+                            .set(Heading{angle})
+                            .set(Health{0.0f, 60.0f})
+                            .set(ReproductionCooldown{config.reproduction_cooldown});
+
+                        // Assign sex
+                        if (dist_sex(rng) < 0.5f) {
+                            child.add<Male>();
+                        } else {
+                            child.add<Female>();
+                        }
+
+                        // Infect child if applicable
+                        if (child_infected) {
+                            child.add<Infected>();
+                            child.set(InfectionState{0.0f, config.t_death});
+                        }
+                    }
+
+                    // Set cooldown for both parents
+                    cooldown.cooldown = config.reproduction_cooldown;
+                    ReproductionCooldown& ncool = ne.get_mut<ReproductionCooldown>();
+                    ncool.cooldown = config.reproduction_cooldown;
+
+                    // Update stats
+                    stats.newborns_total += count;
+                    stats.newborns_normal += count;
+
+                    // Break after first successful reproduction
+                    break;
+                }
+            });
+
+            // Process Doctor Boid reproduction
+            auto q_doctor = w.query<const Position, const Velocity, ReproductionCooldown, const DoctorBoid, const Alive>();
+            q_doctor.each([&](flecs::entity e, const Position& pos, const Velocity& vel,
+                              ReproductionCooldown& cooldown, const DoctorBoid&, const Alive&) {
+                // Skip if on cooldown
+                if (cooldown.cooldown > 0.0f) return;
+
+                bool is_infected = e.has<Infected>();
+
+                // Query neighbors within interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.r_interact_doctor);
+
+                for (const auto& [nid, dist] : neighbors) {
+                    if (nid == e.id()) continue;
+
+                    flecs::entity ne = w.entity(nid);
+                    if (!ne.is_alive() || !ne.has<Alive>()) continue;
+
+                    // Only reproduce with same swarm type
+                    if (!ne.has<DoctorBoid>()) continue;
+
+                    // Check neighbor's cooldown
+                    if (!ne.has<ReproductionCooldown>()) continue;
+                    const ReproductionCooldown& ncooldown = ne.get<ReproductionCooldown>();
+                    if (ncooldown.cooldown > 0.0f) continue;
+
+                    // Try to reproduce
+                    if (!try_reproduce(config.p_offspring_doctor, rng)) continue;
+
+                    // Calculate offspring count
+                    int count = offspring_count(config.offspring_mean_doctor,
+                                               config.offspring_stddev_doctor, rng);
+
+                    if (count <= 0) continue;
+
+                    // Get neighbor position for midpoint calculation
+                    const Position& npos = ne.get<Position>();
+                    float spawn_x = (pos.x + npos.x) / 2.0f;
+                    float spawn_y = (pos.y + npos.y) / 2.0f;
+
+                    // Check if both parents are infected
+                    bool neighbor_infected = ne.has<Infected>();
+                    bool child_infected = false;
+                    if (is_infected && neighbor_infected) {
+                        // Child gets contagion from ONE parent only
+                        child_infected = try_infect(config.p_infect_doctor, rng);
+                    }
+
+                    // Spawn offspring
+                    std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
+                    std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
+                    std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
+
+                    for (int i = 0; i < count; ++i) {
+                        float angle = dist_angle(rng);
+                        float speed = dist_speed(rng);
+
+                        auto child = w.entity()
+                            .add<DoctorBoid>()
+                            .add<Alive>()
+                            .set(Position{spawn_x, spawn_y})
+                            .set(Velocity{speed * std::cos(angle), speed * std::sin(angle)})
+                            .set(Heading{angle})
+                            .set(Health{0.0f, 60.0f})
+                            .set(ReproductionCooldown{config.reproduction_cooldown});
+
+                        // Assign sex
+                        if (dist_sex(rng) < 0.5f) {
+                            child.add<Male>();
+                        } else {
+                            child.add<Female>();
+                        }
+
+                        // Infect child if applicable
+                        if (child_infected) {
+                            child.add<Infected>();
+                            child.set(InfectionState{0.0f, config.t_death});
+                        }
+                    }
+
+                    // Set cooldown for both parents
+                    cooldown.cooldown = config.reproduction_cooldown;
+                    ReproductionCooldown& ncool = ne.get_mut<ReproductionCooldown>();
+                    ncool.cooldown = config.reproduction_cooldown;
+
+                    // Update stats
+                    stats.newborns_total += count;
+                    stats.newborns_doctor += count;
+
+                    // Break after first successful reproduction
+                    break;
+                }
+            });
+
+            w.defer_end();
         });
 }
 
 void register_death_system(flecs::world& world) {
-    world.system<const Health, const InfectionState, const Alive>("DeathSystem")
+    world.system("DeathSystem")
         .kind(flecs::PostUpdate)
-        .each([](flecs::entity e, const Health& health, const InfectionState& infection, const Alive&) {
-            // Stub: Phase 10 — remove Alive tag on death
+        .run([](flecs::iter& it) {
+            flecs::world w = it.world();
+            const SimConfig& config = w.get<SimConfig>();
+            SimStats& stats = w.get_mut<SimStats>();
+
+            w.defer_begin();
+
+            // Check for death by infection
+            auto q = w.query<const InfectionState, const Infected, const Alive>();
+            q.each([&](flecs::entity e, const InfectionState& infection, const Infected&, const Alive&) {
+                if (should_die(infection.time_infected, config.t_death)) {
+                    // Remove Alive tag (entity remains for stats)
+                    e.remove<Alive>();
+
+                    // Update stats
+                    stats.dead_total++;
+                    if (e.has<NormalBoid>()) {
+                        stats.dead_normal++;
+                    } else if (e.has<DoctorBoid>()) {
+                        stats.dead_doctor++;
+                    }
+                }
+            });
+
+            w.defer_end();
         });
 }
 
 void register_doctor_promotion_system(flecs::world& world) {
-    world.system<const Alive>("DoctorPromotionSystem")
+    world.system("DoctorPromotionSystem")
         .kind(flecs::PostUpdate)
-        .each([](flecs::entity e, const Alive&) {
-            // Stub: Phase 10 — promote adult normal boids to doctors
+        .run([](flecs::iter& it) {
+            flecs::world w = it.world();
+            const SimConfig& config = w.get<SimConfig>();
+            std::mt19937& rng = sim_rng();
+
+            w.defer_begin();
+
+            // Check normal boids for promotion
+            auto q = w.query<const Health, const NormalBoid, const Alive>();
+            q.each([&](flecs::entity e, const Health& health, const NormalBoid&, const Alive&) {
+                if (try_promote(health.age, config.t_adult, config.p_become_doctor, rng)) {
+                    // Promote to doctor
+                    e.remove<NormalBoid>();
+                    e.add<DoctorBoid>();
+                    // Note: Stats will be automatically updated by UpdateStatsSystem
+                }
+            });
+
+            w.defer_end();
         });
 }
 
@@ -274,6 +651,7 @@ void register_all_systems(flecs::world& world) {
     register_movement_system(world);
 
     // PostUpdate
+    register_aging_system(world);
     register_collision_system(world);
     register_infection_system(world);
     register_cure_system(world);
