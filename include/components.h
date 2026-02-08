@@ -129,3 +129,13 @@ struct SimStats {
     int newborns_normal = 0;
     int newborns_doctor = 0;
 };
+
+// ============================================================
+// SimulationState singleton — controls for pause/reset
+// ============================================================
+
+struct SimulationState {
+    SimulationState() = default;
+    bool is_paused = false;
+    bool reset_requested = false;  // Set by UI, cleared by main loop after reset
+};

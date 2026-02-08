@@ -32,6 +32,9 @@ void init_world(flecs::world& world) {
     // Set SimStats singleton (zeroed)
     world.set<SimStats>({});
 
+    // Set SimulationState singleton (not paused)
+    world.set<SimulationState>({});
+
     // Set RenderState singleton (empty)
     world.set<RenderState>({});
 

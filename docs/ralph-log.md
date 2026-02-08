@@ -22,3 +22,10 @@ Started: 2026-02-08 15:33Z
   
   The implementation follows all guardrails: uses spatial grid for neighbor queries, forces are additive to flocking, parameters stored in SimConfig, and the existing cure mechanism remains functional for antivax boids.
 
+## Iteration 4
+- Start: 15:41:18Z | End: 15:47:34Z
+- Output (last 3 lines):
+  - ✅ Committed with descriptive message (cebd9b8)
+  
+  The next unchecked task in the requirements is **Pause/Reset controls**.
+

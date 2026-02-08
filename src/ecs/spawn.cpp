@@ -101,3 +101,32 @@ void spawn_initial_population(flecs::world& world) {
     spawn_normal_boids(world, config.initial_normal_count);
     spawn_doctor_boids(world, config.initial_doctor_count);
 }
+
+void reset_simulation(flecs::world& world) {
+    // Delete all boid entities (entities with Alive tag)
+    world.defer_begin();
+
+    auto query = world.query_builder<>()
+        .with<Alive>()
+        .build();
+
+    query.each([](flecs::entity e) {
+        e.destruct();
+    });
+
+    world.defer_end();
+
+    // Reset statistics
+    SimStats& stats = world.get_mut<SimStats>();
+    stats.normal_alive = 0;
+    stats.doctor_alive = 0;
+    stats.dead_total = 0;
+    stats.dead_normal = 0;
+    stats.dead_doctor = 0;
+    stats.newborns_total = 0;
+    stats.newborns_normal = 0;
+    stats.newborns_doctor = 0;
+
+    // Re-spawn initial population
+    spawn_initial_population(world);
+}

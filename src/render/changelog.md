@@ -1,6 +1,7 @@
 # Changelog — render
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
+- **Pause/Reset controls**: Added Pause/Resume and Reset buttons to stats overlay in renderer.cpp. Pause button toggles SimulationState.is_paused. Reset button sets SimulationState.reset_requested (handled by main loop). Stats panel height increased to 530px to accommodate new controls. Buttons are 100px wide, placed at top of panel.
 - **Parameter sliders**: Added interactive raygui sliders for p_infect_normal, p_cure, r_interact_normal, r_interact_doctor in stats overlay. Sliders update SimConfig singleton in real-time. Added world pointer parameter to render_frame() and draw_stats_overlay(). Stats panel height increased to 450px to accommodate controls.
 
 ## 2026-02-07

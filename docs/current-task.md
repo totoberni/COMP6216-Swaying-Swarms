@@ -7,7 +7,7 @@ Read CLAUDE.md for full project context. Check src/*/changelog.md for recent cha
 - [x] Sex system: add Male/Female tags. 50/50 at spawn. Reproduction requires one Male + one Female. Same-sex collisions skip reproduction.
 - [x] Antivax boids: p_antivax percentage of Normal boids get Antivax tag at spawn. Antivax boids add a strong repulsion force from DoctorBoid within visual range (ADDITIVE to existing flocking, not replacement). They can still be cured if a doctor reaches them.
 - [x] Parameter sliders: raygui sliders in stats overlay for p_infect_normal, p_cure, r_interact_normal, r_interact_doctor, initial_normal_count, initial_doctor_count. Slider changes update SimConfig singleton in real-time.
-- [ ] Pause/Reset controls: Pause button (freezes simulation, rendering continues). Reset button (destroys all entities, re-spawns from SimConfig).
+- [x] Pause/Reset controls: Pause button (freezes simulation, rendering continues). Reset button (destroys all entities, re-spawns from SimConfig).
 - [ ] Population graph: real-time line chart (raygui or manual) showing normal_alive and doctor_alive over last 500 frames.
 
 ## Guardrails

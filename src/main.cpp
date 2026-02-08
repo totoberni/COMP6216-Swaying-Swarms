@@ -28,8 +28,18 @@ int main() {
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
 
-        // Advance all FLECS systems
-        world.progress(dt);
+        // Check for reset request
+        SimulationState& sim_state = world.get_mut<SimulationState>();
+        if (sim_state.reset_requested) {
+            reset_simulation(world);
+            sim_state.reset_requested = false;
+            sim_state.is_paused = false;  // Unpause after reset
+        }
+
+        // Advance all FLECS systems only if not paused
+        if (!sim_state.is_paused) {
+            world.progress(dt);
+        }
 
         // Get render state populated by RenderSyncSystem
         const RenderState& rs = world.get<RenderState>();

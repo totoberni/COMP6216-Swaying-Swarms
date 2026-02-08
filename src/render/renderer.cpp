@@ -88,8 +88,10 @@ void draw_stats_overlay(const SimStats& stats, void* world_ptr) {
     // Cast world pointer back to flecs::world (may be nullptr for demo)
     flecs::world* world = static_cast<flecs::world*>(world_ptr);
     SimConfig* config = nullptr;
+    SimulationState* sim_state = nullptr;
     if (world) {
         config = &world->get_mut<SimConfig>();
+        sim_state = &world->get_mut<SimulationState>();
     }
 
     // Draw stats panel
@@ -97,13 +99,34 @@ void draw_stats_overlay(const SimStats& stats, void* world_ptr) {
         static_cast<float>(RenderConfig::STATS_PANEL_X),
         static_cast<float>(RenderConfig::STATS_PANEL_Y),
         static_cast<float>(RenderConfig::STATS_PANEL_WIDTH),
-        450.0f  // Increased height for sliders
+        530.0f  // Increased height for buttons and sliders
     }, "Simulation Stats & Controls");
 
     const int x = RenderConfig::STATS_PANEL_X + 10;
     int y = RenderConfig::STATS_PANEL_Y + 30;
     const int line_height = RenderConfig::STATS_LINE_HEIGHT;
     const int slider_width = 150;
+    const int button_width = 100;
+    const int button_height = 30;
+
+    // --- Pause/Reset Controls ---
+    if (sim_state) {
+        // Pause button
+        const char* pause_text = sim_state->is_paused ? "Resume" : "Pause";
+        if (GuiButton(Rectangle{static_cast<float>(x), static_cast<float>(y),
+                                 static_cast<float>(button_width), static_cast<float>(button_height)},
+                      pause_text)) {
+            sim_state->is_paused = !sim_state->is_paused;
+        }
+
+        // Reset button (next to Pause button)
+        if (GuiButton(Rectangle{static_cast<float>(x + button_width + 10), static_cast<float>(y),
+                                 static_cast<float>(button_width), static_cast<float>(button_height)},
+                      "Reset")) {
+            sim_state->reset_requested = true;
+        }
+        y += button_height + 10;
+    }
 
     // --- Population stats ---
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20},
