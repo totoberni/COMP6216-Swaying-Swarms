@@ -230,8 +230,11 @@ void register_infection_system(flecs::world& world) {
                 // Only infected boids can spread infection
                 if (!is_infected) return;
 
-                // Query neighbors within interaction radius
-                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.r_interact_normal);
+                // Calculate effective interaction radius (debuffed if infected)
+                float effective_r_interact = config.r_interact_normal * config.debuff_r_interact_normal_infected;
+
+                // Query neighbors within effective interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, effective_r_interact);
 
                 for (const auto& [nid, dist] : neighbors) {
                     if (nid == e.id()) continue;
@@ -261,8 +264,11 @@ void register_infection_system(flecs::world& world) {
                 // Only infected boids can spread infection
                 if (!is_infected) return;
 
-                // Query neighbors within interaction radius
-                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.r_interact_doctor);
+                // Calculate effective interaction radius (debuffed if infected)
+                float effective_r_interact = config.r_interact_doctor * config.debuff_r_interact_doctor_infected;
+
+                // Query neighbors within effective interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, effective_r_interact);
 
                 for (const auto& [nid, dist] : neighbors) {
                     if (nid == e.id()) continue;
@@ -302,8 +308,17 @@ void register_cure_system(flecs::world& world) {
             // Only doctors can cure
             auto q_doctor = w.query<const Position, const DoctorBoid, const Alive>();
             q_doctor.each([&](flecs::entity e, const Position& pos, const DoctorBoid&, const Alive&) {
-                // Query neighbors within doctor interaction radius
-                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.r_interact_doctor);
+                // Check if doctor is infected for debuff calculation
+                bool doctor_infected = e.has<Infected>();
+
+                // Calculate effective interaction radius (debuffed if infected)
+                float effective_r_interact = config.r_interact_doctor;
+                if (doctor_infected) {
+                    effective_r_interact *= config.debuff_r_interact_doctor_infected;
+                }
+
+                // Query neighbors within effective doctor interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, effective_r_interact);
 
                 for (const auto& [nid, dist] : neighbors) {
                     if (nid == e.id()) continue;
@@ -314,8 +329,14 @@ void register_cure_system(flecs::world& world) {
                     // Skip if not infected
                     if (!ne.has<Infected>()) continue;
 
+                    // Calculate effective cure probability (debuffed if doctor is infected)
+                    float effective_p_cure = config.p_cure;
+                    if (doctor_infected) {
+                        effective_p_cure *= config.debuff_p_cure_infected;
+                    }
+
                     // Try to cure (doctors cure ANY infected boid, including other doctors)
-                    if (try_cure(config.p_cure, rng)) {
+                    if (try_cure(effective_p_cure, rng)) {
                         ne.remove<Infected>();
                         // Reset infection timer
                         if (ne.has<InfectionState>()) {
@@ -360,8 +381,14 @@ void register_reproduction_system(flecs::world& world) {
 
                 bool is_infected = e.has<Infected>();
 
-                // Query neighbors within interaction radius
-                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.r_interact_normal);
+                // Calculate effective interaction radius (debuffed if infected)
+                float effective_r_interact = config.r_interact_normal;
+                if (is_infected) {
+                    effective_r_interact *= config.debuff_r_interact_normal_infected;
+                }
+
+                // Query neighbors within effective interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, effective_r_interact);
 
                 for (const auto& [nid, dist] : neighbors) {
                     if (nid == e.id()) continue;
@@ -377,8 +404,14 @@ void register_reproduction_system(flecs::world& world) {
                     const ReproductionCooldown& ncooldown = ne.get<ReproductionCooldown>();
                     if (ncooldown.cooldown > 0.0f) continue;
 
+                    // Calculate effective reproduction probability (debuffed if infected)
+                    float effective_p_offspring = config.p_offspring_normal;
+                    if (is_infected) {
+                        effective_p_offspring *= config.debuff_p_offspring_normal_infected;
+                    }
+
                     // Try to reproduce
-                    if (!try_reproduce(config.p_offspring_normal, rng)) continue;
+                    if (!try_reproduce(effective_p_offspring, rng)) continue;
 
                     // Calculate offspring count
                     int count = offspring_count(config.offspring_mean_normal,
@@ -454,8 +487,14 @@ void register_reproduction_system(flecs::world& world) {
 
                 bool is_infected = e.has<Infected>();
 
-                // Query neighbors within interaction radius
-                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.r_interact_doctor);
+                // Calculate effective interaction radius (debuffed if infected)
+                float effective_r_interact = config.r_interact_doctor;
+                if (is_infected) {
+                    effective_r_interact *= config.debuff_r_interact_doctor_infected;
+                }
+
+                // Query neighbors within effective interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, effective_r_interact);
 
                 for (const auto& [nid, dist] : neighbors) {
                     if (nid == e.id()) continue;
@@ -471,8 +510,14 @@ void register_reproduction_system(flecs::world& world) {
                     const ReproductionCooldown& ncooldown = ne.get<ReproductionCooldown>();
                     if (ncooldown.cooldown > 0.0f) continue;
 
+                    // Calculate effective reproduction probability (debuffed if infected)
+                    float effective_p_offspring = config.p_offspring_doctor;
+                    if (is_infected) {
+                        effective_p_offspring *= config.debuff_p_offspring_doctor_infected;
+                    }
+
                     // Try to reproduce
-                    if (!try_reproduce(config.p_offspring_doctor, rng)) continue;
+                    if (!try_reproduce(effective_p_offspring, rng)) continue;
 
                     // Calculate offspring count
                     int count = offspring_count(config.offspring_mean_doctor,

@@ -1,5 +1,8 @@
 # Changelog — ecs
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
+## 2026-02-08
+- **Infected debuffs**: Modified infection, cure, and reproduction systems in systems.cpp to apply debuff multipliers from SimConfig when boids are infected
+
 ## 2026-02-07
 - **21:05Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`
 - **21:07Z** | `src/ecs/spawn.cpp` | Edited: '        auto boid = world.entity()             .add<NormalBo' -> '        auto boid = world.entity()             .add<NormalBo' | session:`cefb983f`

@@ -102,6 +102,13 @@ struct SimConfig {
 
     // --- Reproduction cooldown ---
     float reproduction_cooldown    = 5.0f;  // seconds between reproductions
+
+    // --- Infected debuff multipliers ---
+    float debuff_p_cure_infected       = 0.5f;  // Doctor p_cure multiplier when infected
+    float debuff_r_interact_doctor_infected = 0.7f;  // Doctor interaction radius multiplier when infected
+    float debuff_p_offspring_doctor_infected = 0.5f;  // Doctor reproduction probability multiplier when infected
+    float debuff_r_interact_normal_infected = 0.8f;  // Normal interaction radius multiplier when infected
+    float debuff_p_offspring_normal_infected = 0.5f;  // Normal reproduction probability multiplier when infected
 };
 
 // ============================================================
