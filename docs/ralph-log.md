@@ -36,3 +36,30 @@ Started: 2026-02-08 16:43Z
   
   The implementation prevents jarring visual jumps in the population graph's Y-axis scaling, providing a smooth visual experience as population values change over time.
 
+## Iteration 3
+- Start: 16:47:48Z | End: 16:49:54Z
+- Output (last 3 lines):
+  - ✅ Commit created: `e872eb5`
+  
+  The keyboard shortcuts now work alongside the UI buttons, providing users with faster interaction options. The shortcuts are clearly labeled in the UI so users can discover them easily.
+
+## Iteration 4
+- Start: 16:49:05Z | End: 16:50:51Z
+- Output (last 3 lines):
+  3. ✅ Smooth population graph Y-scale
+  4. ✅ Add keyboard shortcuts (SPACE/R)
+  5. ✅ Delete dead boids on reset
+
+
+## COMPLETE
+All tasks done after 4 iterations at 16:50:52Z
+## Iteration 4
+- Start: 16:49:57Z | End: 16:51:10Z
+- Output (last 3 lines):
+  5. ✅ Delete dead boids on reset (commit 3cc25be)
+  
+  The build is clean, all 23 tests pass, and all changelogs have been properly updated. Phase 12 refinements are complete.
+
+
+## COMPLETE
+All tasks done after 4 iterations at 16:51:11Z

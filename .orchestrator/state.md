@@ -5,7 +5,7 @@
 
 ## No Urgent Issues ✅
 
-Phase 12 in progress. Ralph Loop running (3/5 tasks done). Hook fixes committed.
+Phase 12 complete. All 5 refinement tasks done. Build clean, 23 tests pass.
 
 ---
 
@@ -23,7 +23,7 @@ Phase 12 in progress. Ralph Loop running (3/5 tasks done). Hook fixes committed.
 
 **Phase 11 — Extensions via Ralph Loop — COMPLETE ✅**
 
-**Phase 12 — Refinements & Configuration — ACTIVE 🔄**
+**Phase 12 — Refinements & Configuration — COMPLETE ✅**
 
 ---
 
@@ -69,14 +69,15 @@ Ralph Loop completed 6/6 tasks in 6 iterations (~23 min):
 - Config loader: INI-based SimConfig loading with CLI arg support (d9a76ef)
 - Build clean, 23 tests pass (12 ConfigLoader + 11 SpatialGrid)
 
-### Phase 12: Refinements & Configuration — ACTIVE 🔄
-Ralph Loop running 5 refinement tasks:
-- [x] Task 1: Remove FLECS include from renderer (263d30f) — module boundary fix
-- [x] Task 2: Expand slider ranges 5-200 (6303b12, f60caf9)
-- [x] Task 3: Smooth population graph Y-scale (b077f1e)
-- [ ] Task 4: Add keyboard shortcuts (SPACE/R)
-- [ ] Task 5: Delete dead boids on reset
-Also fixed: record-process.sh sed patterns (dc3b081), README synthesized to 163 lines (f4638cb)
+### Phase 12: Refinements & Configuration — COMPLETE ✅
+Ralph Loop completed 5/5 tasks in 4 iterations:
+- Remove FLECS include from renderer (263d30f) — module boundary violation fixed
+- Expand slider ranges 5-200 (6303b12, f60caf9)
+- Smooth population graph Y-scale (b077f1e)
+- Add keyboard shortcuts SPACE/R (e872eb5)
+- Delete dead boids on reset (3cc25be)
+Also: hook sed fix (dc3b081), README synthesized 585→163 lines (f4638cb)
+Build clean, 23 tests pass, all context.md spec requirements implemented.
 
 ---
 
@@ -103,6 +104,10 @@ Also fixed: record-process.sh sed patterns (dc3b081), README synthesized to 163 
 | code-reviewer | Phase 11: Code review | main | ✅ 3 critical, 3 warnings | Phase 11 |
 | cpp-builder | Phase 11: Build verification | main | ✅ 23 tests pass | Phase 11 |
 | Orchestrator | Config loader + review fixes | main | ✅ commit d9a76ef | Phase 11 |
+| Ralph Loop | Phase 12: 5 refinements (4 iters) | main | ✅ 5 commits, ~8 min | Phase 12 |
+| Orchestrator | README synthesis + hook fix + spec audit | main | ✅ f4638cb, dc3b081 | Phase 12 |
+| Ralph Loop | Phase 12: 5 refinements (4 iters) | main | ✅ 5 commits | Phase 12 |
+| Orchestrator | Hook fix + README synthesis | main | ✅ dc3b081, f4638cb | Phase 12 |
 
 ---
 
