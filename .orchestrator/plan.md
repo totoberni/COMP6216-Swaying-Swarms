@@ -253,8 +253,24 @@ Commit per milestone: "feat(integration): [description]"
 
 ---
 
-## Phase 10 -- Prerequisites:
-As noted in your state.md file, the windows build `cmake --build build` on Powershell currently returns some errors. These must be fixed with the code-reviewer agent and debugger before moving on to start Phase 10.
+## Phase 10 — Prerequisites (Bug Fix)
+
+The Windows/MSVC build is broken and must be fixed before any Phase 10 work begins.
+
+**Error:**
+```
+error C1083: Cannot open include file: 'raygui.h': No such file or directory
+  [C:\Projects\COMP6216-Swaying-Swarms\build\boid_swarm.vcxproj]
+```
+
+**Diagnosis steps:**
+1. Spawn a `debugger` subagent with the exact error text above.
+2. Check `CMakeLists.txt` — is the CPM-fetched raygui target's include directory added to the boid_swarm target? (`target_include_directories` or similar)
+3. Verify `raygui.h` is being downloaded: check `build/_deps/raygui-src/src/raygui.h` or equivalent.
+4. If raygui is header-only, ensure one `.cpp` file defines `RAYGUI_IMPLEMENTATION` before including it.
+5. Build must pass on BOTH PowerShell (`cmake --build build`) and WSL/MinGW (`cmake -B build && cmake --build build`).
+
+**After fix:** Log the root cause and fix in `.orchestrator/mistakes.md` § "Integration Worker" or "Orchestrator Self-Errors" as appropriate. Log the decision in `decisions.md`. Then proceed to Phase 10.
 
 ## Phase 10 — Behavior Rules
 
@@ -309,11 +325,49 @@ Same content but divide: Worker 1 gets infection + death + aging + promotion (`f
 
 ## Phase 11 — Extensions via Ralph Loop
 
-**Objective:** Autonomous extension implementation using stateless iteration.
-**Parallelism:** Ralph Loop (sequential, fresh context each iteration).
+**Goal:** Autonomously implement extensions using the Ralph Loop — each iteration gets a fresh context window, using files on disk as persistent memory.
+**Who:** ORCHESTRATOR prepares infrastructure, then RALPH LOOP runs autonomously.
+**Time:** Ongoing, autonomous.
 
-### Setup:
-Ensure `docs/current-task.md` contains the extension checklist (see master plan Phase 11 spec in your plan.md — wait, that's this file). The checklist:
+### Step 11.0 — Orchestrator Prepares Ralph Infrastructure (CRITICAL)
+
+Before the Ralph Loop can run, the orchestrator must create the supporting files. This step is executed by the orchestrator agent — not manually.
+
+**Orchestrator prompt:**
+
+```
+Read .orchestrator/state.md and the master plan's Phase 11 extension requirements.
+You must now prepare the Ralph Loop infrastructure. Execute the following in order:
+
+1. CREATE docs/current-task.md:
+   - Extract ALL uncompleted extension tasks from .orchestrator/state.md
+   - Format them as a checklist with guardrails (see template below)
+   - Read .orchestrator/mistakes.md § "Ralph Loop Iterations"
+   - Append any "Prevention Rule" entries to the Guardrails section
+   - This file becomes the Ralph Loop's fixed control input
+
+2. CREATE ralph.sh at project root:
+   - Stateless loop: fresh `claude -p` session per iteration
+   - Reads docs/current-task.md as prompt
+   - Detects RALPH_COMPLETE sentinel to stop
+   - Logs iteration count and timestamps
+
+3. VERIFY hook propagation:
+   - Confirm .claude/settings.json has PostToolUse hooks registered
+   - Confirm .claude/hooks/update-changelog.sh is executable
+   - Confirm .claude/hooks/record-mistake.sh is executable
+   - Confirm .claude/hooks/record-process.sh is executable
+
+4. UPDATE .orchestrator/state.md:
+   - Set current phase to "Phase 11 — Ralph Loop active"
+   - Record ralph.sh creation in Completed Tasks
+
+5. COMMIT: "chore(phase-11): create Ralph Loop infrastructure"
+
+Do NOT start running the Ralph Loop yet — only prepare the files.
+```
+
+**Template for docs/current-task.md (orchestrator generates this):**
 
 ```markdown
 # Current Task: Implement Extensions
@@ -321,12 +375,12 @@ Ensure `docs/current-task.md` contains the extension checklist (see master plan 
 Read CLAUDE.md for full project context. Check src/*/changelog.md for recent changes.
 
 ## Requirements (implement ONE per session, in order)
-- [ ] Infected debuffs — Doctors: -50% p_cure, -30% r_interact_doctor, -50% p_offspring_doctor. Normal: -20% r_interact_normal, -50% p_offspring_normal. Store multipliers in SimConfig.
-- [ ] Sex system: Male/Female tags. 50/50 at spawn. Reproduction requires M+F pair.
-- [ ] Antivax boids: p_antivax % of normals get Antivax tag. Strong repulsion from DoctorBoid. Can still be cured.
-- [ ] Parameter sliders: raygui sliders for p_infect_normal, p_cure, r_interact_normal, r_interact_doctor, initial counts. Update SimConfig in real-time.
-- [ ] Pause/Reset: Pause button (freeze sim, keep rendering), Reset button (destroy all, re-spawn).
-- [ ] Population graph: real-time line chart of normal_alive and doctor_alive over last 500 frames.
+- [ ] Infected debuffs — Doctors: reduce p_cure ×0.5, r_interact_doctor ×0.7, p_offspring_doctor ×0.5. Normal: r_interact_normal ×0.8, p_offspring_normal ×0.5. Store debuff multipliers in SimConfig.
+- [ ] Sex system: add Male/Female tags. 50/50 at spawn. Reproduction requires one Male + one Female. Same-sex collisions skip reproduction.
+- [ ] Antivax boids: p_antivax percentage of Normal boids get Antivax tag at spawn. Antivax boids add a strong repulsion force from DoctorBoid within visual range (ADDITIVE to existing flocking, not replacement). They can still be cured if a doctor reaches them.
+- [ ] Parameter sliders: raygui sliders in stats overlay for p_infect_normal, p_cure, r_interact_normal, r_interact_doctor, initial_normal_count, initial_doctor_count. Slider changes update SimConfig singleton in real-time.
+- [ ] Pause/Reset controls: Pause button (freezes simulation, rendering continues). Reset button (destroys all entities, re-spawns from SimConfig).
+- [ ] Population graph: real-time line chart (raygui or manual) showing normal_alive and doctor_alive over last 500 frames.
 
 ## Guardrails
 - Do NOT break existing simulation rules
@@ -334,23 +388,156 @@ Read CLAUDE.md for full project context. Check src/*/changelog.md for recent cha
 - All new parameters go in SimConfig
 - Build and test after EACH change
 - Update the relevant module's changelog.md
-- Commit with descriptive message before finishing
+- Commit with descriptive message before finishing: "feat(scope): description"
+- Use `<random>` with seeded engine, never `std::rand()`
+- Antivax steering must be ADDITIVE to flocking rules, not a replacement
+- Do NOT add Raylib includes outside src/render/
 - If all tasks checked, output RALPH_COMPLETE
 ```
 
-### Adding guardrails from mistakes.md
+**Template for ralph.sh (orchestrator generates this):**
 
-Before launching the Ralph Loop, read `.orchestrator/mistakes.md` § "Ralph Loop Iterations". Append any "Prevention Rule" entries to the Guardrails section of `docs/current-task.md`.
+```bash
+#!/bin/bash
+# ralph.sh — Stateless development loop. Each iteration = fresh context.
+# Created by orchestrator in Phase 11, Step 11.0
+set -euo pipefail
 
-### Launch:
+PROMPT="docs/current-task.md"
+MAX_ITERATIONS=30
+ITERATION=0
+LOG="docs/ralph-log.md"
+
+# Initialize log
+echo "# Ralph Loop Log" > "$LOG"
+echo "Started: $(date -u '+%Y-%m-%d %H:%MZ')" >> "$LOG"
+echo "" >> "$LOG"
+
+while [ $ITERATION -lt $MAX_ITERATIONS ]; do
+  ITERATION=$((ITERATION + 1))
+  START_TIME=$(date -u '+%H:%M:%SZ')
+  echo "=== Ralph iteration $ITERATION ($START_TIME) ==="
+
+  OUTPUT=$(claude -p "$(cat "$PROMPT")
+
+Read CLAUDE.md for project context. Check src/*/changelog.md for recent changes by other sessions.
+Read .claude/skills/flecs-patterns/SKILL.md for domain patterns and parameter reference.
+
+Find the NEXT UNCHECKED task in the requirements list above.
+Implement ONLY that single task.
+Build the project. Run tests. Fix any failures.
+Update the relevant changelog.md files.
+Mark the task as checked in docs/current-task.md by changing [ ] to [x].
+Commit with a descriptive message: 'feat(scope): description'
+
+If you encounter a repeated mistake or anti-pattern, record it:
+Run: echo 'MISTAKE: [description]' so the orchestrator can add a guardrail.
+
+If ALL tasks are checked, output RALPH_COMPLETE.
+Do NOT work on more than one task per session." 2>&1)
+
+  END_TIME=$(date -u '+%H:%M:%SZ')
+  echo "$OUTPUT" | tail -5
+
+  # Log iteration
+  echo "## Iteration $ITERATION" >> "$LOG"
+  echo "- Start: $START_TIME | End: $END_TIME" >> "$LOG"
+  echo "- Output (last 3 lines):" >> "$LOG"
+  echo "$OUTPUT" | tail -3 | sed 's/^/  /' >> "$LOG"
+  echo "" >> "$LOG"
+
+  # Check for mistakes to escalate
+  if echo "$OUTPUT" | grep -q "MISTAKE:"; then
+    MISTAKE=$(echo "$OUTPUT" | grep "MISTAKE:" | head -1)
+    MISTAKE_DESC="${MISTAKE#MISTAKE: }"
+    echo "⚠ Detected mistake: $MISTAKE_DESC"
+    echo "- ⚠ $MISTAKE_DESC" >> "$LOG"
+    # Append as guardrail to prevent repetition
+    echo "- $MISTAKE_DESC" >> docs/current-task.md
+    # Record in .orchestrator/mistakes.md
+    echo "{\"worker\":\"ralph\",\"phase\":\"11\",\"what\":\"$MISTAKE_DESC\",\"cause\":\"Ralph iteration $ITERATION\",\"fix\":\"Added guardrail to current-task.md\",\"rule\":\"$MISTAKE_DESC\"}" \
+      | .claude/hooks/record-mistake.sh 2>/dev/null || true
+  fi
+
+  if echo "$OUTPUT" | grep -q "RALPH_COMPLETE"; then
+    echo "=== All tasks complete after $ITERATION iterations. ==="
+    echo "" >> "$LOG"
+    echo "## COMPLETE" >> "$LOG"
+    echo "All tasks done after $ITERATION iterations at $(date -u '+%H:%M:%SZ')" >> "$LOG"
+    break
+  fi
+
+  echo "--- Iteration $ITERATION done. Fresh session starting... ---"
+  sleep 3
+done
+
+echo "Ralph loop finished. $ITERATION iterations completed."
+```
+
+### Step 11.1 — Run the Ralph Loop
+
 ```bash
 chmod +x ralph.sh
 ./ralph.sh
 ```
 
-**Your role during Ralph Loop:** Monitor output. If a task fails repeatedly, add a guardrail to `docs/current-task.md` AND log the mistake in mistakes.md § "Ralph Loop Iterations".
+**What happens each iteration:**
+1. Fresh Claude session starts (clean 200K context window)
+2. Reads CLAUDE.md + @imports (project context, orchestrator state, changelogs)
+3. Reads `.claude/skills/flecs-patterns/SKILL.md` (domain knowledge on demand)
+4. Reads `docs/current-task.md`
+5. Finds next unchecked requirement
+6. Implements it, builds, tests, commits
+7. Marks task complete in the file
+8. Exits. Loop starts fresh with zero context rot.
 
-**Success criteria:** All 6 extensions checked off. Build clean. No regressions.
+**If Ralph makes a repeating mistake**, the loop auto-detects `MISTAKE:` sentinels and appends guardrails. You can also manually add guardrails:
+
+```markdown
+## Guardrails
+- ... existing ...
+- NEW: The antivax steering must be ADDITIVE to existing flocking rules, not a replacement
+```
+
+### Step 11.2 — Orchestrator-Managed Ralph (Advanced)
+
+For orchestrator-supervised Ralph, the orchestrator manages each iteration and updates state:
+
+```bash
+tmux new-session -s orchestrator
+cd COMP6216-Swaying-Swarms
+claude --agent orchestrator
+```
+
+```
+Manage the Ralph Loop for extensions. For each iteration:
+1. Read .orchestrator/state.md for current progress
+2. Read docs/current-task.md to find the next unchecked task
+3. Spawn a worker: claude -p with the task prompt, --model sonnet
+4. Capture output, check for success or MISTAKE sentinels
+5. Use /record-process to update state.md with progress
+6. If the worker fails or reports MISTAKE, use /record-mistake to log it, add a guardrail to docs/current-task.md, retry
+7. Continue until all tasks are complete or MAX_ITERATIONS reached
+```
+
+### Step 11.3 — Worker Hook & Skill Propagation
+
+Workers spawned by `ralph.sh` or the orchestrator automatically inherit hooks and skills because they run in the same project directory. Verify this checklist:
+
+- [ ] `.claude/settings.json` has all hooks registered (changelog, record-mistake, record-process)
+- [ ] `.claude/hooks/*.sh` are all executable (`chmod +x`)
+- [ ] `.claude/skills/flecs-patterns/SKILL.md` exists with full parameter reference
+- [ ] Workers are spawned with `--model sonnet` for implementation work
+- [ ] `docs/current-task.md` references the skill: "Read .claude/skills/flecs-patterns/SKILL.md"
+
+For worktree-based workers, hooks propagate via the shared `.claude/` directory since worktrees link to the same git repo. If a worktree doesn't pick up hooks, verify with:
+
+```bash
+ls -la .claude/hooks/  # Should show all hook scripts
+cat .claude/settings.json | jq '.hooks'  # Should show all registrations
+```
+
+**✅ Phase 11 complete** when all extension tasks are checked in `docs/current-task.md`.
 
 ---
 
