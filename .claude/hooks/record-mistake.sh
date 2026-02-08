@@ -9,7 +9,9 @@
 #
 # Worker must match a ### section header in mistakes.md (partial match OK):
 #   "orchestrator", "ecs", "spatial", "render", "integration", "behavior", "ralph", "subagent"
-set -euo pipefail
+set -uo pipefail
+# NOTE: -e removed intentionally — hooks must be best-effort and never block
+# the parent Task tool result. Python or grep failures should not be fatal.
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 MISTAKES_FILE="$PROJECT_DIR/.orchestrator/mistakes.md"
