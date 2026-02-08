@@ -18,6 +18,7 @@ void spawn_normal_boids(flecs::world& world, int count) {
     std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
     std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
     std::uniform_real_distribution<float> dist_infect(0.0f, 1.0f);
+    std::uniform_real_distribution<float> dist_antivax(0.0f, 1.0f);
 
     for (int i = 0; i < count; ++i) {
         float x = dist_x(rng);
@@ -39,6 +40,11 @@ void spawn_normal_boids(flecs::world& world, int count) {
             boid.add<Male>();
         } else {
             boid.add<Female>();
+        }
+
+        // Assign antivax status
+        if (dist_antivax(rng) < config.p_antivax) {
+            boid.add<Antivax>();
         }
 
         // Initial infection

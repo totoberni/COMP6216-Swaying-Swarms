@@ -1,6 +1,7 @@
 # Changelog — include
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
+- **Antivax system**: Added antivax_repulsion_radius and antivax_repulsion_weight to SimConfig. Antivax tag already existed in components.h
 - **Infected debuffs**: Added 5 new debuff multiplier fields to SimConfig in components.h
 
 ## 2026-02-07

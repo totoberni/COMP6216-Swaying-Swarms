@@ -109,6 +109,10 @@ struct SimConfig {
     float debuff_p_offspring_doctor_infected = 0.5f;  // Doctor reproduction probability multiplier when infected
     float debuff_r_interact_normal_infected = 0.8f;  // Normal interaction radius multiplier when infected
     float debuff_p_offspring_normal_infected = 0.5f;  // Normal reproduction probability multiplier when infected
+
+    // --- Antivax parameters ---
+    float antivax_repulsion_radius     = 100.0f;  // Visual range for detecting doctors
+    float antivax_repulsion_weight     = 3.0f;    // Strength of repulsion force (additive to flocking)
 };
 
 // ============================================================

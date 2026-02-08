@@ -43,6 +43,76 @@ void register_rebuild_grid_system(flecs::world& world) {
 // OnUpdate Phase: Steering and Movement
 // ============================================================
 
+void register_antivax_steering_system(flecs::world& world) {
+    world.system("AntivaxSteeringSystem")
+        .kind(flecs::OnUpdate)
+        .run([](flecs::iter& it) {
+            flecs::world w = it.world();
+            const SimConfig& config = w.get<SimConfig>();
+            const SpatialGrid& grid = w.get<SpatialGrid>();
+            float dt = it.delta_time();
+
+            // Only process antivax normal boids
+            auto q = w.query<const Position, Velocity, const NormalBoid, const Antivax, const Alive>();
+            q.each([&](flecs::entity e, const Position& pos, Velocity& vel, const NormalBoid&, const Antivax&, const Alive&) {
+                // Query for doctors within visual range
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, config.antivax_repulsion_radius);
+
+                float repulsion_x = 0.0f, repulsion_y = 0.0f;
+                int doctor_count = 0;
+
+                for (const auto& [nid, dist] : neighbors) {
+                    if (nid == e.id()) continue;
+                    if (dist < 0.001f) continue; // skip overlapping
+
+                    flecs::entity ne = w.entity(nid);
+                    if (!ne.is_alive() || !ne.has<Alive>()) continue;
+
+                    // Only repel from doctors
+                    if (!ne.has<DoctorBoid>()) continue;
+
+                    const Position& npos = ne.get<Position>();
+                    float dx = pos.x - npos.x;
+                    float dy = pos.y - npos.y;
+
+                    // Add repulsion force (stronger when closer)
+                    repulsion_x += dx / dist;
+                    repulsion_y += dy / dist;
+                    doctor_count++;
+                }
+
+                // Apply repulsion force if any doctors detected
+                if (doctor_count > 0) {
+                    repulsion_x /= static_cast<float>(doctor_count);
+                    repulsion_y /= static_cast<float>(doctor_count);
+
+                    float force_x = repulsion_x * config.antivax_repulsion_weight;
+                    float force_y = repulsion_y * config.antivax_repulsion_weight;
+
+                    // Clamp repulsion force to max_force
+                    float force_mag = std::sqrt(force_x * force_x + force_y * force_y);
+                    if (force_mag > config.max_force) {
+                        float scale = config.max_force / force_mag;
+                        force_x *= scale;
+                        force_y *= scale;
+                    }
+
+                    // Apply force to velocity (ADDITIVE to existing velocity)
+                    vel.vx += force_x * dt;
+                    vel.vy += force_y * dt;
+
+                    // Clamp velocity to max_speed
+                    float speed = std::sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+                    if (speed > config.max_speed) {
+                        float scale = config.max_speed / speed;
+                        vel.vx *= scale;
+                        vel.vy *= scale;
+                    }
+                }
+            });
+        });
+}
+
 void register_steering_system(flecs::world& world) {
     world.system("SteeringSystem")
         .kind(flecs::OnUpdate)
@@ -707,6 +777,7 @@ void register_all_systems(flecs::world& world) {
 
     // OnUpdate
     register_steering_system(world);
+    register_antivax_steering_system(world);
     register_movement_system(world);
 
     // PostUpdate
