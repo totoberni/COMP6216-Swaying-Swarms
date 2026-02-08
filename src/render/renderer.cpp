@@ -243,14 +243,14 @@ void draw_stats_overlay(const RenderState& state) {
         GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 100, 20}, "r_interact_normal");
         GuiSlider(
             Rectangle{static_cast<float>(x + 100), static_cast<float>(y), static_cast<float>(slider_width), 20},
-            "10", "100", &config->r_interact_normal, 10.0f, 100.0f);
+            "5", "200", &config->r_interact_normal, 5.0f, 200.0f);
         y += line_height;
 
         // r_interact_doctor slider
         GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 100, 20}, "r_interact_doctor");
         GuiSlider(
             Rectangle{static_cast<float>(x + 100), static_cast<float>(y), static_cast<float>(slider_width), 20},
-            "10", "100", &config->r_interact_doctor, 10.0f, 100.0f);
+            "5", "200", &config->r_interact_doctor, 5.0f, 200.0f);
         y += line_height;
 
         // Note: initial population counts are not editable during runtime
