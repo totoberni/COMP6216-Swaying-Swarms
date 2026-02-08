@@ -105,11 +105,12 @@ void spawn_initial_population(flecs::world& world) {
 }
 
 void reset_simulation(flecs::world& world) {
-    // Delete all boid entities (entities with Alive tag)
+    // Delete all boid entities (both alive and dead)
+    // Use Position component as marker since all boids have it
     world.defer_begin();
 
     auto query = world.query_builder<>()
-        .with<Alive>()
+        .with<Position>()
         .build();
 
     query.each([](flecs::entity e) {

@@ -7,7 +7,7 @@ Read CLAUDE.md for full project context. Check src/*/changelog.md for recent cha
 - [x] Expand slider ranges — In `src/render/renderer.cpp`, change `r_interact_normal` and `r_interact_doctor` slider ranges from 10-100 to 5-200 to allow wider experimentation.
 - [x] Smooth population graph Y-scale — In `src/render/renderer.cpp`, the population graph `max_pop` rescales every frame causing visual jumps. Use a smoothed/damped max: `smoothed_max = max(smoothed_max * 0.99, current_max)` so the graph settles gradually. Use a `static` variable inside `draw_population_graph()`. Reset it when `history_count < 2`.
 - [x] Add keyboard shortcuts — In `src/main.cpp`, add `IsKeyPressed(KEY_SPACE)` for pause toggle and `IsKeyPressed(KEY_R)` for reset. Update the button labels in renderer.cpp to show the shortcuts: "Pause (SPACE)" / "Resume (SPACE)" and "Reset (R)".
-- [ ] Also delete dead boids on reset — In `src/ecs/spawn.cpp`, `reset_simulation()` only deletes entities with `Alive` tag. Dead boids (those without `Alive` but still existing) are left behind. Add a second query for entities WITHOUT `Alive` that have `NormalBoid` or `DoctorBoid` to clean them up too. Or use a simpler approach: query all entities with `Position` component.
+- [x] Also delete dead boids on reset — In `src/ecs/spawn.cpp`, `reset_simulation()` only deletes entities with `Alive` tag. Dead boids (those without `Alive` but still existing) are left behind. Add a second query for entities WITHOUT `Alive` that have `NormalBoid` or `DoctorBoid` to clean them up too. Or use a simpler approach: query all entities with `Position` component.
 
 ## Guardrails
 - Do NOT break existing simulation rules

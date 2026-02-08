@@ -1,6 +1,7 @@
 # Changelog — ecs
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
+- **Reset cleanup fix**: Modified reset_simulation() in spawn.cpp to delete ALL boids (both alive and dead). Now queries entities with Position component instead of only Alive tag, ensuring dead boids are properly cleaned up on reset.
 - **Keyboard shortcuts**: Added SPACE key for pause toggle and R key for reset in main.cpp main loop. Keys trigger same logic as UI buttons.
 - **RenderState population**: Modified register_render_sync_system() in systems.cpp to populate RenderState.config and RenderState.sim_state pointers, enabling renderer to access configuration without FLECS dependency.
 - **Population graph**: Modified stats.cpp to record population history every frame in circular buffer (500 frames max). Records normal_alive and doctor_alive counts after each frame's population count.
