@@ -119,6 +119,11 @@ struct SimConfig {
 // SimStats singleton — live counters for the stats overlay
 // ============================================================
 
+struct PopulationHistoryPoint {
+    int normal_alive = 0;
+    int doctor_alive = 0;
+};
+
 struct SimStats {
     int normal_alive    = 0;
     int doctor_alive    = 0;
@@ -128,6 +133,12 @@ struct SimStats {
     int newborns_total  = 0;
     int newborns_normal = 0;
     int newborns_doctor = 0;
+
+    // Population history for graph (circular buffer)
+    static constexpr int HISTORY_SIZE = 500;
+    PopulationHistoryPoint history[HISTORY_SIZE] = {};
+    int history_index = 0;  // Current write position (wraps around)
+    int history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
 };
 
 // ============================================================

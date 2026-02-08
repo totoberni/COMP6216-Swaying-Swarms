@@ -29,3 +29,10 @@ Started: 2026-02-08 15:33Z
   
   The next unchecked task in the requirements is **Pause/Reset controls**.
 
+## Iteration 5
+- Start: 15:47:38Z | End: 15:52:16Z
+- Output (last 3 lines):
+  - ✅ Commit created: `889eeab`
+  
+  The implementation follows the module boundary guidelines - the renderer sets flags, and the main loop (which has access to both render and ECS modules) handles the actual reset logic. This avoids circular dependencies between modules.
+

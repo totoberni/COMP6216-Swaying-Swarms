@@ -81,6 +81,70 @@ void draw_interaction_radius(float x, float y, float radius, uint32_t color) {
 }
 
 // ============================================================
+// Population graph helper
+// ============================================================
+
+static void draw_population_graph(const SimStats& stats, int x, int y, int width, int height) {
+    // Draw graph background
+    DrawRectangle(x, y, width, height, Color{40, 40, 40, 255});
+    DrawRectangleLines(x, y, width, height, Color{100, 100, 100, 255});
+
+    if (stats.history_count < 2) {
+        // Not enough data to draw
+        DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
+        return;
+    }
+
+    // Find max population for scaling
+    int max_pop = 1;  // Avoid division by zero
+    for (int i = 0; i < stats.history_count; i++) {
+        int total = stats.history[i].normal_alive + stats.history[i].doctor_alive;
+        if (total > max_pop) {
+            max_pop = total;
+        }
+    }
+
+    // Scale factor for Y axis
+    float y_scale = static_cast<float>(height - 4) / static_cast<float>(max_pop);
+    float x_scale = static_cast<float>(width - 4) / static_cast<float>(SimStats::HISTORY_SIZE - 1);
+
+    // Draw lines for Normal population (green)
+    for (int i = 0; i < stats.history_count - 1; i++) {
+        int read_index = (stats.history_index - stats.history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
+        int next_read_index = (read_index + 1) % SimStats::HISTORY_SIZE;
+
+        float x1 = x + 2 + i * x_scale;
+        float y1 = y + height - 2 - stats.history[read_index].normal_alive * y_scale;
+        float x2 = x + 2 + (i + 1) * x_scale;
+        float y2 = y + height - 2 - stats.history[next_read_index].normal_alive * y_scale;
+
+        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, Color{0, 255, 0, 255});  // Green for normal
+    }
+
+    // Draw lines for Doctor population (blue)
+    for (int i = 0; i < stats.history_count - 1; i++) {
+        int read_index = (stats.history_index - stats.history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
+        int next_read_index = (read_index + 1) % SimStats::HISTORY_SIZE;
+
+        float x1 = x + 2 + i * x_scale;
+        float y1 = y + height - 2 - stats.history[read_index].doctor_alive * y_scale;
+        float x2 = x + 2 + (i + 1) * x_scale;
+        float y2 = y + height - 2 - stats.history[next_read_index].doctor_alive * y_scale;
+
+        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, Color{0, 120, 255, 255});  // Blue for doctor
+    }
+
+    // Draw legend
+    DrawRectangle(x + 5, y + 5, 10, 10, Color{0, 255, 0, 255});
+    DrawText("Normal", x + 20, y + 5, 10, LIGHTGRAY);
+    DrawRectangle(x + 75, y + 5, 10, 10, Color{0, 120, 255, 255});
+    DrawText("Doctor", x + 90, y + 5, 10, LIGHTGRAY);
+
+    // Draw max value label
+    DrawText(TextFormat("Max: %d", max_pop), x + width - 50, y + 5, 10, LIGHTGRAY);
+}
+
+// ============================================================
 // Stats overlay with interactive controls
 // ============================================================
 
@@ -95,11 +159,12 @@ void draw_stats_overlay(const SimStats& stats, void* world_ptr) {
     }
 
     // Draw stats panel
+    const float panel_height = 680.0f;  // Increased height for buttons, sliders, and graph
     GuiPanel(Rectangle{
         static_cast<float>(RenderConfig::STATS_PANEL_X),
         static_cast<float>(RenderConfig::STATS_PANEL_Y),
         static_cast<float>(RenderConfig::STATS_PANEL_WIDTH),
-        530.0f  // Increased height for buttons and sliders
+        panel_height
     }, "Simulation Stats & Controls");
 
     const int x = RenderConfig::STATS_PANEL_X + 10;
@@ -202,11 +267,20 @@ void draw_stats_overlay(const SimStats& stats, void* world_ptr) {
 
         GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 220, 20},
                  TextFormat("Initial Doctor: %d (startup)", config->initial_doctor_count));
+        y += line_height + 10;
     } else {
         GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20}, "--- Controls Disabled ---");
         y += line_height;
         GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 220, 20}, "(No world available)");
+        y += line_height + 10;
     }
+
+    // --- Population Graph ---
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20}, "--- Population History ---");
+    y += line_height;
+    const int graph_width = RenderConfig::STATS_PANEL_WIDTH - 20;
+    const int graph_height = 120;
+    draw_population_graph(stats, x, y, graph_width, graph_height);
 }
 
 // ============================================================

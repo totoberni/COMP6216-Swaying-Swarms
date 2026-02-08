@@ -1,6 +1,7 @@
 # Changelog — ecs
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
+- **Population graph**: Modified stats.cpp to record population history every frame in circular buffer (500 frames max). Records normal_alive and doctor_alive counts after each frame's population count.
 - **Pause/Reset controls**: Added SimulationState singleton registration in world.cpp. Created reset_simulation() function in spawn.cpp that destroys all boid entities, resets SimStats, and re-spawns initial population. Main loop now checks reset_requested flag and pause state.
 - **Antivax system**: Added Antivax tag assignment in spawn.cpp (p_antivax probability). Created register_antivax_steering_system in systems.cpp that applies strong repulsion force from doctors within visual range (ADDITIVE to flocking). Antivax boids can still be cured by doctors.
 - **Sex system**: Added opposite-sex requirement to reproduction system. Boids now only reproduce when one parent is Male and the other is Female. Same-sex collisions skip reproduction logic.
