@@ -47,8 +47,8 @@ int main(int argc, char* argv[]) {
         // Get render state populated by RenderSyncSystem
         const RenderState& rs = world.get<RenderState>();
 
-        // Draw the frame (pass world pointer for interactive UI controls)
-        render_frame(rs, &world);
+        // Draw the frame
+        render_frame(rs);
     }
 
     // Cleanup

@@ -92,8 +92,8 @@ int main() {
             render_state.boids.push_back(render_boid);
         }
 
-        // Render (no world for demo, controls will be non-interactive)
-        render_frame(render_state, nullptr);
+        // Render (no config/sim_state for demo, controls will be non-interactive)
+        render_frame(render_state);
     }
 
     close_renderer();

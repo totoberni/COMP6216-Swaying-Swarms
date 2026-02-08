@@ -27,9 +27,8 @@ void draw_boid(float x, float y, float angle, uint32_t color, float radius);
 void draw_interaction_radius(float x, float y, float radius, uint32_t color);
 
 // Draw the stats overlay panel using raygui (includes interactive sliders)
-// Requires world reference to update SimConfig in real-time
-void draw_stats_overlay(const SimStats& stats, void* world_ptr);
+// Gets config and sim_state pointers from RenderState
+void draw_stats_overlay(const RenderState& state);
 
 // Render a complete frame from the provided render state
-// Requires world pointer to support interactive UI elements
-void render_frame(const RenderState& state, void* world_ptr);
+void render_frame(const RenderState& state);

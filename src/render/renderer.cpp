@@ -2,7 +2,6 @@
 #include "render_config.h"
 #include <raylib.h>
 #include <cmath>
-#include <flecs.h>
 
 #define RAYGUI_IMPLEMENTATION
 #include <raygui.h>
@@ -148,15 +147,10 @@ static void draw_population_graph(const SimStats& stats, int x, int y, int width
 // Stats overlay with interactive controls
 // ============================================================
 
-void draw_stats_overlay(const SimStats& stats, void* world_ptr) {
-    // Cast world pointer back to flecs::world (may be nullptr for demo)
-    flecs::world* world = static_cast<flecs::world*>(world_ptr);
-    SimConfig* config = nullptr;
-    SimulationState* sim_state = nullptr;
-    if (world) {
-        config = &world->get_mut<SimConfig>();
-        sim_state = &world->get_mut<SimulationState>();
-    }
+void draw_stats_overlay(const RenderState& state) {
+    const SimStats& stats = state.stats;
+    SimConfig* config = state.config;
+    SimulationState* sim_state = state.sim_state;
 
     // Draw stats panel
     const float panel_height = 680.0f;  // Increased height for buttons, sliders, and graph
@@ -287,7 +281,7 @@ void draw_stats_overlay(const SimStats& stats, void* world_ptr) {
 // Render complete frame
 // ============================================================
 
-void render_frame(const RenderState& state, void* world_ptr) {
+void render_frame(const RenderState& state) {
     begin_frame();
 
     // Draw interaction radii first (background layer)
@@ -304,7 +298,7 @@ void render_frame(const RenderState& state, void* world_ptr) {
     }
 
     // Draw stats overlay with interactive controls
-    draw_stats_overlay(state.stats, world_ptr);
+    draw_stats_overlay(state);
 
     end_frame();
 }

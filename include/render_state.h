@@ -15,4 +15,6 @@ struct BoidRenderData {
 struct RenderState {
     std::vector<BoidRenderData> boids;
     SimStats stats;
+    SimConfig* config = nullptr;
+    SimulationState* sim_state = nullptr;
 };

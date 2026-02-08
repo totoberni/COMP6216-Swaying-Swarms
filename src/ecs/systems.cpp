@@ -742,6 +742,10 @@ void register_render_sync_system(flecs::world& world) {
             // Copy current stats
             rs.stats = w.get<SimStats>();
 
+            // Populate config and sim_state pointers for renderer
+            rs.config = &w.get_mut<SimConfig>();
+            rs.sim_state = &w.get_mut<SimulationState>();
+
             // Build render data for all alive boids
             auto q = w.query<const Position, const Velocity, const Heading, const Alive>();
             q.each([&](flecs::entity e, const Position& pos, const Velocity& vel,
