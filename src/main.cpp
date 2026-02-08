@@ -7,11 +7,14 @@
 #include "render_state.h"
 #include <flecs.h>
 #include <raylib.h>
+#include <string>
 
-int main() {
+int main(int argc, char* argv[]) {
+    std::string config_path = (argc > 1) ? argv[1] : "config.ini";
+
     // Initialize FLECS world
     flecs::world world;
-    init_world(world);
+    init_world(world, config_path);
     register_all_systems(world);
     register_stats_system(world);
 

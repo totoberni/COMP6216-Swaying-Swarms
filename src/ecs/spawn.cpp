@@ -1,8 +1,10 @@
 #include "spawn.h"
 #include "components.h"
+#include "spatial_grid.h"
 #include <flecs.h>
 #include <random>
 #include <cmath>
+#include <algorithm>
 
 namespace {
     // Seeded random engine for reproducible spawning
@@ -116,7 +118,7 @@ void reset_simulation(flecs::world& world) {
 
     world.defer_end();
 
-    // Reset statistics
+    // Reset statistics and population history
     SimStats& stats = world.get_mut<SimStats>();
     stats.normal_alive = 0;
     stats.doctor_alive = 0;
@@ -126,6 +128,17 @@ void reset_simulation(flecs::world& world) {
     stats.newborns_total = 0;
     stats.newborns_normal = 0;
     stats.newborns_doctor = 0;
+    stats.history_index = 0;
+    stats.history_count = 0;
+    for (int i = 0; i < SimStats::HISTORY_SIZE; ++i) {
+        stats.history[i] = {};
+    }
+
+    // Rebuild spatial grid with current config (sliders may have changed radii)
+    const SimConfig& config = world.get<SimConfig>();
+    float cell_size = std::max(config.r_interact_normal, config.r_interact_doctor);
+    SpatialGrid new_grid(config.world_width, config.world_height, cell_size);
+    world.set<SpatialGrid>(std::move(new_grid));
 
     // Re-spawn initial population
     spawn_initial_population(world);

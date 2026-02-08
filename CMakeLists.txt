@@ -96,9 +96,14 @@ file(GLOB SPATIAL_SOURCES
     src/spatial/*.cpp
 )
 
+# Collect sim module sources for testing (needed by test_config_loader)
+file(GLOB SIM_SOURCES
+    src/sim/*.cpp
+)
+
 # Only build tests if there are test source files
 if(TEST_SOURCES)
-    add_executable(tests ${TEST_SOURCES} ${SPATIAL_SOURCES})
+    add_executable(tests ${TEST_SOURCES} ${SPATIAL_SOURCES} ${SIM_SOURCES})
 
     target_include_directories(tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
