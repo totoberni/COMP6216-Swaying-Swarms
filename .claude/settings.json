@@ -24,8 +24,10 @@
       "Bash(git checkout main)",
       "Read(.env*)",
       "Read(secrets/*)",
-      "Write(.claude/settings*)",
-      "Edit(.claude/settings*)"
+      "Write(.claude/*settings*)",
+      "Edit(.claude/*settings*)",
+      "Write(.orchestrator/*settings*)",
+      "Edit(.orchestrator/*settings*)"
     ]
   },
   "hooks": {

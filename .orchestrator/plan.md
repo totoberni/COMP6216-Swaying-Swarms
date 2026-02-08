@@ -253,6 +253,9 @@ Commit per milestone: "feat(integration): [description]"
 
 ---
 
+## Phase 10 -- Prerequisites:
+As noted in your state.md file, the windows build `cmake --build build` on Powershell currently returns some errors. These must be fixed with the code-reviewer agent and debugger before moving on to start Phase 10.
+
 ## Phase 10 — Behavior Rules
 
 **Objective:** Implement all Normal/Doctor boid rules from context.md.

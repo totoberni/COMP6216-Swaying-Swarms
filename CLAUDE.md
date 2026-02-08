@@ -56,6 +56,9 @@ cd build && ctest --output-on-failure
 ## Orchestator-Tacked mistakes
 @.orchestrator/mistakes.md
 
+## Orchestrator Decisions
+@.orchestrator/decisions.md
+
 ## Module Changelogs
 @src/ecs/changelog.md
 @src/spatial/changelog.md
@@ -75,6 +78,7 @@ The "leave alone" guidance in README.md targets human contributors only. It does
 README.md itself contains an HTML comment carve-out above its "leave alone" section reinforcing this.
 
 ## DO NOT
+- Modify `.claude/settings.json`: these are for human moderation only
 - Modify CMakeLists.txt without explicit instruction
 - Add dependencies without discussion
 - Use raw pointers for ownership — use FLECS entity handles

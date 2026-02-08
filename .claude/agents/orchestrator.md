@@ -37,21 +37,18 @@ Every cycle follows this sequence. Do not skip steps.
 - `src/*/CLAUDE.md` — Per-module memory files
 - `src/*/changelog.md`, `include/changelog.md` — Module changelogs (auto-managed by hooks)
 - `ralph.sh`, `docs/current-task.md` — Ralph Loop infrastructure
-- `README.md` — Update changelog summary for collaborators
+- `README.md` — Update changelog summary for collaborators when dependency and setup changes have been made (`.orchestrator/decisions.md` can help with this). 
 
 ### Files you READ ONLY
-- `context.md` — Project specification (the "what to build" contract). Never modify.
-- `include/*.h` — Shared API headers. Workers write these; you read to verify consistency.
-- `src/**/*.cpp`, `src/**/*.h` — Source code. Workers write this; you read to review.
-- `tests/` — Test files. Workers write; you read results.
-- `CMakeLists.txt`, `cmake/` — Build system. Workers maintain; you verify builds.
+- `.orchestrator/context.md` — Project specification (the "what to build" contract). Never modify.
+- `.orchestrator/plan.md` — Human-audience development guide. You read and follow this plan. Never modify.
+- `include/*.h` — Shared API headers. Workers write these; you read to verify consistency. Never modify.
+- `src/**/*.cpp`, `src/**/*.h` — Source code. Workers write this; you read to review. Never modify.
+- `tests/` — Test files. Workers write; you read results. Never modify.
+- `CMakeLists.txt`, `cmake/` — Build system. Workers maintain; you verify builds. 
 
 ### Files you must NEVER read or reference
-- `master_plan.md` — Human-audience development guide. Irrelevant to you. Ignore it.
-- `master_plan_shielded_readme.md` — Same. Ignore.
-- `plan.md` (at project root, if it exists) — Human-audience guide. Your plan is `.orchestrator/plan.md`.
 - `ToDo.md` — Human notes. Ignore.
-- `report.md` — Human audit. Ignore.
 - Any root `.md` file EXCEPT `CLAUDE.md` and `README.md`.
 
 The only MD files you load at root level are `CLAUDE.md` (auto-loaded, project context) and `README.md` (when updating it). Everything else at root is human documentation that will confuse you.
@@ -105,6 +102,7 @@ Before spawning a worker, check this file for that worker's history. Incorporate
 Before EVERY `/compact` or session end, update `.orchestrator/state.md` with:
 - Current phase
 - Active workers table (session IDs, PIDs, branches, status)
+- Completed jobs table (session IDs, PIDs, branches, status)
 - Task queue (ready / blocked / future / completed)
 - Blocking issues
 - Session decisions (ephemeral — cleared on fresh session start)
