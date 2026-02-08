@@ -180,7 +180,7 @@ void draw_stats_overlay(const RenderState& state) {
     // --- Pause/Reset Controls ---
     if (sim_state) {
         // Pause button
-        const char* pause_text = sim_state->is_paused ? "Resume" : "Pause";
+        const char* pause_text = sim_state->is_paused ? "Resume (SPACE)" : "Pause (SPACE)";
         if (GuiButton(Rectangle{static_cast<float>(x), static_cast<float>(y),
                                  static_cast<float>(button_width), static_cast<float>(button_height)},
                       pause_text)) {
@@ -190,7 +190,7 @@ void draw_stats_overlay(const RenderState& state) {
         // Reset button (next to Pause button)
         if (GuiButton(Rectangle{static_cast<float>(x + button_width + 10), static_cast<float>(y),
                                  static_cast<float>(button_width), static_cast<float>(button_height)},
-                      "Reset")) {
+                      "Reset (R)")) {
             sim_state->reset_requested = true;
         }
         y += button_height + 10;

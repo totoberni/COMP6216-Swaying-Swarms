@@ -33,6 +33,15 @@ int main(int argc, char* argv[]) {
 
         // Check for reset request
         SimulationState& sim_state = world.get_mut<SimulationState>();
+
+        // Keyboard shortcuts
+        if (IsKeyPressed(KEY_SPACE)) {
+            sim_state.is_paused = !sim_state.is_paused;
+        }
+        if (IsKeyPressed(KEY_R)) {
+            sim_state.reset_requested = true;
+        }
+
         if (sim_state.reset_requested) {
             reset_simulation(world);
             sim_state.reset_requested = false;

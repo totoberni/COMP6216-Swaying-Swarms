@@ -1,6 +1,7 @@
 # Changelog — ecs
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
+- **Keyboard shortcuts**: Added SPACE key for pause toggle and R key for reset in main.cpp main loop. Keys trigger same logic as UI buttons.
 - **RenderState population**: Modified register_render_sync_system() in systems.cpp to populate RenderState.config and RenderState.sim_state pointers, enabling renderer to access configuration without FLECS dependency.
 - **Population graph**: Modified stats.cpp to record population history every frame in circular buffer (500 frames max). Records normal_alive and doctor_alive counts after each frame's population count.
 - **Pause/Reset controls**: Added SimulationState singleton registration in world.cpp. Created reset_simulation() function in spawn.cpp that destroys all boid entities, resets SimStats, and re-spawns initial population. Main loop now checks reset_requested flag and pause state.

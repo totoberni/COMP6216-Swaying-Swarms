@@ -22,3 +22,17 @@ Started: 2026-02-08 16:43Z
   
   The slider ranges now allow users to experiment with much wider interaction radii (from as low as 5 pixels up to 200 pixels), enabling better exploration of boid behavior dynamics.
 
+## Iteration 2
+- Start: 16:46:20Z | End: 16:47:45Z
+- Output (last 3 lines):
+  - ✅ Committed with descriptive message (b077f1e)
+  
+  The graph now provides a stable visual experience - it shrinks gradually when population decreases but responds immediately to growth spikes, eliminating the jarring rescale artifacts.
+
+## Iteration 3
+- Start: 16:46:34Z | End: 16:49:01Z
+- Output (last 3 lines):
+  7. ✅ **Committed**: Commit b077f1e with proper description
+  
+  The implementation prevents jarring visual jumps in the population graph's Y-axis scaling, providing a smooth visual experience as population values change over time.
+

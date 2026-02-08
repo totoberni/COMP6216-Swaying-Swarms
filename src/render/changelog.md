@@ -1,6 +1,7 @@
 # Changelog — render
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
+- **Keyboard shortcut labels**: Updated Pause/Resume and Reset button labels in renderer.cpp to show keyboard shortcuts: "Pause (SPACE)" / "Resume (SPACE)" and "Reset (R)".
 - **Population graph Y-scale smoothing**: Implemented smoothed max for population graph Y-axis to prevent visual jumps. Uses exponential decay (0.99 factor) with immediate snap-up for new peaks. Static variable resets when history < 2 frames. Graph now provides stable visual experience during population changes.
 - **Slider ranges expanded**: Changed r_interact_normal and r_interact_doctor slider ranges from 10-100 to 5-200 in renderer.cpp to allow wider experimentation with interaction radii.
 - **Module boundary fix**: Removed `<flecs.h>` include from renderer.cpp, enforcing strict module separation. Renderer now receives SimConfig* and SimulationState* through RenderState instead of casting void* world_ptr. Updated render_frame() and draw_stats_overlay() signatures to remove world_ptr parameter. RenderState now contains config and sim_state pointers populated by register_render_sync_system().

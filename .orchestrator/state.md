@@ -5,7 +5,7 @@
 
 ## No Urgent Issues ✅
 
-Phase 11 complete. Build clean, 23 tests pass. Phase 12 ready.
+Phase 12 in progress. Ralph Loop running (3/5 tasks done). Hook fixes committed.
 
 ---
 
@@ -70,7 +70,13 @@ Ralph Loop completed 6/6 tasks in 6 iterations (~23 min):
 - Build clean, 23 tests pass (12 ConfigLoader + 11 SpatialGrid)
 
 ### Phase 12: Refinements & Configuration — ACTIVE 🔄
-Remaining review findings + config loader refinements via Ralph Loop.
+Ralph Loop running 5 refinement tasks:
+- [x] Task 1: Remove FLECS include from renderer (263d30f) — module boundary fix
+- [x] Task 2: Expand slider ranges 5-200 (6303b12, f60caf9)
+- [x] Task 3: Smooth population graph Y-scale (b077f1e)
+- [ ] Task 4: Add keyboard shortcuts (SPACE/R)
+- [ ] Task 5: Delete dead boids on reset
+Also fixed: record-process.sh sed patterns (dc3b081), README synthesized to 163 lines (f4638cb)
 
 ---
 
@@ -115,3 +121,7 @@ Remaining review findings + config loader refinements via Ralph Loop.
 - DEC-015: Config loader — INI format, no new dependency, optional file loading
 - Phase 11 complete — 6 extensions + config loader + review fixes (d9a76ef)
 - Phase 12 starting — remaining review findings via Ralph Loop
+- README synthesized from 585 → 163 lines (removed agent sections, collapsed platform setup)
+- Hook fix: record-process.sh sed patterns used `|` as both delimiter and literal content — changed to `#`
+- context.md spec audit: all requirements implemented except obstacles (deferred) and sound (low priority)
+- Renderer overflow check: no overflow risk (680px panel, ~610px content, 70px margin)
