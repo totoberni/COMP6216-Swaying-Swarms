@@ -506,8 +506,10 @@ For orchestrator-supervised Ralph, the orchestrator manages each iteration and u
 ```bash
 tmux new-session -s orchestrator
 cd COMP6216-Swaying-Swarms
-claude --agent orchestrator
+claude
 ```
+
+> Note: Use plain `claude` (not `--agent orchestrator`) so the root session can spawn subagents via the Task tool.
 
 ```
 Manage the Ralph Loop for extensions. For each iteration:
