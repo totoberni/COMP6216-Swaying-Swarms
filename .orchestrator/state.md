@@ -3,18 +3,9 @@
 <!-- Update before /compact or session end. -->
 <!-- Sibling files: plan.md (mission), decisions.md (audit trail), mistakes.md (error patterns). -->
 
-## ⚠ URGENT — Fix Before Any New Work
+## No Urgent Issues ✅
 
-**PowerShell/MSVC build is broken.** The following error occurs on `cmake --build build` in Windows PowerShell:
-
-```
-error C1083: Cannot open include file: 'raygui.h': No such file or directory
-  [C:\Projects\COMP6216-Swaying-Swarms\build\boid_swarm.vcxproj]
-```
-
-**Root cause (likely):** `raygui.h` is fetched by CPM.cmake but not added to the include path for the MSVC build, or the `RAYGUI_IMPLEMENTATION` define is missing from the translation unit that includes it. The MinGW/WSL build may work because of different include resolution.
-
-**Action required:** Spawn a `debugger` subagent with the exact error text. Fix CMakeLists.txt or the CPM fetch target. Verify with both PowerShell (`cmake --build build`) and WSL (`cmake -B build && cmake --build build`). This blocks ALL Phase 10+ work.
+raygui.h build error fixed (commit fa63385). Build clean, all 11 tests pass.
 
 ---
 
@@ -30,9 +21,9 @@ error C1083: Cannot open include file: 'raygui.h': No such file or directory
 
 ## Current Phase
 
-**Phase 9 — COMPLETE ✅**
+**Phase 10 — Behavior Rules — IN PROGRESS 🔧**
 
-**Next action:** Fix raygui.h build error (see URGENT above), then begin Phase 10.
+**Current action:** Single worker implementing all behavior rules sequentially in src/sim/ + src/ecs/systems.cpp.
 
 ---
 
@@ -58,16 +49,16 @@ Single integration worker connected all modules:
 - Build: 11M binary, all 11 tests pass, 60 FPS steady, no memory leaks
 - Key commits: db71f56 (integration), a54a21e (SpatialGrid crash fix), 00a2118 (debug cleanup)
 
-### Phase 10: Behavior Rules — NOT STARTED ⏳
-**Blocked by:** raygui.h build error (see URGENT section above)
+### Phase 10: Behavior Rules — IN PROGRESS 🔧
 
 Tasks (from plan.md):
-- [ ] Infection mechanics (p_infect per frame within r_interact)
-- [ ] Death system (t_death seconds after infection)
+- [ ] Aging system (increment Health.age and InfectionState.time_infected)
+- [ ] Death system (time_infected >= t_death → entity dies)
+- [ ] Infection mechanics (p_infect per frame within r_interact, same-swarm only)
 - [ ] Cure behavior (Doctor proximity, p_cure)
-- [ ] Reproduction system (two boids collide → offspring)
-- [ ] Aging & promotion (Normal → Doctor after t_adult)
-- [ ] Stats tracking for all population metrics
+- [ ] Reproduction system (same-swarm collision → offspring)
+- [ ] Promotion (Normal → Doctor after t_adult, p_become_doctor)
+- [ ] Integration test: 5000 frames, verify stats sane
 
 ### Phase 11: Extensions via Ralph Loop — FUTURE
 Depends on Phase 10 completion. Six extensions defined in plan.md.
@@ -91,6 +82,7 @@ Depends on Phase 10 completion. Six extensions defined in plan.md.
 | Integration Worker | Phase 9: Module wiring | main | ✅ 60 FPS, 11 tests | Phase 9 |
 | Integration Worker | Phase 9: SpatialGrid crash fix | main | ✅ commit a54a21e | Phase 9 |
 | Integration Worker | Phase 9: Debug cleanup | main | ✅ commit 00a2118 | Phase 9 |
+| cpp-builder | Fix raygui.h MSVC build error | main | ✅ commit fa63385 | Phase 10 pre |
 
 ---
 
@@ -98,7 +90,7 @@ Depends on Phase 10 completion. Six extensions defined in plan.md.
 
 | Issue | Severity | Blocks | Status |
 |-------|----------|--------|--------|
-| raygui.h not found on MSVC/PowerShell build | 🔴 Critical | Phase 10, 11 | Open — fix first |
+| raygui.h not found on MSVC/PowerShell build | 🔴 Critical | Phase 10, 11 | ✅ Fixed (fa63385) |
 
 ---
 

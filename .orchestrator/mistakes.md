@@ -33,7 +33,7 @@
 
 | # | Phase | What Went Wrong | Root Cause | Fix Applied | Prevention Rule |
 |---|-------|-----------------|------------|-------------|-----------------|
-| — | — | No mistakes recorded yet | — | — | — |
+| 1 | Phase 8 | raygui.h include path was hacky `_deps/raylib-src/examples/shapes` — broke MSVC build | raygui not added as CPM dependency; assumed it was bundled with raylib | Added `CPMAddPackage(raygui v4.0)`, used `${raygui_SOURCE_DIR}/src` (commit fa63385) | "Always add header-only libs as explicit CPM dependencies. Never use hacky paths into other packages' source trees." |
 
 ### Integration Worker (code-worker on main)
 

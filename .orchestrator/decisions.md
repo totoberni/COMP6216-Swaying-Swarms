@@ -110,3 +110,24 @@ Should check #2 before terminating on timeout. 16-17 minutes is acceptable for c
 **Verification:** Build clean, simulation runs at 60 FPS, 210 boids visible, all 11 tests pass
 **Lesson:** All FLECS singleton types must be default-constructible (document in CLAUDE.md FLECS Patterns)
 
+## DEC-012: raygui.h Build Fix
+**When:** 2026-02-08 (Phase 10 prerequisite)
+**Context:** MSVC build failed with `error C1083: Cannot open include file: 'raygui.h'`. State.md flagged this as a blocker for Phase 10.
+**Root cause:** raygui was never added as a CPM dependency. CMakeLists.txt had a hacky include path `${CMAKE_BINARY_DIR}/_deps/raylib-src/examples/shapes` hoping raygui.h was bundled with raylib — it wasn't.
+**Decision:** Spawned cpp-builder subagent to add raygui v4.0 via CPM and replace the include path with `${raygui_SOURCE_DIR}/src`.
+**Fix Applied:** commit fa63385 — `CPMAddPackage(NAME raygui ...)` + corrected `target_include_directories` for boid_swarm and render_demo.
+**Verification:** MSVC build clean, all 3 executables compile, all 11 tests pass, simulation runs at 60 FPS.
+**Lesson:** Always verify CPM dependencies are explicitly declared — don't rely on header-only libs being bundled with other packages.
+
+## DEC-013: Phase 10 Worker Strategy — Single Worker (Option A)
+**When:** 2026-02-08 (Phase 10 start)
+**Context:** Plan.md offers Option A (single worker, all rules sequentially) or Option B (two workers in worktrees, split normal/doctor rules). Need to choose.
+**Decision:** Option A — single worker doing all behavior rules sequentially.
+**Rationale:**
+- Behavior rules are tightly coupled: infection feeds death, cure interacts with infection, reproduction needs collision detection. Sequential implementation avoids merge conflicts in shared files (`src/ecs/systems.cpp`, `include/components.h`).
+- All system stubs already exist in `systems.cpp` — worker fills them in order.
+- `src/sim/` is empty — no risk of parallel file conflicts, but the ECS systems that call sim functions are in one file.
+- Worktree overhead not justified for a single-file-heavy task.
+**Alternatives rejected:** Option B (parallel workers) — merge conflicts in systems.cpp would cost more time than parallel savings.
+
+<!-- Next decision: DEC-014 -->
