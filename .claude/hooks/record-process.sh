@@ -117,7 +117,7 @@ case "$STATUS" in
       # Section exists — check if this worker already has a row
       if grep -q "| $WORKER |" "$STATE_FILE"; then
         # Update existing row: replace the line matching this worker
-        sed -i "s|^\(| $WORKER |.*\)$|| $WORKER | $BRANCH | \`${SESSION_ID:0:8}\` | $PID | $STATUS | $SHORT_TS ||" "$STATE_FILE"
+        sed -i "s#^| $WORKER |.*#| $WORKER | $BRANCH | \`${SESSION_ID:0:8}\` | $PID | $STATUS | $SHORT_TS |#" "$STATE_FILE"
       else
         # Add new row after the table header separator
         # Find the "Active Workers" section's table separator line (|---|...)
@@ -179,7 +179,7 @@ case "$STATUS" in
   failed|blocked)
     # ---- UPDATE Active Workers with failure status ----
     if grep -q "| $WORKER |" "$STATE_FILE"; then
-      sed -i "s|^\(| $WORKER |.*\)$|| $WORKER | $BRANCH | \`${SESSION_ID:0:8}\` | $PID | ⚠ $STATUS | $SHORT_TS ||" "$STATE_FILE"
+      sed -i "s#^| $WORKER |.*#| $WORKER | $BRANCH | \`${SESSION_ID:0:8}\` | $PID | ⚠ $STATUS | $SHORT_TS |#" "$STATE_FILE"
     fi
     
     # Also append to Blocking Issues section if it exists
@@ -202,7 +202,8 @@ esac
 
 # Clean up: remove empty rows from Active Workers table
 # (rows with only dashes or empty pipe-separated cells)
-sed -i '/^| — | — | — | — | — | — |$/d' "$STATE_FILE"
-sed -i '/^| – | – | – | – | – | – |$/d' "$STATE_FILE"
+# Remove placeholder/empty rows (em-dash or en-dash, any column count)
+sed -i '/^| — | No active workers/d' "$STATE_FILE"
+sed -i '/^| [—–] | [—–] | [—–] /d' "$STATE_FILE"
 
 exit 0
