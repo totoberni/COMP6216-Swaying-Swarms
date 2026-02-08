@@ -30,6 +30,12 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
+    NAME raygui
+    GITHUB_REPOSITORY raysan5/raygui
+    GIT_TAG 4.0
+)
+
+CPMAddPackage(
     NAME googletest
     GITHUB_REPOSITORY google/googletest
     GIT_TAG v1.14.0
@@ -53,7 +59,7 @@ add_executable(boid_swarm ${MAIN_SOURCES})
 target_include_directories(boid_swarm PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_BINARY_DIR}/_deps/raylib-src/examples/shapes
+    ${raygui_SOURCE_DIR}/src
 )
 
 target_link_libraries(boid_swarm PRIVATE
@@ -70,7 +76,7 @@ add_executable(render_demo
 target_include_directories(render_demo PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_BINARY_DIR}/_deps/raylib-src/examples/shapes
+    ${raygui_SOURCE_DIR}/src
 )
 
 target_link_libraries(render_demo PRIVATE
