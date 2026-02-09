@@ -91,8 +91,8 @@ void register_antivax_steering_system(flecs::world& world) {
 
                     // Clamp repulsion force to max_force
                     float force_mag = std::sqrt(force_x * force_x + force_y * force_y);
-                    if (force_mag > config.max_force) {
-                        float scale = config.max_force / force_mag;
+                    if (force_mag > 1) {
+                        float scale = 1 / force_mag;
                         force_x *= scale;
                         force_y *= scale;
                     }
@@ -199,8 +199,8 @@ void register_steering_system(flecs::world& world) {
 
                 // Clamp total force to max_force
                 float force_mag = std::sqrt(force_x * force_x + force_y * force_y);
-                if (force_mag > config.max_force) {
-                    float scale = config.max_force / force_mag;
+                if (force_mag > 1) {
+                    float scale = 1 / force_mag;
                     force_x *= scale;
                     force_y *= scale;
                 }
