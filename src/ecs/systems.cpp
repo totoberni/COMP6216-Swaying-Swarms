@@ -232,10 +232,22 @@ void register_movement_system(flecs::world& world) {
             pos.y += vel.vy * dt;
 
             // Wrap around world bounds
-            if (pos.x < 0.0f) pos.x += config.world_width;
-            if (pos.x >= config.world_width) pos.x -= config.world_width;
-            if (pos.y < 0.0f) pos.y += config.world_height;
-            if (pos.y >= config.world_height) pos.y -= config.world_height;
+            if (pos.x < 0.0f) {
+                pos.x = -1.0f * pos.x; // Bounce back from left edge
+                vel.vx = -1.0f * vel.vx; // Reverse velocity on bounce
+            }
+            if (pos.x >= config.world_width) {
+                pos.x = 2 * config.world_width - pos.x; // Bounce back from right edge
+                vel.vx = -1.0f * vel.vx; // Reverse velocity on bounce
+            }
+            if (pos.y < 0.0f) {
+                pos.y = -1.0f * pos.y; // Bounce back from bottom edge
+                vel.vy = -1.0f * vel.vy; // Reverse velocity on bounce
+            }
+            if (pos.y >= config.world_height) {
+                pos.y = 2 * config.world_height - pos.y; // Bounce back from top edge
+                vel.vy = -1.0f * vel.vy; // Reverse velocity on bounce
+            }
 
             // Update heading based on velocity
             float speed = vel.vx * vel.vx + vel.vy * vel.vy;
