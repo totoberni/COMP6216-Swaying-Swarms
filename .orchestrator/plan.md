@@ -1,568 +1,414 @@
-# Orchestrator Plan
-<!-- Your mission document. Read when starting a new phase or needing task specs. -->
-<!-- Do NOT modify this file during routine cycles. Update state.md instead. -->
+# Orchestrator Plan — Phase 13: Swarm Refinement & Steering Fixes
 
-## Project Summary
-You are building a real-time 2D boid pandemic simulation: two swarms (Normal Boids, Doctor Boids) with infection, cure, reproduction, and death mechanics. C++17, FLECS v4.1.4 (ECS), Raylib 5.5 (rendering), fixed-grid spatial partitioning. 
-Full behavioral spec is in `context.md`. Build with `cmake -B build && cmake --build build`. Run with `./build/boid_swarm`.
-
-## Your Constraints
-- You NEVER write project source code directly. All implementation is delegated to agents in @.claude .
-- Workers use `--model sonnet` or `--model opus`. You use `--model opusplan`.
-- Parallel work uses git worktrees. Sequential work uses subagents (Task tool).
-- Workers cannot spawn subagents. Only you can.
-- Update `.orchestrator/state.md` before every `/compact` or session end.
-- You own: `.orchestrator/`, `.claude/`, `CLAUDE.md`, `docs/`, `README.md`.
-- You must NEVER read root MD files other than `CLAUDE.md`, `context.md`, and `README.md`. All other root `.md` files are human documentation and will confuse you.
-
-## Available Workers
-| Agent | Model | Use For |
-|-------|-------|---------|
-| `code-worker` | sonnet | Implementation tasks via `claude -p` in worktrees |
-| `code-reviewer` | sonnet | Post-implementation review (Task tool subagent) |
-| `debugger` | sonnet | Runtime crashes, build failures (Task tool subagent) |
-| `changelog-scribe` | haiku | Enriching changelog entries (Task tool subagent) |
-| `ecs-architect` | sonnet | FLECS design questions (Task tool subagent) |
-| `cpp-builder` | sonnet | CMake/build issues (Task tool subagent) |
-
-## Your Notes (read/write obligations)
-| File | When to Read | When to Write |
-|------|-------------|---------------|
-| `.orchestrator/state.md` | Every cycle start (auto-loaded) | Before every `/compact` or session end |
-| `.orchestrator/plan.md` | Start of new phase; when stuck | Never (immutable mission doc) |
-| `.orchestrator/decisions.md` | When reviewing past rationale | After every non-trivial choice |
-| `.orchestrator/mistakes.md` | Before spawning any worker | After fixing any worker mistake |
+> **Replaces** the previous plan.md. Phases 1–12 are complete (see `state.md` for history).
+> This plan covers: (A) Antivax separate swarm creation, (B) Doctor self-cure prevention, (C) Critical steering model fixes, (D) Future extensions preserved for later.
 
 ---
 
-## Phase 8 — Parallel Module Development
+## Guiding Principles
 
-**Objective:** Build ECS core, spatial grid, and renderer simultaneously in three worktrees.
-**Parallelism:** 3 workers, one per worktree. All are independent — no cross-dependencies.
-
-### Step 1: Create worktrees
-
-```bash
-cd $PROJECT_ROOT
-git checkout main && git pull
-git worktree add ../boids-ecs -b feature/ecs-core
-git worktree add ../boids-spatial -b feature/spatial-grid
-git worktree add ../boids-render -b feature/rendering
-```
-
-Log in decisions.md: DEC-NNN — worktree creation, branch naming convention chosen.
-
-### Step 2: Check mistakes.md
-
-Before writing task prompts, read `.orchestrator/mistakes.md` for each worker category. Incorporate any "Prevention Rule" entries into the task prompts below as additional guardrails.
-
-### Step 3: Spawn workers
-
-For each worker, use this pattern:
-```bash
-cd ../boids-<name>
-session_id=$(claude -p "TASK_PROMPT" \
-  --model sonnet --output-format json \
-  --dangerously-skip-permissions \
-  | jq -r '.session_id')
-echo "Worker <name>: session=$session_id pid=$!"
-```
-
-Record each worker's session_id, PID, and branch in `state.md` § Active Workers.
-
-### Worker Task Prompts
-
-**ECS Worker** (worktree: `../boids-ecs`, branch: `feature/ecs-core`):
-```
-Read CLAUDE.md and context.md. You are the ECS agent. You ONLY edit files in src/ecs/. You can READ (not write) include/.
-
-Tasks:
-1. Create src/ecs/world.cpp — FLECS world initialization:
-   - Register all components from include/components.h
-   - Set SimConfig singleton with default parameter values
-   - Set SimStats singleton (zeroed)
-   - Create SpatialGrid singleton
-2. Create src/ecs/systems.cpp — system stubs for each pipeline phase:
-   - PreUpdate: RebuildGridSystem (stub — will call spatial grid clear/insert)
-   - OnUpdate: SteeringSystem (boid flocking: separation, alignment, cohesion), MovementSystem (apply velocity to position)
-   - PostUpdate: CollisionSystem (detect via spatial grid), InfectionSystem, CureSystem, ReproductionSystem, DeathSystem, DoctorPromotionSystem
-   - OnStore: RenderSyncSystem (populate RenderState from FLECS queries)
-3. Create src/ecs/spawn.cpp — functions to spawn initial boid populations
-4. Create src/ecs/stats.cpp — SimStats update system
-5. Wire main.cpp: init world → spawn boids → headless simulation loop (no render yet)
-6. Verify it compiles and runs 1000 frames without crashing
-
-Use ecs-architect subagent for FLECS decisions. Use cpp-builder subagent for build issues.
-After completing, use code-reviewer subagent.
-Commit frequently: "feat(ecs): [description]"
-```
-
-**Spatial Worker** (worktree: `../boids-spatial`, branch: `feature/spatial-grid`):
-```
-Read CLAUDE.md and context.md. You are the Spatial agent. You ONLY edit files in src/spatial/ and tests/.
-
-Tasks:
-1. Implement SpatialGrid in src/spatial/spatial_grid.cpp matching include/spatial_grid.h:
-   - Fixed-cell grid. Cell size = constructor param (typically max interaction radius)
-   - clear(): reset grid each frame. Use vector::clear(), not dealloc.
-   - insert(entity_id, x, y): place entity in correct cell
-   - query_neighbors(x, y, radius): check cell + 8 neighbors, return vector<pair<entity_id, distance>> sorted ascending
-   - Handle boundary: clamp to grid bounds, don't wrap
-   - Internal: flat vector of vectors. cell_index = (int)(x/cell_size) + cols * (int)(y/cell_size)
-2. Write unit tests in tests/test_spatial.cpp:
-   - Empty grid returns no neighbors
-   - Single entity found within radius
-   - Entity outside radius not returned
-   - Boundary entities handled correctly
-   - 10000 entities: verify query returns correct results vs brute-force
-   - Performance: 10000 entities, full rebuild + 1000 queries < 50ms
-3. Compile and pass all tests
-
-This is PURE C++ — NO FLECS includes in spatial code.
-Use cpp-builder subagent for build issues. After completing, use code-reviewer subagent.
-Commit frequently: "feat(spatial): [description]"
-```
-
-**Render Worker** (worktree: `../boids-render`, branch: `feature/rendering`):
-```
-Read CLAUDE.md and context.md. You are the Render agent. You ONLY edit files in src/render/.
-
-Tasks:
-1. Create src/render/renderer.h + renderer.cpp:
-   - init_renderer(int width, int height, const char* title)
-   - close_renderer()
-   - begin_frame() / end_frame() wrapping BeginDrawing/EndDrawing
-   - draw_boid(float x, float y, float angle, uint32_t color, float radius) — small triangle
-   - draw_interaction_radius(float x, float y, float radius, uint32_t color) — circle outline
-   - draw_stats_overlay(const SimStats& stats) — raygui panel: #normal, #doctor, #dead, #newborns
-   - render_frame(const RenderState& state) — draws all boids + radii + stats
-2. Create src/render/render_config.h — colors and visual constants:
-   - Normal=green, Doctor=blue, Infected tint=red, Background=dark gray
-3. Create src/render/render_demo.cpp — standalone demo:
-   - Opens 1920×1080 window, 200 random triangles, wraparound, interaction radii, dummy stats
-4. Compile and run the demo
-
-ALL Raylib includes stay in src/render/. Renderer reads include/render_state.h. Does NOT include FLECS.
-Use cpp-builder subagent for build issues. After completing, use code-reviewer subagent.
-Commit frequently: "feat(render): [description]"
-```
-
-### Step 4: Monitor
-
-Poll every few minutes:
-```bash
-# Check if workers are still running
-ps -p $PID1,$PID2,$PID3
-
-# Check commit progress
-for dir in ../boids-ecs ../boids-spatial ../boids-render; do
-  echo "=== $(basename $dir) ==="
-  (cd "$dir" && git log --oneline -5)
-done
-```
-
-If a worker fails, use `--resume $session_id` to give corrective feedback, or kill and re-spawn. After fixing: log the mistake in `.orchestrator/mistakes.md` under the relevant worker's table.
-
-### Step 5: Merge (dependency order)
-
-```bash
-cd $PROJECT_ROOT
-
-# 1. Spatial grid first (standalone, no deps)
-git merge feature/spatial-grid
-cmake -B build && cmake --build build
-
-# 2. ECS core (depends on headers, tested independently)
-git merge feature/ecs-core
-cmake -B build && cmake --build build
-
-# 3. Rendering (standalone)
-git merge feature/rendering
-cmake -B build && cmake --build build
-```
-
-Log merge order decision in decisions.md if you deviated from the above or encountered conflicts.
-
-If merge conflicts exist, spawn a debugger subagent: `"Run git diff to see conflicts. Resolve ensuring include/ headers are consistent. Build and test after."`. Log the conflict and resolution in decisions.md.
-
-### Step 6: Post-merge verification
-
-Spawn a subagent:
-```
-All three module branches merged. Verify:
-1. Build compiles clean
-2. All tests pass (cd build && ctest --output-on-failure)
-3. include/ headers consistent across modules
-4. List missing connections needed for Phase 9
-```
-
-### Step 7: Clean up
-
-```bash
-git worktree remove ../boids-ecs
-git worktree remove ../boids-spatial
-git worktree remove ../boids-render
-```
-
-### Step 8: Update state + notes
-
-- Move tasks 1-3 from Ready to Completed in state.md.
-- Advance phase to 9. Unblock task 4.
-- Ensure all decisions from this phase are in decisions.md.
-- Ensure all worker mistakes from this phase are in mistakes.md.
-
-**Success criteria:** All three modules compile independently. Spatial tests pass. Render demo runs. No merge conflicts on main.
+1. **Antivax swarm creation is the priority.** This is the assigned team deliverable. Complete it before touching steering math so teammates can collaborate on the main branch without merge conflicts from structural rewrites.
+2. **Steering fixes come second.** They are critical for visual correctness but are self-contained in `src/ecs/systems.cpp` and won't block teammates.
+3. **Every task is atomic.** One task = one worker session = one commit. Tasks are ordered so each builds on the previous output with no circular dependencies.
+4. **Record structural mistakes.** The steering bugs and swarm-flocking omission are architectural errors that must be logged in `mistakes.md` to prevent recurrence.
 
 ---
 
-## Phase 9 — Integration & Wiring
+## Pre-Flight: Mistake Recording (Orchestrator — Do This First)
 
-**Objective:** Connect ECS ↔ spatial grid ↔ renderer. Get boids moving on screen.
-**Parallelism:** 1 worker (sequential — touches all modules). Use a subagent or single `claude -p`.
+Before delegating any tasks, the orchestrator MUST record the following structural issues in `.orchestrator/mistakes.md` to establish the prevention rules that all workers will carry forward.
 
-### Pre-flight: Check mistakes.md for "Integration Worker" patterns.
+### Mistakes to Record
 
-### Worker prompt:
-```
-Read CLAUDE.md and context.md. All modules are merged. Wire them together:
+**1. Cohesion steering used raw positional difference instead of Reynolds steering formula**
+- Worker: Integration Worker
+- Phase: 9
+- What: Cohesion force computed as `(COM - position) * weight` — a raw positional offset — instead of the canonical `(normalize(COM - position) * max_speed - current_velocity) * weight`. Force magnitude scaled with distance from center-of-mass.
+- Cause: Implementation followed a simplified tutorial rather than Reynolds' GDC'99 specification. No code review caught it because boids "moved" — they just didn't flock naturally.
+- Fix: Must rewrite cohesion to normalize direction → multiply by max_speed → subtract current velocity → multiply by weight.
+- Prevention Rule: "ALL steering behaviors must compute `desired_velocity - current_velocity` as the steering force. The desired velocity must be `normalize(direction) * max_speed`. Never use raw positional differences as forces."
 
-1. SPATIAL GRID INTEGRATION (src/ecs/systems.cpp → src/spatial/):
-   - RebuildGridSystem (PreUpdate): clear() SpatialGrid, iterate all Alive entities, insert() each.
-   - CollisionSystem (PostUpdate): for each boid, query_neighbors() within interaction radius.
+**2. Alignment steering did not normalize average velocity to max_speed**
+- Worker: Integration Worker
+- Phase: 9
+- What: Alignment computed `(avg_neighbor_velocity - current_velocity) * weight`. The average velocity was NOT normalized to max_speed before computing the difference. When neighbors are slow, alignment force weakens proportionally.
+- Cause: Same root cause — simplified implementation. The canonical formula normalizes the average velocity *direction* and scales to max_speed so that alignment always steers toward the flock's heading regardless of speed magnitude.
+- Fix: Must normalize average velocity direction → multiply by max_speed → then compute steering difference.
+- Prevention Rule: "Alignment desired velocity = normalize(avg_neighbor_vel) * max_speed. Never use raw averaged velocities — they produce speed-dependent alignment strength."
 
-2. RENDER INTEGRATION (src/ecs/systems.cpp → src/render/):
-   - RenderSyncSystem (OnStore): populate RenderState with BoidRenderData for each alive boid.
-   - Copy SimStats into RenderState.
+**3. No swarm-specific flocking — all boids align/cohere with all other boids**
+- Worker: Integration Worker
+- Phase: 9
+- What: The SteeringSystem applies separation, alignment, and cohesion to ALL neighbors regardless of swarm tag (NormalBoid, DoctorBoid, Antivax). This means all swarms merge into one super-flock instead of forming distinct groups.
+- Cause: The original integration task prompt said "implement boid flocking" without specifying swarm filtering. The context.md at the time described two swarms but didn't explicitly state that alignment/cohesion should be same-swarm only.
+- Fix: Filter alignment and cohesion neighbors to same-swarm. Separation stays cross-swarm (prevents collisions between different swarms).
+- Prevention Rule: "Separation = ALL boids. Alignment and Cohesion = SAME-SWARM ONLY. This is what creates visually distinct flocks. Always check swarm tag before including a neighbor in alignment/cohesion calculations."
 
-3. MAIN LOOP (src/main.cpp):
-   - Init FLECS world → init renderer → spawn populations → loop: world.progress() + render_frame() → cleanup.
+**4. Antivax implemented as additive tag instead of separate swarm**
+- Worker: Ralph Loop (Phase 11)
+- Phase: 11
+- What: Antivax was implemented as a tag component (`struct Antivax {}`) added on top of `NormalBoid` entities. This means antivax boids are still classified as NormalBoid for infection, reproduction, flocking, and stats purposes — they're not a distinct swarm.
+- Cause: The original context.md listed antivax under "Extensions to Behaviors" as "editing some of the boid rules for the normal swarm" — it was treated as a modifier, not a new entity type.
+- Fix: Create `AntivaxBoid` as a primary tag (mutually exclusive with NormalBoid/DoctorBoid), with its own infection, reproduction, flocking, rendering, and stats tracking.
+- Prevention Rule: "Each swarm must be a MUTUALLY EXCLUSIVE primary tag (NormalBoid OR DoctorBoid OR AntivaxBoid). Never use additive tags for swarm classification — it creates ambiguous entity identities."
 
-4. BOID STEERING (src/ecs/systems.cpp):
-   - SteeringSystem: separation + alignment + cohesion via spatial queries. Clamp force/speed.
-   - MovementSystem: velocity → position. Wrap at world bounds.
-
-5. Spawn 200 Normal (green) + 10 Doctor (blue). Verify flocking on screen.
-
-Build, run, fix runtime issues.
-Commit per milestone: "feat(integration): [description]"
-```
-
-**Post-completion:** Review results. Log any decisions (e.g., wiring order, workaround choices) in decisions.md. Log any mistakes in mistakes.md under "Integration Worker".
-
-**Success criteria:** Window opens. Boids flock. Stats overlay shows counts. No crashes. Build clean.
-
----
-
-## Phase 10 — Prerequisites (Bug Fix)
-
-The Windows/MSVC build is broken and must be fixed before any Phase 10 work begins.
-
-**Error:**
-```
-error C1083: Cannot open include file: 'raygui.h': No such file or directory
-  [C:\Projects\COMP6216-Swaying-Swarms\build\boid_swarm.vcxproj]
-```
-
-**Diagnosis steps:**
-1. Spawn a `debugger` subagent with the exact error text above.
-2. Check `CMakeLists.txt` — is the CPM-fetched raygui target's include directory added to the boid_swarm target? (`target_include_directories` or similar)
-3. Verify `raygui.h` is being downloaded: check `build/_deps/raygui-src/src/raygui.h` or equivalent.
-4. If raygui is header-only, ensure one `.cpp` file defines `RAYGUI_IMPLEMENTATION` before including it.
-5. Build must pass on BOTH PowerShell (`cmake --build build`) and WSL/MinGW (`cmake -B build && cmake --build build`).
-
-**After fix:** Log the root cause and fix in `.orchestrator/mistakes.md` § "Integration Worker" or "Orchestrator Self-Errors" as appropriate. Log the decision in `decisions.md`. Then proceed to Phase 10.
-
-## Phase 10 — Behavior Rules
-
-**Objective:** Implement all Normal/Doctor boid rules from context.md.
-**Parallelism:** Option A: 1 worker doing all rules sequentially. Option B: 2 workers in worktrees — one for normal rules, one for doctor rules. Choose based on remaining rate limit budget. Log choice in decisions.md.
-
-### Pre-flight: Check mistakes.md for "Behavior/Sim Worker" patterns.
-
-### Worker prompt (Option A — single worker):
-```
-Read CLAUDE.md and context.md THOROUGHLY — every parameter and rule matters.
-Implement ALL behavior rules in src/sim/, called by ECS systems in src/ecs/systems.cpp.
-
-INFECTION (src/sim/infection.cpp):
-- At spawn: p_initial_infect_normal / p_initial_infect_doctor chance of starting infected.
-- Collision within r_interact: p_infect_normal (0.5) / p_infect_doctor (0.5) chance. Same-swarm only.
-- Cross-swarm infection does NOT happen.
-
-DEATH (src/sim/death.cpp):
-- time_infected >= t_death → entity dies. Use deferred ops. Update SimStats.
-
-CURE (src/sim/cure.cpp):
-- Doctor collides with ANY infected boid: p_cure (0.8) chance. Removes infection + resets timer.
-- Cannot cure healthy. CAN cure other sick doctors.
-
-REPRODUCTION (src/sim/reproduction.cpp):
-- Normal+Normal: p_offspring_normal (0.4), spawn N(2,1) children.
-- Doctor+Doctor: p_offspring_doctor (0.05), spawn N(1,1) children.
-- No cross-swarm reproduction.
-- Two infected parents who infect each other + reproduce: child gets contagion from ONE parent only.
-
-PROMOTION (src/sim/promotion.cpp):
-- Normal boid age >= t_adult: p_become_doctor (0.05) per frame → remove NormalBoid, add DoctorBoid.
-
-AGING (src/sim/aging.cpp):
-- Increment Health.age and InfectionState.time_infected each frame for relevant entities.
-
-IMPLEMENTATION ORDER (build+test after each):
-1. Aging → 2. Death + test → 3. Infection + test → 4. Cure + test → 5. Reproduction + test → 6. Promotion → 7. Integration test: 5000 frames, log stats, verify counts sane.
-
-Commit per unit: "feat(sim): [description]"
-```
-
-### Option B — split prompts:
-Same content but divide: Worker 1 gets infection + death + aging + promotion (`feature/normal-rules`). Worker 2 gets cure + reproduction (`feature/doctor-rules`). Merge Worker 1 first (infection/death are foundational). Log the split decision in decisions.md.
-
-**Post-completion:** Run simulation, observe behavior visually. Log parameter tuning decisions. Log any worker mistakes.
-
-**Success criteria:** Boids infect, die, get cured, reproduce, promote. Stats match expected ranges. No entity leaks (dead + alive ≈ spawned + born).
+Use the `/record-mistake` command or pipe JSON to `.claude/hooks/record-mistake.sh` for each entry.
 
 ---
 
-## Phase 11 — Extensions via Ralph Loop
+## Part A: Antivax Separate Swarm (Tasks A1–A9)
 
-**Goal:** Autonomously implement extensions using the Ralph Loop — each iteration gets a fresh context window, using files on disk as persistent memory.
-**Who:** ORCHESTRATOR prepares infrastructure, then RALPH LOOP runs autonomously.
-**Time:** Ongoing, autonomous.
+**Objective:** Promote Antivax from an additive tag on NormalBoid to a fully independent third swarm (`AntivaxBoid`) with its own flocking, infection, reproduction, cure interactions, rendering, and stats tracking.
 
-### Step 11.0 — Orchestrator Prepares Ralph Infrastructure (CRITICAL)
+**Dependency chain:** A1 → A2 → A3 (can parallelize A4,A5,A6 after A3) → A7 → A8 → A9
 
-Before the Ralph Loop can run, the orchestrator must create the supporting files. This step is executed by the orchestrator agent — not manually.
+### Task A1: Component & Stats Infrastructure
 
-**Orchestrator prompt:**
+**Files:** `include/components.h`, `src/ecs/world.cpp`
 
-```
-Read .orchestrator/state.md and the master plan's Phase 11 extension requirements.
-You must now prepare the Ralph Loop infrastructure. Execute the following in order:
+**Changes:**
+1. In `include/components.h`:
+   - Keep `struct Antivax {};` temporarily (removed in A9 after migration)
+   - Add `struct AntivaxBoid {};` as a new primary swarm tag, documented as mutually exclusive with NormalBoid and DoctorBoid
+   - Add to `SimStats`: `int antivax_alive = 0;`, `int dead_antivax = 0;`, `int newborns_antivax = 0;`
+   - Add to `SimStats::PopulationHistoryPoint`: `int antivax_alive = 0;`
+2. In `src/ecs/world.cpp`:
+   - Register `AntivaxBoid` component: `world.component<AntivaxBoid>();`
 
-1. CREATE docs/current-task.md:
-   - Extract ALL uncompleted extension tasks from .orchestrator/state.md
-   - Format them as a checklist with guardrails (see template below)
-   - Read .orchestrator/mistakes.md § "Ralph Loop Iterations"
-   - Append any "Prevention Rule" entries to the Guardrails section
-   - This file becomes the Ralph Loop's fixed control input
+**Commit:** `feat(ecs): add AntivaxBoid primary tag and antivax stats fields`
 
-2. CREATE ralph.sh at project root:
-   - Stateless loop: fresh `claude -p` session per iteration
-   - Reads docs/current-task.md as prompt
-   - Detects RALPH_COMPLETE sentinel to stop
-   - Logs iteration count and timestamps
-
-3. VERIFY hook propagation:
-   - Confirm .claude/settings.json has PostToolUse hooks registered
-   - Confirm .claude/hooks/update-changelog.sh is executable
-   - Confirm .claude/hooks/record-mistake.sh is executable
-   - Confirm .claude/hooks/record-process.sh is executable
-
-4. UPDATE .orchestrator/state.md:
-   - Set current phase to "Phase 11 — Ralph Loop active"
-   - Record ralph.sh creation in Completed Tasks
-
-5. COMMIT: "chore(phase-11): create Ralph Loop infrastructure"
-
-Do NOT start running the Ralph Loop yet — only prepare the files.
-```
-
-**Template for docs/current-task.md (orchestrator generates this):**
-
-```markdown
-# Current Task: Implement Extensions
-
-Read CLAUDE.md for full project context. Check src/*/changelog.md for recent changes.
-
-## Requirements (implement ONE per session, in order)
-- [ ] Infected debuffs — Doctors: reduce p_cure ×0.5, r_interact_doctor ×0.7, p_offspring_doctor ×0.5. Normal: r_interact_normal ×0.8, p_offspring_normal ×0.5. Store debuff multipliers in SimConfig.
-- [ ] Sex system: add Male/Female tags. 50/50 at spawn. Reproduction requires one Male + one Female. Same-sex collisions skip reproduction.
-- [ ] Antivax boids: p_antivax percentage of Normal boids get Antivax tag at spawn. Antivax boids add a strong repulsion force from DoctorBoid within visual range (ADDITIVE to existing flocking, not replacement). They can still be cured if a doctor reaches them.
-- [ ] Parameter sliders: raygui sliders in stats overlay for p_infect_normal, p_cure, r_interact_normal, r_interact_doctor, initial_normal_count, initial_doctor_count. Slider changes update SimConfig singleton in real-time.
-- [ ] Pause/Reset controls: Pause button (freezes simulation, rendering continues). Reset button (destroys all entities, re-spawns from SimConfig).
-- [ ] Population graph: real-time line chart (raygui or manual) showing normal_alive and doctor_alive over last 500 frames.
-
-## Guardrails
-- Do NOT break existing simulation rules
-- Do NOT modify existing component struct fields — only ADD new components/fields
-- All new parameters go in SimConfig
-- Build and test after EACH change
-- Update the relevant module's changelog.md
-- Commit with descriptive message before finishing: "feat(scope): description"
-- Use `<random>` with seeded engine, never `std::rand()`
-- Antivax steering must be ADDITIVE to flocking rules, not a replacement
-- Do NOT add Raylib includes outside src/render/
-- If all tasks checked, output RALPH_COMPLETE
-```
-
-**Template for ralph.sh (orchestrator generates this):**
-
-```bash
-#!/bin/bash
-# ralph.sh — Stateless development loop. Each iteration = fresh context.
-# Created by orchestrator in Phase 11, Step 11.0
-set -euo pipefail
-
-PROMPT="docs/current-task.md"
-MAX_ITERATIONS=30
-ITERATION=0
-LOG="docs/ralph-log.md"
-
-# Initialize log
-echo "# Ralph Loop Log" > "$LOG"
-echo "Started: $(date -u '+%Y-%m-%d %H:%MZ')" >> "$LOG"
-echo "" >> "$LOG"
-
-while [ $ITERATION -lt $MAX_ITERATIONS ]; do
-  ITERATION=$((ITERATION + 1))
-  START_TIME=$(date -u '+%H:%M:%SZ')
-  echo "=== Ralph iteration $ITERATION ($START_TIME) ==="
-
-  OUTPUT=$(claude -p "$(cat "$PROMPT")
-
-Read CLAUDE.md for project context. Check src/*/changelog.md for recent changes by other sessions.
-Read .claude/skills/flecs-patterns/SKILL.md for domain patterns and parameter reference.
-
-Find the NEXT UNCHECKED task in the requirements list above.
-Implement ONLY that single task.
-Build the project. Run tests. Fix any failures.
-Update the relevant changelog.md files.
-Mark the task as checked in docs/current-task.md by changing [ ] to [x].
-Commit with a descriptive message: 'feat(scope): description'
-
-If you encounter a repeated mistake or anti-pattern, record it:
-Run: echo 'MISTAKE: [description]' so the orchestrator can add a guardrail.
-
-If ALL tasks are checked, output RALPH_COMPLETE.
-Do NOT work on more than one task per session." 2>&1)
-
-  END_TIME=$(date -u '+%H:%M:%SZ')
-  echo "$OUTPUT" | tail -5
-
-  # Log iteration
-  echo "## Iteration $ITERATION" >> "$LOG"
-  echo "- Start: $START_TIME | End: $END_TIME" >> "$LOG"
-  echo "- Output (last 3 lines):" >> "$LOG"
-  echo "$OUTPUT" | tail -3 | sed 's/^/  /' >> "$LOG"
-  echo "" >> "$LOG"
-
-  # Check for mistakes to escalate
-  if echo "$OUTPUT" | grep -q "MISTAKE:"; then
-    MISTAKE=$(echo "$OUTPUT" | grep "MISTAKE:" | head -1)
-    MISTAKE_DESC="${MISTAKE#MISTAKE: }"
-    echo "⚠ Detected mistake: $MISTAKE_DESC"
-    echo "- ⚠ $MISTAKE_DESC" >> "$LOG"
-    # Append as guardrail to prevent repetition
-    echo "- $MISTAKE_DESC" >> docs/current-task.md
-    # Record in .orchestrator/mistakes.md
-    echo "{\"worker\":\"ralph\",\"phase\":\"11\",\"what\":\"$MISTAKE_DESC\",\"cause\":\"Ralph iteration $ITERATION\",\"fix\":\"Added guardrail to current-task.md\",\"rule\":\"$MISTAKE_DESC\"}" \
-      | .claude/hooks/record-mistake.sh 2>/dev/null || true
-  fi
-
-  if echo "$OUTPUT" | grep -q "RALPH_COMPLETE"; then
-    echo "=== All tasks complete after $ITERATION iterations. ==="
-    echo "" >> "$LOG"
-    echo "## COMPLETE" >> "$LOG"
-    echo "All tasks done after $ITERATION iterations at $(date -u '+%H:%M:%SZ')" >> "$LOG"
-    break
-  fi
-
-  echo "--- Iteration $ITERATION done. Fresh session starting... ---"
-  sleep 3
-done
-
-echo "Ralph loop finished. $ITERATION iterations completed."
-```
-
-### Step 11.1 — Run the Ralph Loop
-
-```bash
-chmod +x ralph.sh
-./ralph.sh
-```
-
-**What happens each iteration:**
-1. Fresh Claude session starts (clean 200K context window)
-2. Reads CLAUDE.md + @imports (project context, orchestrator state, changelogs)
-3. Reads `.claude/skills/flecs-patterns/SKILL.md` (domain knowledge on demand)
-4. Reads `docs/current-task.md`
-5. Finds next unchecked requirement
-6. Implements it, builds, tests, commits
-7. Marks task complete in the file
-8. Exits. Loop starts fresh with zero context rot.
-
-**If Ralph makes a repeating mistake**, the loop auto-detects `MISTAKE:` sentinels and appends guardrails. You can also manually add guardrails:
-
-```markdown
-## Guardrails
-- ... existing ...
-- NEW: The antivax steering must be ADDITIVE to existing flocking rules, not a replacement
-```
-
-### Step 11.2 — Orchestrator-Managed Ralph (Advanced)
-
-For orchestrator-supervised Ralph, the orchestrator manages each iteration and updates state:
-
-```bash
-tmux new-session -s orchestrator
-cd COMP6216-Swaying-Swarms
-claude
-```
-
-> Note: Use plain `claude` (not `--agent orchestrator`) so the root session can spawn subagents via the Task tool.
-
-```
-Manage the Ralph Loop for extensions. For each iteration:
-1. Read .orchestrator/state.md for current progress
-2. Read docs/current-task.md to find the next unchecked task
-3. Spawn a worker: claude -p with the task prompt, --model sonnet
-4. Capture output, check for success or MISTAKE sentinels
-5. Use /record-process to update state.md with progress
-6. If the worker fails or reports MISTAKE, use /record-mistake to log it, add a guardrail to docs/current-task.md, retry
-7. Continue until all tasks are complete or MAX_ITERATIONS reached
-```
-
-### Step 11.3 — Worker Hook & Skill Propagation
-
-Workers spawned by `ralph.sh` or the orchestrator automatically inherit hooks and skills because they run in the same project directory. Verify this checklist:
-
-- [ ] `.claude/settings.json` has all hooks registered (changelog, record-mistake, record-process)
-- [ ] `.claude/hooks/*.sh` are all executable (`chmod +x`)
-- [ ] `.claude/skills/flecs-patterns/SKILL.md` exists with full parameter reference
-- [ ] Workers are spawned with `--model sonnet` for implementation work
-- [ ] `docs/current-task.md` references the skill: "Read .claude/skills/flecs-patterns/SKILL.md"
-
-For worktree-based workers, hooks propagate via the shared `.claude/` directory since worktrees link to the same git repo. If a worktree doesn't pick up hooks, verify with:
-
-```bash
-ls -la .claude/hooks/  # Should show all hook scripts
-cat .claude/settings.json | jq '.hooks'  # Should show all registrations
-```
-
-**✅ Phase 11 complete** when all extension tasks are checked in `docs/current-task.md`.
+**Success criteria:** Build compiles clean. All 23 existing tests pass. No runtime changes yet.
 
 ---
 
-## Phase Transition Checklist
+### Task A2: Spawn System — Create Antivax from Normal Pool
 
-Before advancing to the next phase, verify ALL of the following:
-- [ ] All tasks in current phase moved to Completed in state.md
-- [ ] Build compiles clean (`cmake -B build && cmake --build build`)
-- [ ] All tests pass (`cd build && ctest --output-on-failure`)
-- [ ] No blocking issues remain
-- [ ] state.md updated with new phase, unblocked tasks
-- [ ] Worktrees cleaned up (if applicable)
-- [ ] Changelogs reflect work done
-- [ ] All decisions from this phase logged in decisions.md
-- [ ] All worker mistakes from this phase logged in mistakes.md
-- [ ] Session decisions in state.md promoted to decisions.md if non-trivial
+**Files:** `src/ecs/spawn.cpp` (or wherever initial population spawning lives), `src/ecs/systems.cpp` (if transition logic exists there)
+
+**Changes:**
+1. During initial population spawning for Normal boids:
+   - For each would-be NormalBoid, roll `p_antivax` (default: 0.1)
+   - If the roll succeeds: tag entity with `AntivaxBoid` instead of `NormalBoid`. Do NOT also add `NormalBoid` — they are mutually exclusive.
+   - If the roll fails: tag entity with `NormalBoid` as before
+2. Remove the old `Antivax` tag assignment logic (the Phase 11 implementation that added `Antivax` on top of `NormalBoid`)
+3. Offspring born to Antivax parents (Task A5) will be `AntivaxBoid` — but that wiring happens in A5. For now, only initial spawn matters.
+4. On reset (SimulationState.reset_requested): ensure antivax boids are also destroyed and respawned correctly
+
+**Decision for orchestrator:** The old `struct Antivax {};` tag stays temporarily. NO entity should have both `Antivax` and `AntivaxBoid`. Once A2 is complete, `Antivax` is dead code — removed in A9.
+
+**Commit:** `feat(ecs): spawn AntivaxBoid as separate swarm from normal pool`
+
+**Success criteria:** Build clean. Running simulation spawns ~20 antivax boids (10% of 200). They exist as separate entities from NormalBoid. Print or log counts to verify.
 
 ---
 
-## Emergency Procedures
+### Task A3: Rendering — Distinct Antivax Color
 
-**Worker stuck in loop:** Kill PID, check its output file, spawn fresh worker with corrective prompt. Log mistake.
-**Merge conflict:** Spawn debugger subagent with `git diff` output. Always build+test after resolution. Log decision.
-**Build broken after merge:** Use cpp-builder subagent. If unfixable, `git revert` the last merge and re-attempt. Log decision + mistake.
-**Rate limit hit:** Stop all workers. Wait for reset. Resume with `--resume` on existing sessions if multi-turn, or fresh sessions if single-turn. Log decision on which workers to prioritize when limits reset.
-**Context degrading:** Run `/compact` immediately. If still degraded after compact, end session, update state.md manually, start fresh session.
+**Files:** `src/ecs/systems.cpp` (RenderSyncSystem), `src/render/renderer.cpp` (if color logic lives there), `include/render_state.h` (if BoidRenderData needs update)
+
+**Changes:**
+1. In `BoidRenderData`: ensure there's a way to distinguish Normal, Doctor, and Antivax. Currently `is_doctor` is a bool — either:
+   - Option A (preferred): Replace `bool is_doctor` with an enum or int `swarm_type` (0=normal, 1=doctor, 2=antivax)
+   - Option B: Add `bool is_antivax` alongside `is_doctor`
+2. In `RenderSyncSystem`: when iterating alive boids, check for `AntivaxBoid` tag and set color accordingly:
+   - Normal = green (existing)
+   - Doctor = blue (existing)
+   - Antivax = orange or yellow (must be visually distinct from infected-red-tint)
+3. In the renderer's draw loop: use swarm_type to select base color, then apply infected red tint on top
+
+**Commit:** `feat(render): render antivax boids in distinct orange color`
+
+**Success criteria:** Running simulation shows three visually distinct boid colors.
+
+---
+
+### Task A4: Infection — Antivax×Antivax Only
+
+**Files:** `src/ecs/systems.cpp` (InfectionSystem)
+
+**Changes:**
+1. Add a third infection block (alongside the Normal and Doctor blocks):
+   - Iterate all `AntivaxBoid` + `Alive` + `Infected` entities
+   - For each, query neighbors within `r_interact_normal` (antivax uses normal interaction params)
+   - Only infect neighbors that have `AntivaxBoid` tag (same-swarm only)
+   - Use `p_infect_normal` probability and debuffs `debuff_r_interact_normal_infected` when infected
+2. Verify: cross-swarm infection does NOT happen
+3. At spawn: AntivaxBoid uses `p_initial_infect_normal` for initial infection chance
+
+**Commit:** `feat(sim): wire antivax-to-antivax infection (same-swarm only)`
+
+**Success criteria:** Build clean. Antivax boids can infect each other. No cross-swarm antivax infection.
+
+---
+
+### Task A5: Reproduction — Antivax×Antivax Only
+
+**Files:** `src/ecs/systems.cpp` (ReproductionSystem)
+
+**Changes:**
+1. Add a third reproduction block:
+   - Iterate `AntivaxBoid` + `Alive` entities for collision-based reproduction
+   - Only reproduce with other `AntivaxBoid` entities (same-swarm)
+   - Use Normal reproduction parameters: `p_offspring_normal`, `offspring_mean_normal` (2.0), `offspring_stddev_normal` (1.0)
+   - Apply debuff `debuff_p_offspring_normal_infected` when parent is infected
+   - Sex system: require Male + Female pair
+   - Cooldown: `reproduction_cooldown`
+   - Offspring are tagged `AntivaxBoid` (NOT NormalBoid — they inherit parent swarm)
+2. Two infected Antivax parents producing offspring: child gets contagion from ONE parent only
+3. Increment `SimStats.newborns_antivax` and `newborns_total`
+
+**Commit:** `feat(sim): wire antivax reproduction (same-swarm, offspring inherit AntivaxBoid)`
+
+**Success criteria:** Build clean. Antivax population can grow through reproduction.
+
+---
+
+### Task A6: Cure — Doctors Can Cure Antivax
+
+**Files:** `src/ecs/systems.cpp` (CureSystem)
+
+**Changes:**
+1. The existing CureSystem already cures "ANY infected boid" — verify that it checks `ne.has<Infected>()` without filtering to NormalBoid/DoctorBoid only
+2. If the cure system explicitly checks for NormalBoid or DoctorBoid tags before curing, add `AntivaxBoid` to the accepted targets
+3. Most likely NO code change is needed — but this MUST be verified by reading the code
+4. Also verify: doctors CANNOT cure themselves (self-ID skip `nid == e.id()`). Add a code comment making this contract explicit.
+
+**Commit:** `feat(sim): verify and document doctor-cures-antivax + no-self-cure contract`
+
+**Success criteria:** Infected antivax boids near a doctor can be cured. Doctor self-cure does not happen.
+
+---
+
+### Task A7: Stats Tracking — Antivax Counters
+
+**Files:** `src/ecs/systems.cpp` (stats update system), `src/render/renderer.cpp` (stats overlay)
+
+**Changes:**
+1. In the stats counting system:
+   - Add count for `AntivaxBoid` + `Alive` entities → `stats.antivax_alive`
+   - Include antivax in population history
+2. In death system: when an AntivaxBoid dies, increment `stats.dead_antivax` and `stats.dead_total`
+3. In the renderer stats panel: add Antivax Alive, Dead Antivax, Newborns Antivax rows
+4. In the population graph: add an orange/yellow line for antivax
+
+**Commit:** `feat(render): add antivax stats tracking and population graph line`
+
+**Success criteria:** Stats panel shows antivax counts. Population graph has three lines.
+
+---
+
+### Task A8: Antivax Doctor-Avoidance Steering
+
+**Files:** `src/ecs/systems.cpp` (register_antivax_steering_system)
+
+**Changes:**
+1. Modify `register_antivax_steering_system` to query `AntivaxBoid` tag instead of old `Antivax` + `NormalBoid` combination
+2. Verify the repulsion logic uses `antivax_repulsion_radius` and `antivax_repulsion_weight`
+3. Confirm force is ADDITIVE to existing flocking forces
+
+**Commit:** `feat(ecs): update antivax steering to use AntivaxBoid primary tag`
+
+**Success criteria:** Antivax boids visibly flee from nearby doctors.
+
+---
+
+### Task A9: Cleanup & Migration Complete
+
+**Files:** `include/components.h`, `src/ecs/world.cpp`, any remaining references
+
+**Changes:**
+1. Remove `struct Antivax {};` from `components.h`
+2. Remove `world.component<Antivax>();` from `world.cpp`
+3. Grep entire codebase for remaining references to old `Antivax` tag and remove
+4. Full build + all tests
+
+**Commit:** `refactor(ecs): remove deprecated Antivax tag, migration to AntivaxBoid complete`
+
+**Success criteria:** Build clean. All tests pass. No references to old `Antivax` tag remain.
+
+---
+
+## Part B: Doctor Self-Cure Prevention (Task B1)
+
+### Task B1: Verify and Test Doctor No-Self-Cure
+
+**Files:** `src/ecs/systems.cpp` (CureSystem), `tests/` (new test)
+
+**Changes:**
+1. Verify existing `if (nid == e.id()) continue;` in CureSystem
+2. Add explicit contract comment above the line
+3. Write a unit test:
+   - Create FLECS world with one infected DoctorBoid
+   - Run CureSystem for several frames → assert doctor remains infected
+   - Add second healthy DoctorBoid within cure radius → run → assert first can be cured
+
+**Commit:** `test(sim): add doctor no-self-cure contract test`
+
+**Success criteria:** New test passes. All existing tests pass.
+
+---
+
+## Part C: Critical Steering Fixes (Tasks C1–C4)
+
+**CRITICAL WORKER INSTRUCTION FOR ALL PART C TASKS:** All steering behaviors MUST use the Reynolds steering formula: `steering = (desired_velocity - current_velocity) * weight`, where `desired_velocity = normalize(direction) * max_speed`. Never use raw positional differences. Never use un-normalized average velocities.
+
+### Task C1: Fix Cohesion Steering
+
+**Files:** `src/ecs/systems.cpp` (SteeringSystem, cohesion block)
+
+**Replace** the cohesion calculation with the Reynolds canonical form:
+```cpp
+if (coh_count > 0) {
+    coh_x /= static_cast<float>(coh_count);
+    coh_y /= static_cast<float>(coh_count);
+    float dx = coh_x - pos.x;
+    float dy = coh_y - pos.y;
+    float mag = std::sqrt(dx * dx + dy * dy);
+    if (mag > 0.001f) {
+        float desired_vx = (dx / mag) * config.max_speed;
+        float desired_vy = (dy / mag) * config.max_speed;
+        force_x += (desired_vx - vel.vx) * config.cohesion_weight;
+        force_y += (desired_vy - vel.vy) * config.cohesion_weight;
+    }
+}
+```
+
+**Commit:** `fix(ecs): correct cohesion to use normalized desired velocity (Reynolds steering)`
+
+---
+
+### Task C2: Fix Alignment Steering
+
+**Files:** `src/ecs/systems.cpp` (SteeringSystem, alignment block)
+
+**Replace** the alignment calculation with the normalized form:
+```cpp
+if (ali_count > 0) {
+    ali_vx /= static_cast<float>(ali_count);
+    ali_vy /= static_cast<float>(ali_count);
+    float ali_mag = std::sqrt(ali_vx * ali_vx + ali_vy * ali_vy);
+    if (ali_mag > 0.001f) {
+        float desired_vx = (ali_vx / ali_mag) * config.max_speed;
+        float desired_vy = (ali_vy / ali_mag) * config.max_speed;
+        force_x += (desired_vx - vel.vx) * config.alignment_weight;
+        force_y += (desired_vy - vel.vy) * config.alignment_weight;
+    }
+}
+```
+
+**Commit:** `fix(ecs): normalize alignment desired velocity to max_speed (Reynolds steering)`
+
+---
+
+### Task C3: Implement Swarm-Specific Flocking
+
+**Files:** `src/ecs/systems.cpp` (SteeringSystem)
+
+**Prerequisite:** A2 complete (AntivaxBoid tag exists).
+
+**Changes:** Add swarm-tag filtering in the neighbor loop:
+- **Separation:** ALL neighbors (prevents cross-swarm collisions)
+- **Alignment:** ONLY same-swarm neighbors
+- **Cohesion:** ONLY same-swarm neighbors
+
+Add helper:
+```cpp
+bool same_swarm(flecs::entity a, flecs::entity b) {
+    if (a.has<NormalBoid>() && b.has<NormalBoid>()) return true;
+    if (a.has<DoctorBoid>() && b.has<DoctorBoid>()) return true;
+    if (a.has<AntivaxBoid>() && b.has<AntivaxBoid>()) return true;
+    return false;
+}
+```
+
+**Commit:** `feat(ecs): implement swarm-specific flocking (same-swarm alignment/cohesion)`
+
+**Success criteria:** Three visually distinct flocks form and move independently.
+
+---
+
+### Task C4: Add Minimum Speed Enforcement
+
+**Files:** `include/components.h`, `config.ini`, `src/sim/config_loader.cpp`, `src/ecs/systems.cpp`
+
+**Changes:**
+1. Add `float min_speed = 54.0f;` to SimConfig (30% of 180.0)
+2. Add `min_speed = 54.0` to config.ini [movement] section
+3. Add parsing in config_loader.cpp
+4. After velocity clamping in the movement/steering system:
+```cpp
+if (speed > 0.001f && speed < config.min_speed) {
+    float scale = config.min_speed / speed;
+    vel.vx *= scale; vel.vy *= scale;
+}
+```
+
+**Commit:** `feat(ecs): enforce minimum boid speed to prevent stalling`
+
+---
+
+## Part D: Future Extensions (Preserved — Not Scheduled)
+
+- **Obstacles:** Static objects that boids must avoid. Requires collision geometry + avoidance steering.
+- **Sound libraries:** Audio feedback for simulation events. Low priority.
+- **Edge turning:** Replace position-wrapping with margin-based turning forces. More natural behavior.
+- **Predator/prey dynamics:** Additional swarm type that hunts other boids.
+- **HPC deployment:** Apptainer container for Iridis X cluster. Headless mode for batch parameter sweeps.
+
+---
+
+## Execution Order Summary
+
+```
+PHASE 13 TASK SEQUENCE:
+
+  Pre-Flight: Record 4 structural mistakes in mistakes.md
+      |
+  A1: AntivaxBoid component + stats fields
+      |
+  A2: Spawn AntivaxBoid from Normal pool
+      |
+  A3: Render antivax in orange
+      | (A4, A5, A6 can run in parallel after A3)
+  A4: Antivax infection (antivax x antivax only)
+  A5: Antivax reproduction (antivax x antivax, offspring inherit)
+  A6: Verify doctor cures antivax + no-self-cure contract
+      |
+  A7: Stats tracking + population graph line
+      |
+  A8: Antivax doctor-avoidance steering (update tag filter)
+      |
+  A9: Remove deprecated Antivax tag, cleanup
+      |
+  B1: Doctor no-self-cure unit test
+      |
+  C1: Fix cohesion steering --+
+  C2: Fix alignment steering --+ (C1, C2 independent)
+      |                        |
+  C3: Swarm-specific flocking <+ (depends on A2 + C1 + C2)
+      |
+  C4: Minimum speed enforcement
+      |
+  DONE -- commit, verify, push
+```
+
+## Worker Assignment Strategy
+
+**Recommended:** Sequential single-worker via Ralph Loop (proven in Phases 10–12).
+- Most tasks touch `src/ecs/systems.cpp` — parallel workers create merge conflicts
+- Tasks are small (one commit each) — fresh context per task prevents rot
+- Orchestrator CAN parallelize A4/A5/A6 in worktrees if budget allows
+
+**Worker model:** Sonnet (cost-efficient, proven)
+**Estimated time:** 14 tasks x ~5 min = ~70 minutes via Ralph Loop
+
+## Success Criteria (Phase 13 Complete)
+
+1. Three distinct swarms visible: green (Normal), blue (Doctor), orange (Antivax)
+2. Three distinct flocks — each clusters independently
+3. Antivax boids flee from doctors visibly
+4. Doctors cannot cure themselves — verified by unit test
+5. Smooth, natural flocking — no oscillation, no stalling
+6. All stats tracked — antivax alive/dead/newborns in panel and graph
+7. Build clean, all tests pass (24+)
+8. No references to deprecated `Antivax` tag remain
