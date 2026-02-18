@@ -360,6 +360,29 @@ void register_infection_system(flecs::world& world) {
                 }
             });
 
+            // Process Antivax Boids (same-swarm infection only)
+            auto q_antivax = w.query<const Position, const AntivaxBoid, const Alive>();
+            q_antivax.each([&](flecs::entity e, const Position& pos, const AntivaxBoid&, const Alive&) {
+                bool is_infected = e.has<Infected>();
+                if (!is_infected) return;
+
+                float effective_r_interact = config.r_interact_normal * config.debuff_r_interact_normal_infected;
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, effective_r_interact);
+
+                for (const auto& [nid, dist] : neighbors) {
+                    if (nid == e.id()) continue;
+                    flecs::entity ne = w.entity(nid);
+                    if (!ne.is_alive() || !ne.has<Alive>()) continue;
+                    if (!ne.has<AntivaxBoid>()) continue;  // Same-swarm only
+                    if (ne.has<Infected>()) continue;
+
+                    if (try_infect(config.p_infect_normal, rng)) {
+                        ne.add<Infected>();
+                        ne.set(InfectionState{0.0f, config.t_death});
+                    }
+                }
+            });
+
             w.defer_end();
         });
 }
@@ -658,6 +681,117 @@ void register_reproduction_system(flecs::world& world) {
                     // Update stats
                     stats.newborns_total += count;
                     stats.newborns_doctor += count;
+
+                    // Break after first successful reproduction
+                    break;
+                }
+            });
+
+            // Process Antivax Boid reproduction
+            auto q_antivax = w.query<const Position, const Velocity, ReproductionCooldown, const AntivaxBoid, const Alive>();
+            q_antivax.each([&](flecs::entity e, const Position& pos, const Velocity& vel,
+                              ReproductionCooldown& cooldown, const AntivaxBoid&, const Alive&) {
+                // Skip if on cooldown
+                if (cooldown.cooldown > 0.0f) return;
+
+                bool is_infected = e.has<Infected>();
+
+                // Calculate effective interaction radius (debuffed if infected)
+                float effective_r_interact = config.r_interact_normal;
+                if (is_infected) {
+                    effective_r_interact *= config.debuff_r_interact_normal_infected;
+                }
+
+                // Query neighbors within effective interaction radius
+                auto neighbors = grid.query_neighbors(pos.x, pos.y, effective_r_interact);
+
+                for (const auto& [nid, dist] : neighbors) {
+                    if (nid == e.id()) continue;
+
+                    flecs::entity ne = w.entity(nid);
+                    if (!ne.is_alive() || !ne.has<Alive>()) continue;
+
+                    // Only reproduce with same swarm type
+                    if (!ne.has<AntivaxBoid>()) continue;
+
+                    // Check opposite sex requirement
+                    bool parent_is_male = e.has<Male>();
+                    bool neighbor_is_male = ne.has<Male>();
+                    if (parent_is_male == neighbor_is_male) continue; // Same sex, skip
+
+                    // Check neighbor's cooldown
+                    if (!ne.has<ReproductionCooldown>()) continue;
+                    const ReproductionCooldown& ncooldown = ne.get<ReproductionCooldown>();
+                    if (ncooldown.cooldown > 0.0f) continue;
+
+                    // Calculate effective reproduction probability (debuffed if infected)
+                    float effective_p_offspring = config.p_offspring_normal;
+                    if (is_infected) {
+                        effective_p_offspring *= config.debuff_p_offspring_normal_infected;
+                    }
+
+                    // Try to reproduce
+                    if (!try_reproduce(effective_p_offspring, rng)) continue;
+
+                    // Calculate offspring count
+                    int count = offspring_count(config.offspring_mean_normal,
+                                               config.offspring_stddev_normal, rng);
+
+                    if (count <= 0) continue;
+
+                    // Get neighbor position for midpoint calculation
+                    const Position& npos = ne.get<Position>();
+                    float spawn_x = (pos.x + npos.x) / 2.0f;
+                    float spawn_y = (pos.y + npos.y) / 2.0f;
+
+                    // Check if both parents are infected
+                    bool neighbor_infected = ne.has<Infected>();
+                    bool child_infected = false;
+                    if (is_infected && neighbor_infected) {
+                        // Child gets contagion from ONE parent only
+                        child_infected = try_infect(config.p_infect_normal, rng);
+                    }
+
+                    // Spawn offspring — inherit AntivaxBoid tag from parents
+                    std::uniform_real_distribution<float> dist_angle(0.0f, TWO_PI);
+                    std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
+                    std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
+
+                    for (int i = 0; i < count; ++i) {
+                        float angle = dist_angle(rng);
+                        float speed = dist_speed(rng);
+
+                        auto child = w.entity()
+                            .add<AntivaxBoid>()
+                            .add<Alive>()
+                            .set(Position{spawn_x, spawn_y})
+                            .set(Velocity{speed * std::cos(angle), speed * std::sin(angle)})
+                            .set(Heading{angle})
+                            .set(Health{0.0f, 60.0f})
+                            .set(ReproductionCooldown{config.reproduction_cooldown});
+
+                        // Assign sex
+                        if (dist_sex(rng) < 0.5f) {
+                            child.add<Male>();
+                        } else {
+                            child.add<Female>();
+                        }
+
+                        // Infect child if applicable
+                        if (child_infected) {
+                            child.add<Infected>();
+                            child.set(InfectionState{0.0f, config.t_death});
+                        }
+                    }
+
+                    // Set cooldown for both parents
+                    cooldown.cooldown = config.reproduction_cooldown;
+                    ReproductionCooldown& ncool = ne.get_mut<ReproductionCooldown>();
+                    ncool.cooldown = config.reproduction_cooldown;
+
+                    // Update stats
+                    stats.newborns_total += count;
+                    stats.newborns_antivax += count;
 
                     // Break after first successful reproduction
                     break;
