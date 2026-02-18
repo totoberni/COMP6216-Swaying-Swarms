@@ -13,3 +13,14 @@
 - **22:32Z** | `include/spatial_grid.h` | Edited: '#pragma once  #include <cstdint> #include <vector> #include ' -> '#pragma once  #include <cstdint> #include <vector> #include ' | session:`d15cd9ab`
 - **22:32Z** | `include/spatial_grid.h` | Edited: 'class SpatialGrid { public:     SpatialGrid() = default;    ' -> 'class SpatialGrid { public:     SpatialGrid() = default;    ' | session:`d15cd9ab`
 - **22:33Z** | `include/spatial_grid.h` | Edited: 'class SpatialGrid { public:     SpatialGrid() = default;    ' -> 'class SpatialGrid { public:     SpatialGrid() = default;    ' | session:`d15cd9ab`
+
+## 2026-02-17
+
+- **23:59Z** | `include/components.h` | Edited: 'struct Antivax {};  // =====================================' -> 'struct Antivax {}; struct AntivaxBoid {};  // Primary swarm ' | session:`f655d95a`
+- **23:59Z** | `include/components.h` | Edited: 'struct PopulationHistoryPoint {     int normal_alive = 0;   ' -> 'struct PopulationHistoryPoint {     int normal_alive = 0;   ' | session:`f655d95a`
+
+## 2026-02-18
+
+- **00:00Z** | `include/components.h` | Edited: '    int newborns_normal = 0;     int newborns_doctor = 0;   ' -> '    int newborns_normal = 0;     int newborns_doctor = 0;   ' | session:`f655d95a`
+- **00:03Z** | `include/render_state.h` | Edited: '    bool is_doctor; ' -> '    int swarm_type;  // 0=normal, 1=doctor, 2=antivax ' | session:`f655d95a`
+- **00:17Z** | `include/components.h` | Edited: 'struct NormalBoid {}; struct DoctorBoid {}; struct Male {}; ' -> 'struct NormalBoid {}; struct DoctorBoid {}; struct Male {}; ' | session:`f655d95a`

@@ -39,7 +39,9 @@
 
 | # | Phase | What Went Wrong | Root Cause | Fix Applied | Prevention Rule |
 |---|-------|-----------------|------------|-------------|-----------------|
-| — | — | No mistakes recorded yet | — | — | — |
+| 1 | Phase 9 | Cohesion steering used raw positional difference `(COM - position) * weight` instead of Reynolds canonical steering formula `(normalize(direction) * max_speed - current_velocity) * weight`. Force magnitude scaled with distance from center-of-mass causing oscillation. | Implementation followed simplified tutorial rather than Reynolds' GDC'99 specification. No code review caught it because boids "moved" — they just didn't flock naturally. | Must rewrite cohesion: normalize direction → multiply by max_speed → subtract current velocity → multiply by weight. (Phase 13 Task C1) | "ALL steering behaviors must compute `desired_velocity - current_velocity` as the steering force. The desired velocity must be `normalize(direction) * max_speed`. Never use raw positional differences as forces." |
+| 2 | Phase 9 | Alignment steering did not normalize average velocity to max_speed. Computed `(avg_neighbor_velocity - current_velocity) * weight` directly. When neighbors are slow, alignment force weakens proportionally — exactly when it shouldn't. | Same root cause — simplified implementation. The canonical formula normalizes the average velocity *direction* and scales to max_speed so alignment always steers toward the flock's heading regardless of speed magnitude. | Must normalize average velocity direction → multiply by max_speed → then compute steering difference. (Phase 13 Task C2) | "Alignment desired velocity = `normalize(avg_neighbor_vel) * max_speed`. Never use raw averaged velocities — they produce speed-dependent alignment strength." |
+| 3 | Phase 9 | No swarm-specific flocking — all boids align/cohere with ALL other boids regardless of swarm tag (NormalBoid, DoctorBoid, Antivax). Result: one merged super-flock instead of three distinct swarms. | Original integration task prompt said "implement boid flocking" without specifying swarm filtering. context.md at the time described two swarms but didn't explicitly state alignment/cohesion should be same-swarm only. | Must filter alignment and cohesion neighbors to same-swarm only. Separation stays cross-swarm. (Phase 13 Task C3) | "Separation = ALL boids. Alignment and Cohesion = SAME-SWARM ONLY. This is what creates visually distinct flocks. Always check swarm tag before including a neighbor in alignment/cohesion calculations." |
 
 ### Behavior/Sim Worker (code-worker on sim rules)
 
@@ -51,7 +53,7 @@
 
 | # | Iteration | What Went Wrong | Root Cause | Fix Applied | Prevention Rule |
 |---|-----------|-----------------|------------|-------------|-----------------|
-| — | — | No mistakes recorded yet | — | — | — |
+| 1 | Phase 11 Antivax | Antivax implemented as additive tag `struct Antivax {}` added on top of `NormalBoid` entities. Antivax boids still classified as NormalBoid for infection, reproduction, flocking, and stats — not a distinct swarm. | Original context.md listed antivax under "Extensions to Behaviors" as "editing some of the boid rules for the normal swarm" — treated as a modifier, not a new entity type. | Must create `AntivaxBoid` as a primary tag (mutually exclusive with NormalBoid/DoctorBoid), with its own infection, reproduction, flocking, rendering, and stats tracking. (Phase 13 Tasks A1-A9) | "Each swarm must be a MUTUALLY EXCLUSIVE primary tag (NormalBoid OR DoctorBoid OR AntivaxBoid). Never use additive tags for swarm classification — it creates ambiguous entity identities." |
 
 ### Subagents (code-reviewer, debugger, ecs-architect, cpp-builder, changelog-scribe)
 
@@ -64,3 +66,7 @@
 ## Cross-Cutting Patterns
 <!-- Promote recurring mistakes here when they appear 3+ times across workers. -->
 <!-- These become permanent guardrails in CLAUDE.md or worker prompt templates. -->
+
+**PATTERN: Steering implementation deviates from Reynolds canonical model (3 occurrences — Integration Worker #1, #2, #3)**
+- Guardrail: ALL steering behaviors MUST use `steering = (desired_velocity - current_velocity) * weight` where `desired_velocity = normalize(direction) * max_speed`. Raw positional differences and un-normalized averages are NEVER acceptable as steering forces.
+- Guardrail: Separation = ALL boids. Alignment + Cohesion = SAME-SWARM ONLY.

@@ -42,7 +42,6 @@ struct Male {};
 struct Female {};
 struct Infected {};
 struct Alive {};
-struct Antivax {};
 struct AntivaxBoid {};  // Primary swarm tag (mutually exclusive with NormalBoid and DoctorBoid)
 
 // ============================================================

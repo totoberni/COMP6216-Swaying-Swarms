@@ -1,33 +1,6 @@
 # Changelog — ecs
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
-- **Reset cleanup fix**: Modified reset_simulation() in spawn.cpp to delete ALL boids (both alive and dead). Now queries entities with Position component instead of only Alive tag, ensuring dead boids are properly cleaned up on reset.
-- **Keyboard shortcuts**: Added SPACE key for pause toggle and R key for reset in main.cpp main loop. Keys trigger same logic as UI buttons.
-- **RenderState population**: Modified register_render_sync_system() in systems.cpp to populate RenderState.config and RenderState.sim_state pointers, enabling renderer to access configuration without FLECS dependency.
-- **Population graph**: Modified stats.cpp to record population history every frame in circular buffer (500 frames max). Records normal_alive and doctor_alive counts after each frame's population count.
-- **Pause/Reset controls**: Added SimulationState singleton registration in world.cpp. Created reset_simulation() function in spawn.cpp that destroys all boid entities, resets SimStats, and re-spawns initial population. Main loop now checks reset_requested flag and pause state.
-- **Antivax system**: Added Antivax tag assignment in spawn.cpp (p_antivax probability). Created register_antivax_steering_system in systems.cpp that applies strong repulsion force from doctors within visual range (ADDITIVE to flocking). Antivax boids can still be cured by doctors.
-- **Sex system**: Added opposite-sex requirement to reproduction system. Boids now only reproduce when one parent is Male and the other is Female. Same-sex collisions skip reproduction logic.
-- **Infected debuffs**: Modified infection, cure, and reproduction systems in systems.cpp to apply debuff multipliers from SimConfig when boids are infected
-
-## 2026-02-07
-- **21:05Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`
-- **21:07Z** | `src/ecs/spawn.cpp` | Edited: '        auto boid = world.entity()             .add<NormalBo' -> '        auto boid = world.entity()             .add<NormalBo' | session:`cefb983f`
-- **21:07Z** | `src/ecs/spawn.cpp` | Edited: '        auto boid = world.entity()             .add<DoctorBo' -> '        auto boid = world.entity()             .add<DoctorBo' | session:`cefb983f`
-- **21:07Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_initial_population(flecs::world& world) {     con' -> 'void spawn_initial_population(flecs::world& world) {     con' | session:`cefb983f`
-- **21:07Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_normal_boids(flecs::world& world, int count) {   ' -> 'void spawn_normal_boids(flecs::world& world, int count) {   ' | session:`cefb983f`
-- **21:07Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_doctor_boids(flecs::world& world, int count) {   ' -> 'void spawn_doctor_boids(flecs::world& world, int count) {   ' | session:`cefb983f`
-- **21:09Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_normal_boids(flecs::world& world, int count) {   ' -> 'void spawn_normal_boids(flecs::world& world, int count) {   ' | session:`cefb983f`
-- **21:09Z** | `src/ecs/spawn.cpp` | Edited: '        // Initial infection         if (dist_infect(rng) < ' -> '        // Initial infection         if (dist_infect(rng) < ' | session:`cefb983f`
-- **21:09Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_doctor_boids(flecs::world& world, int count) {   ' -> 'void spawn_doctor_boids(flecs::world& world, int count) {   ' | session:`cefb983f`
-- **21:09Z** | `src/ecs/spawn.cpp` | Edited: '        // Initial infection         if (dist_infect(rng) < ' -> '        // Initial infection         if (dist_infect(rng) < ' | session:`cefb983f`
-- **21:09Z** | `src/ecs/spawn.cpp` | Edited: 'void spawn_initial_population(flecs::world& world) {     con' -> 'void spawn_initial_population(flecs::world& world) {     con' | session:`cefb983f`
-- **21:09Z** | `src/ecs/world.cpp` | Edited: '    // Create SpatialGrid singleton     const auto* config =' -> '    // Create SpatialGrid singleton     const SimConfig& con' | session:`cefb983f`
-- **21:09Z** | `src/ecs/systems.cpp` | Edited: 'void register_movement_system(flecs::world& world) {     wor' -> 'void register_movement_system(flecs::world& world) {     wor' | session:`cefb983f`
-- **21:12Z** | `src/ecs/stats.cpp` | Edited: 'void register_stats_system(flecs::world& world) {     world.' -> 'void register_stats_system(flecs::world& world) {     world.' | session:`cefb983f`
-- **21:12Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`
-- **21:12Z** | `src/ecs/stats.cpp` | Edited: 'void register_stats_system(flecs::world& world) {     world.' -> 'void register_stats_system(flecs::world& world) {     world.' | session:`cefb983f`
-- **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`
 - **21:13Z** | `src/ecs/systems.cpp` | Edited: '            // Update heading based on velocity             ' -> '            // Update heading based on velocity             ' | session:`cefb983f`
 - **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_movement_system(flecs::world& world) {     wor' -> 'void register_movement_system(flecs::world& world) {     wor' | session:`cefb983f`
 - **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_reproduction_system(flecs::world& world) {    ' -> 'void register_reproduction_system(flecs::world& world) {    ' | session:`cefb983f`
@@ -41,3 +14,20 @@
 - **22:15Z** | `src/ecs/world.cpp` | Edited: '#include "world.h" #include "components.h" #include "spatial' -> '#include "world.h" #include "components.h" #include "spatial' | session:`e9956e72`
 - **22:16Z** | `src/ecs/systems.cpp` | File written/created | session:`e9956e72`
 - **22:16Z** | `src/ecs/systems.cpp` | Edited: '#include <flecs.h> #include <cmath> ' -> '#include <flecs.h> #include <cmath> #include <algorithm> ' | session:`e9956e72`
+
+## 2026-02-18
+
+- **00:00Z** | `src/ecs/world.cpp` | Edited: '    world.component<Antivax>();      // Register SpatialGrid' -> '    world.component<Antivax>();     world.component<AntivaxB' | session:`f655d95a`
+- **00:01Z** | `src/ecs/spawn.cpp` | Edited: '        auto boid = world.entity()             .add<NormalBo' -> '        auto boid = world.entity()             .add<Alive>()' | session:`f655d95a`
+- **00:05Z** | `src/ecs/systems.cpp` | Edited: '                brd.is_doctor = e.has<DoctorBoid>();        ' -> '                // Determine swarm type                 if (' | session:`f655d95a`
+- **00:09Z** | `src/ecs/systems.cpp` | Edited: '                    // Try to infect                     if ' -> '                    // Try to infect                     if ' | session:`f655d95a`
+- **00:10Z** | `src/ecs/systems.cpp` | Edited: '                    // Update stats                     stat' -> '                    // Update stats                     stat' | session:`f655d95a`
+- **00:11Z** | `src/ecs/systems.cpp` | Edited: '                        auto child = w.entity()             ' -> '                        auto child = w.entity()             ' | session:`f655d95a`
+- **00:12Z** | `src/ecs/systems.cpp` | Edited: '                // Query neighbors within effective doctor i' -> '                // Query neighbors within effective doctor i' | session:`f655d95a`
+- **00:14Z** | `src/ecs/stats.cpp` | Edited: '            // Reset per-frame counters (deaths and newborns' -> '            // Reset per-frame counters (deaths and newborns' | session:`f655d95a`
+- **00:14Z** | `src/ecs/stats.cpp` | Edited: '            // Count alive doctor boids             auto q_d' -> '            // Count alive doctor boids             auto q_d' | session:`f655d95a`
+- **00:14Z** | `src/ecs/stats.cpp` | Edited: '            // Record population history for graph          ' -> '            // Record population history for graph          ' | session:`f655d95a`
+- **00:14Z** | `src/ecs/systems.cpp` | Edited: '                    // Update stats                     stat' -> '                    // Update stats                     stat' | session:`f655d95a`
+- **00:14Z** | `src/ecs/spawn.cpp` | Edited: '    stats.newborns_total = 0;     stats.newborns_normal = 0;' -> '    stats.newborns_total = 0;     stats.newborns_normal = 0;' | session:`f655d95a`
+- **00:17Z** | `src/ecs/systems.cpp` | Edited: '            // Only process antivax normal boids            ' -> '            // Only process AntivaxBoid entities (primary sw' | session:`f655d95a`
+- **00:17Z** | `src/ecs/world.cpp` | Edited: '    // Register tag components     world.component<NormalBoi' -> '    // Register tag components     world.component<NormalBoi' | session:`f655d95a`

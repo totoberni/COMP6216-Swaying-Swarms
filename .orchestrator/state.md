@@ -3,9 +3,12 @@
 <!-- Update before /compact or session end. -->
 <!-- Sibling files: plan.md (mission), decisions.md (audit trail), mistakes.md (error patterns). -->
 
-## No Urgent Issues ✅
+## Phase 13 Active 🔧
 
-Phase 12 complete. All 5 refinement tasks done. Build clean, 23 tests pass.
+Technical audit revealed 4 structural issues. Executing 14 atomic tasks via Ralph Loop.
+Part A (A1-A9): Antivax separate swarm — PRIORITY 1
+Part B (B1): Doctor self-cure test
+Part C (C1-C4): Steering model fixes
 
 ---
 
@@ -24,6 +27,8 @@ Phase 12 complete. All 5 refinement tasks done. Build clean, 23 tests pass.
 **Phase 11 — Extensions via Ralph Loop — COMPLETE ✅**
 
 **Phase 12 — Refinements & Configuration — COMPLETE ✅**
+
+**Phase 13 — Swarm Refinement & Steering Fixes — IN PROGRESS 🔧**
 
 ---
 
@@ -122,11 +127,5 @@ Build clean, 23 tests pass, all context.md spec requirements implemented.
 ## Session Decisions
 <!-- Scratch space for this session. Promote to decisions.md before session end. -->
 
-- DEC-014: Phase 11 Ralph Loop infrastructure created (docs/current-task.md + ralph.sh)
-- DEC-015: Config loader — INI format, no new dependency, optional file loading
-- Phase 11 complete — 6 extensions + config loader + review fixes (d9a76ef)
-- Phase 12 starting — remaining review findings via Ralph Loop
-- README synthesized from 585 → 163 lines (removed agent sections, collapsed platform setup)
-- Hook fix: record-process.sh sed patterns used `|` as both delimiter and literal content — changed to `#`
-- context.md spec audit: all requirements implemented except obstacles (deferred) and sound (low priority)
-- Renderer overflow check: no overflow risk (680px panel, ~610px content, 70px margin)
+- DEC-016: Phase 13 pre-flight — recorded 4 structural mistakes (cohesion, alignment, swarm-flocking, antivax-tag) in mistakes.md with prevention rules
+- DEC-017: Phase 13 execution strategy — Ralph Loop sequential (proven), Sonnet workers, A1→A9→B1→C1-C4 order

@@ -23,7 +23,6 @@ void init_world(flecs::world& world, const std::string& config_path) {
     world.component<Female>();
     world.component<Infected>();
     world.component<Alive>();
-    world.component<Antivax>();
     world.component<AntivaxBoid>();
 
     // Register SpatialGrid as a component (required before using as singleton)
