@@ -43,6 +43,7 @@ struct Female {};
 struct Infected {};
 struct Alive {};
 struct Antivax {};
+struct AntivaxBoid {};  // Primary swarm tag (mutually exclusive with NormalBoid and DoctorBoid)
 
 // ============================================================
 // SimConfig singleton — ALL tunable simulation parameters
@@ -122,6 +123,7 @@ struct SimConfig {
 struct PopulationHistoryPoint {
     int normal_alive = 0;
     int doctor_alive = 0;
+    int antivax_alive = 0;
 };
 
 struct SimStats {
@@ -133,6 +135,9 @@ struct SimStats {
     int newborns_total  = 0;
     int newborns_normal = 0;
     int newborns_doctor = 0;
+    int antivax_alive   = 0;
+    int dead_antivax    = 0;
+    int newborns_antivax = 0;
 
     // Population history for graph (circular buffer)
     static constexpr int HISTORY_SIZE = 500;
