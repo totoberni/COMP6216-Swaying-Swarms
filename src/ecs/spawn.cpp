@@ -130,6 +130,9 @@ void reset_simulation(flecs::world& world) {
     stats.newborns_total = 0;
     stats.newborns_normal = 0;
     stats.newborns_doctor = 0;
+    stats.antivax_alive = 0;
+    stats.dead_antivax = 0;
+    stats.newborns_antivax = 0;
     stats.history_index = 0;
     stats.history_count = 0;
     for (int i = 0; i < SimStats::HISTORY_SIZE; ++i) {

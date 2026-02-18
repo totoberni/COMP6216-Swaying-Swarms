@@ -826,6 +826,8 @@ void register_death_system(flecs::world& world) {
                         stats.dead_normal++;
                     } else if (e.has<DoctorBoid>()) {
                         stats.dead_doctor++;
+                    } else if (e.has<AntivaxBoid>()) {
+                        stats.dead_antivax++;
                     }
                 }
             });

@@ -101,7 +101,7 @@ static void draw_population_graph(const SimStats& stats, int x, int y, int width
     // Find current max population
     int current_max = 1;  // Avoid division by zero
     for (int i = 0; i < stats.history_count; i++) {
-        int total = stats.history[i].normal_alive + stats.history[i].doctor_alive;
+        int total = stats.history[i].normal_alive + stats.history[i].doctor_alive + stats.history[i].antivax_alive;
         if (total > current_max) {
             current_max = total;
         }
@@ -142,11 +142,26 @@ static void draw_population_graph(const SimStats& stats, int x, int y, int width
         DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, Color{0, 120, 255, 255});  // Blue for doctor
     }
 
+    // Draw lines for Antivax population (orange)
+    for (int i = 0; i < stats.history_count - 1; i++) {
+        int read_index = (stats.history_index - stats.history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
+        int next_read_index = (read_index + 1) % SimStats::HISTORY_SIZE;
+
+        float x1 = x + 2 + i * x_scale;
+        float y1 = y + height - 2 - stats.history[read_index].antivax_alive * y_scale;
+        float x2 = x + 2 + (i + 1) * x_scale;
+        float y2 = y + height - 2 - stats.history[next_read_index].antivax_alive * y_scale;
+
+        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, Color{255, 165, 0, 255});  // Orange for antivax
+    }
+
     // Draw legend
     DrawRectangle(x + 5, y + 5, 10, 10, Color{0, 255, 0, 255});
     DrawText("Normal", x + 20, y + 5, 10, LIGHTGRAY);
     DrawRectangle(x + 75, y + 5, 10, 10, Color{0, 120, 255, 255});
     DrawText("Doctor", x + 90, y + 5, 10, LIGHTGRAY);
+    DrawRectangle(x + 145, y + 5, 10, 10, Color{255, 165, 0, 255});
+    DrawText("Antivax", x + 160, y + 5, 10, LIGHTGRAY);
 
     // Draw max value label
     DrawText(TextFormat("Max: %d", max_pop), x + width - 50, y + 5, 10, LIGHTGRAY);
@@ -162,7 +177,7 @@ void draw_stats_overlay(const RenderState& state) {
     SimulationState* sim_state = state.sim_state;
 
     // Draw stats panel
-    const float panel_height = 680.0f;  // Increased height for buttons, sliders, and graph
+    const float panel_height = 755.0f;  // Increased height for buttons, sliders, graph, and antivax stats
     GuiPanel(Rectangle{
         static_cast<float>(RenderConfig::STATS_PANEL_X),
         static_cast<float>(RenderConfig::STATS_PANEL_Y),
@@ -206,6 +221,10 @@ void draw_stats_overlay(const RenderState& state) {
     y += line_height;
 
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20},
+             TextFormat("Antivax Alive: %d", stats.antivax_alive));
+    y += line_height;
+
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20},
              TextFormat("Dead Total: %d", stats.dead_total));
     y += line_height;
 
@@ -218,6 +237,10 @@ void draw_stats_overlay(const RenderState& state) {
     y += line_height;
 
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20},
+             TextFormat("  Antivax: %d", stats.dead_antivax));
+    y += line_height;
+
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20},
              TextFormat("Newborns Total: %d", stats.newborns_total));
     y += line_height;
 
@@ -227,6 +250,10 @@ void draw_stats_overlay(const RenderState& state) {
 
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20},
              TextFormat("  Doctor: %d", stats.newborns_doctor));
+    y += line_height;
+
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 200, 20},
+             TextFormat("  Antivax: %d", stats.newborns_antivax));
     y += line_height + 10;
 
     // --- Interactive sliders (only active if world is available) ---
