@@ -414,6 +414,7 @@ void register_cure_system(flecs::world& world) {
                 auto neighbors = grid.query_neighbors(pos.x, pos.y, effective_r_interact);
 
                 for (const auto& [nid, dist] : neighbors) {
+                    // Contract: doctors cannot cure themselves — only another doctor can cure them
                     if (nid == e.id()) continue;
 
                     flecs::entity ne = w.entity(nid);
