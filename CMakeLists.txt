@@ -101,9 +101,14 @@ file(GLOB SIM_SOURCES
     src/sim/*.cpp
 )
 
+# Collect ECS module sources for testing (needed by test_cure)
+file(GLOB ECS_SOURCES
+    src/ecs/*.cpp
+)
+
 # Only build tests if there are test source files
 if(TEST_SOURCES)
-    add_executable(tests ${TEST_SOURCES} ${SPATIAL_SOURCES} ${SIM_SOURCES})
+    add_executable(tests ${TEST_SOURCES} ${SPATIAL_SOURCES} ${SIM_SOURCES} ${ECS_SOURCES})
 
     target_include_directories(tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
