@@ -91,8 +91,8 @@ void register_antivax_steering_system(flecs::world& world) {
 
                     // Clamp repulsion force to max_force
                     float force_mag = std::sqrt(force_x * force_x + force_y * force_y);
-                    if (force_mag > 1) {
-                        float scale = 1 / force_mag;
+                    if (force_mag > config.max_force) {
+                        float scale = config.max_force / force_mag;
                         force_x *= scale;
                         force_y *= scale;
                     }
@@ -149,22 +149,27 @@ void register_steering_system(flecs::world& world) {
                     float dx = pos.x - npos.x;
                     float dy = pos.y - npos.y;
 
-                    // Separation: repel from nearby boids
+                    // Determine if neighbor is same swarm (for alignment/cohesion)
+                    bool is_same_swarm = (e.has<NormalBoid>() && ne.has<NormalBoid>()) ||
+                                         (e.has<DoctorBoid>() && ne.has<DoctorBoid>()) ||
+                                         (e.has<AntivaxBoid>() && ne.has<AntivaxBoid>());
+
+                    // Separation: repel from ALL nearby boids (cross-swarm)
                     if (dist < config.separation_radius) {
                         sep_x += dx / dist;
                         sep_y += dy / dist;
                         sep_count++;
                     }
 
-                    // Alignment: match velocity of nearby boids
-                    if (dist < config.alignment_radius) {
+                    // Alignment: match velocity of SAME-SWARM nearby boids only
+                    if (is_same_swarm && dist < config.alignment_radius) {
                         ali_vx += nvel.vx;
                         ali_vy += nvel.vy;
                         ali_count++;
                     }
 
-                    // Cohesion: steer toward center of mass
-                    if (dist < config.cohesion_radius) {
+                    // Cohesion: steer toward center of mass of SAME-SWARM only
+                    if (is_same_swarm && dist < config.cohesion_radius) {
                         coh_x += npos.x;
                         coh_y += npos.y;
                         coh_count++;
@@ -181,26 +186,38 @@ void register_steering_system(flecs::world& world) {
                     force_y += sep_y * config.separation_weight;
                 }
 
-                // Average and apply alignment force (desired = avg neighbor vel)
+                // Average and apply alignment force (desired = normalize(avg vel) * max_speed)
                 if (ali_count > 0) {
                     ali_vx /= static_cast<float>(ali_count);
                     ali_vy /= static_cast<float>(ali_count);
-                    force_x += (ali_vx - vel.vx) * config.alignment_weight;
-                    force_y += (ali_vy - vel.vy) * config.alignment_weight;
+                    float ali_mag = std::sqrt(ali_vx * ali_vx + ali_vy * ali_vy);
+                    if (ali_mag > 0.001f) {
+                        float desired_vx = (ali_vx / ali_mag) * config.max_speed;
+                        float desired_vy = (ali_vy / ali_mag) * config.max_speed;
+                        force_x += (desired_vx - vel.vx) * config.alignment_weight;
+                        force_y += (desired_vy - vel.vy) * config.alignment_weight;
+                    }
                 }
 
-                // Average and apply cohesion force (steer toward center)
+                // Average and apply cohesion force (desired = normalize(to COM) * max_speed)
                 if (coh_count > 0) {
                     coh_x /= static_cast<float>(coh_count);
                     coh_y /= static_cast<float>(coh_count);
-                    force_x += (coh_x - pos.x) * config.cohesion_weight;
-                    force_y += (coh_y - pos.y) * config.cohesion_weight;
+                    float dx = coh_x - pos.x;
+                    float dy = coh_y - pos.y;
+                    float mag = std::sqrt(dx * dx + dy * dy);
+                    if (mag > 0.001f) {
+                        float desired_vx = (dx / mag) * config.max_speed;
+                        float desired_vy = (dy / mag) * config.max_speed;
+                        force_x += (desired_vx - vel.vx) * config.cohesion_weight;
+                        force_y += (desired_vy - vel.vy) * config.cohesion_weight;
+                    }
                 }
 
                 // Clamp total force to max_force
                 float force_mag = std::sqrt(force_x * force_x + force_y * force_y);
-                if (force_mag > 1) {
-                    float scale = 1 / force_mag;
+                if (force_mag > config.max_force) {
+                    float scale = config.max_force / force_mag;
                     force_x *= scale;
                     force_y *= scale;
                 }
@@ -221,9 +238,9 @@ void register_steering_system(flecs::world& world) {
 }
 
 void register_movement_system(flecs::world& world) {
-    world.system<Position, const Velocity, Heading>("MovementSystem")
+    world.system<Position, Velocity, Heading>("MovementSystem")
         .kind(flecs::OnUpdate)
-        .each([](flecs::iter& it, size_t index, Position& pos, const Velocity& vel, Heading& heading) {
+        .each([](flecs::iter& it, size_t index, Position& pos, Velocity& vel, Heading& heading) {
             const SimConfig& config = it.world().get<SimConfig>();
             float dt = it.delta_time();
 
@@ -237,8 +254,18 @@ void register_movement_system(flecs::world& world) {
             if (pos.y < 0.0f) pos.y += config.world_height;
             if (pos.y >= config.world_height) pos.y -= config.world_height;
 
+            // Compute actual speed
+            float speed = std::sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+
+            // Enforce minimum speed — prevents boids from stalling
+            // Guard: only enforce if min_speed < max_speed (slider edge case)
+            if (speed > 0.001f && speed < config.min_speed && config.min_speed <= config.max_speed) {
+                float scale = config.min_speed / speed;
+                vel.vx *= scale;
+                vel.vy *= scale;
+            }
+
             // Update heading based on velocity
-            float speed = vel.vx * vel.vx + vel.vy * vel.vy;
             if (speed > 0.01f) {
                 heading.angle = std::atan2(vel.vy, vel.vx);
             }

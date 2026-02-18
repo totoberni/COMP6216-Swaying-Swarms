@@ -3,13 +3,13 @@
 <!-- Update before /compact or session end. -->
 <!-- Sibling files: plan.md (mission), decisions.md (audit trail), mistakes.md (error patterns). -->
 
-## Phase 13 In Progress 🔧
+## Phase 13 In Progress 🔧 — Branch: `Abe`
 
 Part A (A1-A9): Antivax separate swarm — COMPLETE ✅ (10 commits)
-Part B (B1): Doctor self-cure test — COMPLETE ✅ (commit 33ebb77, 25 tests pass)
-Part B (B2-B8): Antivax test coverage — PENDING (tasks defined in plan.md)
-Part C (C1-C4): Steering model fixes — PENDING (user requested pause before C tasks)
-Build clean, 25 tests pass (12 ConfigLoader + 11 SpatialGrid + 2 CureContract)
+Part B (B1): Doctor self-cure test — COMPLETE ✅ (commit 33ebb77)
+Part B (B2-B8): Antivax test coverage — COMPLETE ✅ (commit 62fc012, 10 new tests)
+Part C (C1-C4): Steering model fixes — IN PROGRESS 🔧 (branch Abe)
+Build clean, 35 tests pass (12 ConfigLoader + 11 SpatialGrid + 2 CureContract + 10 Antivax)
 
 ---
 
@@ -95,8 +95,8 @@ Part A (A1-A9) complete — AntivaxBoid promoted to primary swarm tag:
 - A7: Antivax stats tracking + population graph orange line (a204f38)
 - A8: Antivax steering uses AntivaxBoid primary tag (4ace9ac)
 - A9: Deprecated Antivax tag removed from codebase (caf88d4)
-Part B1 complete — Doctor no-self-cure unit test (33ebb77), 25 tests pass.
-Part B2-B8 pending — Antivax test coverage (see plan.md).
+Part B1 complete — Doctor no-self-cure unit test (33ebb77).
+Part B2-B8 complete — 10 antivax tests in test_antivax.cpp (62fc012), 35 tests pass.
 Part C pending — Steering fixes (C1-C4) paused per user request.
 
 ---
@@ -130,6 +130,7 @@ Part C pending — Steering fixes (C1-C4) paused per user request.
 | Orchestrator | Hook fix + README synthesis | main | ✅ dc3b081, f4638cb | Phase 12 |
 | Orchestrator+Subagents | Phase 13 Part A: AntivaxBoid swarm (A1-A9) | main | ✅ 9 tasks, 10 commits | Phase 13 |
 | Subagent (sonnet) | Phase 13 Part B1: Doctor no-self-cure test | main | ✅ commit 33ebb77, 25 tests | Phase 13 |
+| Subagent (sonnet) + Orchestrator | Phase 13 Part B2-B8: Antivax test coverage | main | ✅ commit 62fc012, 35 tests | Phase 13 |
 
 ---
 

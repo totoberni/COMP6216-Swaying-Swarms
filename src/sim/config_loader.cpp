@@ -71,6 +71,7 @@ bool apply_field(SimConfig& config, const std::string& key,
     // Movement
     else if (key == "max_speed")                { config.max_speed = parse_float(val, line_num); }
     else if (key == "max_force")                { config.max_force = parse_float(val, line_num); }
+    else if (key == "min_speed")                { config.min_speed = parse_float(val, line_num); }
     else if (key == "separation_weight")        { config.separation_weight = parse_float(val, line_num); }
     else if (key == "alignment_weight")         { config.alignment_weight = parse_float(val, line_num); }
     else if (key == "cohesion_weight")          { config.cohesion_weight = parse_float(val, line_num); }

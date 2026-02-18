@@ -1,13 +1,6 @@
 # Changelog — ecs
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
-- **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_reproduction_system(flecs::world& world) {    ' -> 'void register_reproduction_system(flecs::world& world) {    ' | session:`cefb983f`
-- **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_render_sync_system(flecs::world& world) {     ' -> 'void register_render_sync_system(flecs::world& world) {     ' | session:`cefb983f`
-- **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_movement_system(flecs::world& world) {     wor' -> 'void register_movement_system(flecs::world& world) {     wor' | session:`cefb983f`
-- **21:14Z** | `src/ecs/systems.cpp` | Edited: 'void register_reproduction_system(flecs::world& world) {    ' -> 'void register_reproduction_system(flecs::world& world) {    ' | session:`cefb983f`
-- **21:15Z** | `src/ecs/spatial_grid_stub.cpp` | File written/created | session:`cefb983f`
-- **21:18Z** | `src/ecs/stats.cpp` | Edited: 'void register_stats_system(flecs::world& world) {     world.' -> 'void register_stats_system(flecs::world& world) {     world.' | session:`cefb983f`
-- **21:18Z** | `src/ecs/stats.cpp` | Edited: 'void register_stats_system(flecs::world& world) {     world.' -> 'void register_stats_system(flecs::world& world) {     world.' | session:`cefb983f`
 - **21:19Z** | `src/ecs/systems.cpp` | Edited: 'void register_rebuild_grid_system(flecs::world& world) {    ' -> 'void register_rebuild_grid_system(flecs::world& world) {    ' | session:`cefb983f`
 - **22:15Z** | `src/ecs/world.cpp` | Edited: '#include "world.h" #include "components.h" #include "spatial' -> '#include "world.h" #include "components.h" #include "spatial' | session:`e9956e72`
 - **22:16Z** | `src/ecs/systems.cpp` | File written/created | session:`e9956e72`
@@ -31,3 +24,10 @@
 - **00:17Z** | `src/ecs/world.cpp` | Edited: '    // Register tag components     world.component<NormalBoi' -> '    // Register tag components     world.component<NormalBoi' | session:`f655d95a`
 - **00:19Z** | `src/ecs/systems.h` | Edited: '#pragma once  #include <flecs.h>  void register_all_systems(' -> '#pragma once  #include <flecs.h>  void register_all_systems(' | session:`f655d95a`
 - **00:37Z** | `src/ecs/systems.h` | Edited: '#pragma once  #include <flecs.h>  void register_all_systems(' -> '#pragma once  #include <flecs.h>  void register_all_systems(' | session:`f655d95a`
+- **01:35Z** | `src/ecs/systems.cpp` | Edited: '                for (const auto& [nid, dist] : neighbors) { ' -> '                for (const auto& [nid, dist] : neighbors) { ' | session:`f655d95a`
+- **01:35Z** | `src/ecs/systems.cpp` | Edited: '                // Average and apply alignment force (desire' -> '                // Average and apply alignment force (desire' | session:`f655d95a`
+- **01:35Z** | `src/ecs/systems.cpp` | Edited: '                // Average and apply cohesion force (steer t' -> '                // Average and apply cohesion force (desired' | session:`f655d95a`
+- **01:35Z** | `src/ecs/systems.cpp` | Edited: '                // Clamp total force to max_force           ' -> '                // Clamp total force to max_force           ' | session:`f655d95a`
+- **01:36Z** | `src/ecs/systems.cpp` | Edited: 'void register_movement_system(flecs::world& world) {     wor' -> 'void register_movement_system(flecs::world& world) {     wor' | session:`f655d95a`
+- **01:39Z** | `src/ecs/systems.cpp` | Edited: '                    // Clamp repulsion force to max_force   ' -> '                    // Clamp repulsion force to max_force   ' | session:`f655d95a`
+- **01:39Z** | `src/ecs/systems.cpp` | Edited: '            // Enforce minimum speed — prevents boids from' -> '            // Enforce minimum speed — prevents boids from' | session:`f655d95a`

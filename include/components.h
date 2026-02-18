@@ -91,6 +91,7 @@ struct SimConfig {
     // --- Boid movement parameters (per-second; converted from master plan per-frame @ 60fps) ---
     float max_speed                = 180.0f;  // 3.0 px/frame * 60fps
     float max_force                = 6.0f;    // 0.1 force/frame * 60fps
+    float min_speed                = 54.0f;   // 30% of max_speed — prevents stalling
 
     float separation_weight        = 1.5f;
     float alignment_weight         = 1.0f;

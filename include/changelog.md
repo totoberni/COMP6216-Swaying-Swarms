@@ -24,3 +24,4 @@
 - **00:00Z** | `include/components.h` | Edited: '    int newborns_normal = 0;     int newborns_doctor = 0;   ' -> '    int newborns_normal = 0;     int newborns_doctor = 0;   ' | session:`f655d95a`
 - **00:03Z** | `include/render_state.h` | Edited: '    bool is_doctor; ' -> '    int swarm_type;  // 0=normal, 1=doctor, 2=antivax ' | session:`f655d95a`
 - **00:17Z** | `include/components.h` | Edited: 'struct NormalBoid {}; struct DoctorBoid {}; struct Male {}; ' -> 'struct NormalBoid {}; struct DoctorBoid {}; struct Male {}; ' | session:`f655d95a`
+- **01:35Z** | `include/components.h` | Edited: '    float max_speed                = 180.0f;  // 3.0 px/fram' -> '    float max_speed                = 180.0f;  // 3.0 px/fram' | session:`f655d95a`
