@@ -9,7 +9,7 @@ struct BoidRenderData {
     float angle;
     uint32_t color;
     float radius;
-    bool is_doctor;
+    int swarm_type;  // 0=normal, 1=doctor, 2=antivax
 };
 
 struct RenderState {

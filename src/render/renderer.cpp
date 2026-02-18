@@ -295,9 +295,14 @@ void render_frame(const RenderState& state) {
 
     // Draw interaction radii first (background layer)
     for (const auto& boid : state.boids) {
-        uint32_t radius_color = boid.is_doctor
-            ? RenderConfig::COLOR_RADIUS_DOCTOR
-            : RenderConfig::COLOR_RADIUS_NORMAL;
+        uint32_t radius_color;
+        if (boid.swarm_type == 1) {
+            radius_color = RenderConfig::COLOR_RADIUS_DOCTOR;
+        } else if (boid.swarm_type == 2) {
+            radius_color = RenderConfig::COLOR_RADIUS_ANTIVAX;
+        } else {
+            radius_color = RenderConfig::COLOR_RADIUS_NORMAL;
+        }
         draw_interaction_radius(boid.x, boid.y, boid.radius, radius_color);
     }
 

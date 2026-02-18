@@ -754,18 +754,27 @@ void register_render_sync_system(flecs::world& world) {
                 brd.x = pos.x;
                 brd.y = pos.y;
                 brd.angle = heading.angle;
-                brd.is_doctor = e.has<DoctorBoid>();
+                // Determine swarm type
+                if (e.has<DoctorBoid>()) {
+                    brd.swarm_type = 1;
+                } else if (e.has<AntivaxBoid>()) {
+                    brd.swarm_type = 2;
+                } else {
+                    brd.swarm_type = 0;
+                }
 
-                // Color: green for normal, orange for doctor, red if infected
+                // Color: red if infected, else swarm-specific
                 if (e.has<Infected>()) {
                     brd.color = RenderConfig::COLOR_INFECTED;
-                } else if (brd.is_doctor) {
+                } else if (brd.swarm_type == 2) {
+                    brd.color = RenderConfig::COLOR_ANTIVAX;
+                } else if (brd.swarm_type == 1) {
                     brd.color = RenderConfig::COLOR_DOCTOR;
                 } else {
                     brd.color = RenderConfig::COLOR_NORMAL;
                 }
 
-                brd.radius = brd.is_doctor ? config.r_interact_doctor : config.r_interact_normal;
+                brd.radius = (brd.swarm_type == 1) ? config.r_interact_doctor : config.r_interact_normal;
                 rs.boids.push_back(brd);
             });
         });

@@ -14,7 +14,7 @@ struct DemoBoid {
     float angle;
     uint32_t color;
     float radius;
-    bool is_doctor;
+    int swarm_type;  // 0=normal, 1=doctor, 2=antivax
 };
 
 int main() {
@@ -41,10 +41,20 @@ int main() {
         boid.vy = vel_dist(gen);
         boid.angle = std::atan2(boid.vy, boid.vx);
 
-        // 10% doctors, 90% normal
-        boid.is_doctor = (i < NUM_BOIDS / 10);
-        boid.color = boid.is_doctor ? RenderConfig::COLOR_DOCTOR : RenderConfig::COLOR_NORMAL;
-        boid.radius = boid.is_doctor ? 40.0f : 30.0f;
+        // 10% doctors, 10% antivax, 80% normal
+        if (i < NUM_BOIDS / 10) {
+            boid.swarm_type = 1;  // doctor
+            boid.color = RenderConfig::COLOR_DOCTOR;
+            boid.radius = 40.0f;
+        } else if (i < NUM_BOIDS / 5) {
+            boid.swarm_type = 2;  // antivax
+            boid.color = RenderConfig::COLOR_ANTIVAX;
+            boid.radius = 30.0f;
+        } else {
+            boid.swarm_type = 0;  // normal
+            boid.color = RenderConfig::COLOR_NORMAL;
+            boid.radius = 30.0f;
+        }
 
         boids.push_back(boid);
     }
@@ -88,7 +98,7 @@ int main() {
             render_boid.angle = boid.angle;
             render_boid.color = boid.color;
             render_boid.radius = boid.radius;
-            render_boid.is_doctor = boid.is_doctor;
+            render_boid.swarm_type = boid.swarm_type;
             render_state.boids.push_back(render_boid);
         }
 
