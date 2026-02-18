@@ -21,10 +21,17 @@ The simulation runs a 2D pandemic model with **three separate boid swarms**, eac
 
 ## Core Boid Flocking Model (All Three Swarms)
 
+Our implementation is a **hybrid model** combining elements from two canonical reference implementations. For formal mathematical definitions with LaTeX equations, see `docs/boid_model_reference.md`.
+
+- **Separation:** Model A (V. Hunter Adams / Cornell ECE) — raw positional-difference accumulation, cross-swarm
+- **Alignment & Cohesion:** Model B (Reynolds GDC'99 / Shiffman) — `desired = normalize(direction) * max_speed; steer = (desired - velocity) * weight`, same-swarm only
+- **Force clamping:** Total force clamped to `max_force` (not per-behavior like Model B)
+- **Integration:** Frame-rate independent forward Euler: `v += F * dt`, `p += v * dt`
+
 Every boid in every swarm follows the Reynolds boid model (1987). The three fundamental steering behaviors are:
 
 ### Separation
-Each boid steers away from nearby flockmates within `separation_radius` (default: 25.0) to avoid crowding. Separation applies to ALL nearby boids regardless of swarm — no boid should collide with any other.
+Each boid steers away from nearby flockmates within `separation_radius` (default: 12.0) to avoid crowding. Separation applies to ALL nearby boids regardless of swarm — no boid should collide with any other.
 
 **Canonical formula:**
 ```
@@ -60,7 +67,7 @@ The normalization to `max_speed` is critical: without it, the force magnitude sc
 
 ### Speed Limits
 - **Maximum speed:** `max_speed` (default: 180.0 units/second). Velocity is clamped after all forces are applied.
-- **Maximum steering force:** `max_force` (default: 6.0 units/second). The total steering vector (sum of separation + alignment + cohesion + any special forces) is clamped before being added to velocity.
+- **Maximum steering force:** `max_force` (default: 180.0 units/second). The total steering vector (sum of separation + alignment + cohesion + any special forces) is clamped before being added to velocity.
 - **Minimum speed:** Recommended at ~30% of max_speed to prevent boids from stalling. Flocking entities should never be stationary.
 
 ### Swarm-Specific Flocking Rule
@@ -248,11 +255,11 @@ All parameters are stored in the `SimConfig` singleton and loaded from `config.i
 | Parameter | Field | Default | Description |
 |-----------|-------|---------|-------------|
 | Max speed | `max_speed` | 180.0 /sec | Boid velocity cap |
-| Max force | `max_force` | 6.0 /sec | Steering force cap |
+| Max force | `max_force` | 180.0 /sec | Steering force cap |
 | Separation weight | `separation_weight` | 1.5 | Avoid nearby boids (all swarms) |
 | Alignment weight | `alignment_weight` | 1.0 | Match heading (same-swarm only) |
 | Cohesion weight | `cohesion_weight` | 1.0 | Steer toward group center (same-swarm only) |
-| Separation radius | `separation_radius` | 25.0 | Protected range for separation |
+| Separation radius | `separation_radius` | 12.0 | Protected range for separation |
 | Alignment radius | `alignment_radius` | 50.0 | Visual range for alignment |
 | Cohesion radius | `cohesion_radius` | 50.0 | Visual range for cohesion |
 
@@ -310,15 +317,23 @@ The simulation is interactive with a GUI showing real-time data:
 - `src/spatial/` — Fixed-cell spatial hash grid (pure C++, no FLECS/Raylib)
 - `src/render/` — Raylib window, drawing, raygui stats overlay
 - `include/` — Shared headers (API contract between modules)
-- `tests/` — Unit tests (23 total: 12 ConfigLoader + 11 SpatialGrid)
+- `docs/` — Boid model formal reference, task logs
+- `tests/` — Unit tests (35 total: 12 ConfigLoader + 11 SpatialGrid + 2 CureContract + 10 Antivax)
 - `config.ini` — Default simulation parameters
 
 ---
 
-## Known Issues Requiring Fixes
+## Known Issues — ALL RESOLVED ✅
 
-1. **Cohesion steering is incorrect:** Force magnitude scales with distance from center-of-mass instead of using normalized desired velocity. Causes oscillation and poor flock formation.
-2. **Alignment steering is partially incorrect:** Average neighbor velocity is not normalized to max_speed before computing steering difference. Weakens alignment when neighbors are slow.
-3. **No swarm-specific flocking:** All boids align/cohere with all other boids regardless of swarm type. Must filter to same-swarm for alignment/cohesion.
-4. **Antivax is a tag, not a separate swarm:** Currently `Antivax` is an additive tag on `NormalBoid` entities. Must be promoted to `AntivaxBoid` as a primary swarm classification.
-5. **No minimum speed enforcement:** Boids can stall when opposing forces cancel.
+All five original issues have been fixed as of Phase 13:
+
+1. ~~Cohesion steering is incorrect~~ → Fixed: Reynolds canonical `(normalize(COM-pos) * max_speed - vel) * weight` (Phase 13 C1)
+2. ~~Alignment steering is partially incorrect~~ → Fixed: `normalize(avg_vel) * max_speed` (Phase 13 C2)
+3. ~~No swarm-specific flocking~~ → Fixed: same-swarm filtering for alignment/cohesion (Phase 13 C3)
+4. ~~Antivax is a tag, not a separate swarm~~ → Fixed: `AntivaxBoid` as primary swarm tag (Phase 13 A1-A9)
+5. ~~No minimum speed enforcement~~ → Fixed: `min_speed = 54.0` enforcement in MovementSystem (Phase 13 C4)
+
+Additional post-Phase 13 fixes:
+6. Offspring velocity: spawn at `max_speed` instead of random (DEC-025)
+7. Separation formula: raw accumulation per spec (DEC-025)
+8. Parameter tuning: `max_force = 180.0`, `separation_radius = 12.0` for responsive flocking (DEC-026)

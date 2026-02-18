@@ -10,6 +10,7 @@ All parts complete. Build clean, zero warnings, 35 tests pass.
 - Part B (B1-B8): 12 unit tests (2 CureContract + 10 Antivax) — commits 33ebb77, 62fc012
 - Part C (C1-C4): Reynolds steering fixes + swarm flocking + min_speed — commit a0ed8c2
 - Post-C fixes: offspring velocity uniform, separation raw accumulation, raygui SYSTEM include
+- Post-C: Web audit + parameter tuning (max_force=180, separation_radius=12) + formal model reference doc
 
 ---
 
@@ -105,6 +106,7 @@ All rules in one commit (c0a3aef, 516 lines): aging, death, infection, cure, rep
 | Subagent (sonnet) | Phase 13 Part C4: min_speed enforcement | Abe | ✅ min_speed=54.0 | Phase 13 |
 | code-reviewer | Phase 13 Part C: Post-implementation review | Abe | ✅ 2 critical fixed | Phase 13 |
 | ecs-architect + Orchestrator | Boid model compliance fixes | Abe | ✅ offspring vel + separation + raygui | Post-13 |
+| Orchestrator + ecs-architect | Web audit + parameter tuning + formal reference | Abe | ✅ max_force=180, sep_radius=12, docs/boid_model_reference.md | Post-13 |
 
 ---
 
@@ -119,3 +121,5 @@ All rules in one commit (c0a3aef, 516 lines): aging, death, infection, cure, rep
 ## Session Decisions
 <!-- Scratch space for this session. Promote to decisions.md before session end. -->
 - DEC-025: Boid model compliance fixes — offspring velocity uniform, separation raw accumulation, raygui SYSTEM include. Promoted to decisions.md.
+- DEC-026: Web audit + parameter tuning — max_force=180.0, separation_radius=12.0. Promoted to decisions.md.
+- DEC-027: Formal boid model reference document — docs/boid_model_reference.md. Promoted to decisions.md.

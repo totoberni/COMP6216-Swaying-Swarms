@@ -219,3 +219,29 @@ Should check #2 before terminating on timeout. 16-17 minutes is acceptable for c
 3. raygui build warnings: SYSTEM include for third-party headers
 **Rationale:** Offspring speed randomization created bimodal speed population breaking flocking. Separation normalization+averaging made it ~4x weaker than spec. raygui warnings were noise from third-party code.
 **Outcome:** Build clean, zero warnings, 35 tests pass. Uniform boid speeds and stronger separation.
+
+## DEC-026: Web Audit of Boid Model & Parameter Tuning
+**When:** 2026-02-18 (Post Phase 13, branch Abe)
+**Context:** Boid alignment was visually "iffy" — swarms formed but turning was sluggish and unresponsive. Web audit compared our implementation against two canonical reference models.
+**Sources audited:**
+- Model A: V. Hunter Adams / Cornell ECE (simple boids, no force clamp)
+- Model B: Daniel Shiffman / Processing.org / Reynolds GDC'99 (steering model with per-force maxforce)
+**Findings:**
+- CRITICAL: `max_force = 6.0` with `max_speed = 180.0` gave 60-second 180-degree turn time (vs 0.33s Adams, 2.2s Shiffman)
+- WARNING: `separation_radius = 25` at 50% of alignment_radius caused separation to dominate total force after clamping
+- INFO (all correct): alignment/cohesion formulas, separation raw accumulation, `*dt` Euler integration, speed clamping
+**Decision:** Set `max_force = 180.0` (= max_speed) and `separation_radius = 12.0` (~24% of alignment_radius).
+**Rationale:** Force/speed ratio of 1.0 gives ~2s turn time, matching Shiffman's reference. Smaller separation radius limits edge-of-zone force dominance (see Finding 4 in docs/boid_model_reference.md).
+**Outcome:** Build clean, 35 tests pass. Parameters updated in config.ini, components.h, context.md.
+
+## DEC-027: Formal Boid Model Reference Document
+**When:** 2026-02-18 (Post Phase 13, branch Abe)
+**Context:** Needed formal mathematical grounding for the hybrid boid model used in our simulation, with LaTeX equations comparing against reference implementations.
+**Decision:** Created `docs/boid_model_reference.md` with:
+1. Model A (Adams) — formal equations, frame-based, no force clamp
+2. Model B (Shiffman/Reynolds) — formal equations, per-force truncation
+3. Our Hybrid Model (COMP6216) — separation=Model A, alignment/cohesion=Model B, frame-rate independent
+4. Finding 4 derivation: separation force asymmetry (Model A: |f|∝d, Model B: |f|∝1/d)
+5. Frame-rate independence proof: `*dt` does NOT undermine the model, improves on frame-dependent references
+6. Turn-time comparison table (before/after fix)
+**Rationale:** Academic documentation for the coursework. Proves our implementation choices are mathematically grounded.
