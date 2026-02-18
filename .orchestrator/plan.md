@@ -474,17 +474,17 @@ PHASE 13 TASK SEQUENCE:
       |
   B1: Doctor no-self-cure unit test                         ✅ COMPLETE
       |
-  B2–B8: Antivax test coverage (7 tasks)                   ⏳ PENDING
-      | (B2-B8 can all run in parallel — separate test functions, one file)
+  B2–B8: Antivax test coverage (7 tasks)                   ✅ COMPLETE (62fc012)
+      | (10 tests in test_antivax.cpp, 35 total)
       |
-  C1: Fix cohesion steering --+                             ⏳ PENDING
-  C2: Fix alignment steering --+ (C1, C2 independent)
+  C1: Fix cohesion steering --+                             ✅ COMPLETE (a0ed8c2)
+  C2: Fix alignment steering --+ (C1, C2 independent)      ✅ COMPLETE (a0ed8c2)
       |                        |
-  C3: Swarm-specific flocking <+ (depends on C1 + C2)
+  C3: Swarm-specific flocking <+ (depends on C1 + C2)      ✅ COMPLETE (a0ed8c2)
       |
-  C4: Minimum speed enforcement
+  C4: Minimum speed enforcement                            ✅ COMPLETE (a0ed8c2)
       |
-  DONE -- commit, verify, push
+  DONE -- Branch Abe, 35 tests pass, all 8 success criteria met
 ```
 
 ## Worker Assignment Strategy

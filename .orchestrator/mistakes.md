@@ -59,7 +59,8 @@
 
 | # | Subagent | Phase | What Went Wrong | Root Cause | Fix Applied | Prevention Rule |
 |---|----------|-------|-----------------|------------|-------------|-----------------|
-| — | — | — | No mistakes recorded yet | — | — | — |
+| 1 | sonnet (B2-B8 tests) | Phase 13 | Reproduction test used `reproduction_cooldown = 0.0f` with `p_offspring_normal = 1.0f` and `offspring_mean_normal = 3.0f` over 120 frames. Exponential population growth caused test to hang indefinitely. | Worker copied test parameters from plan.md spec literally without considering exponential growth dynamics. Zero cooldown means every offspring reproduces next frame: 3^120 → unbounded. | Changed `reproduction_cooldown = 60.0f` and frame count from 120 to 5. Applied same fix to NoCrossSwarm test. | "Reproduction tests MUST use non-zero cooldowns (≥60.0f) and minimal frame counts (≤10). Zero cooldown with p=1.0 causes exponential growth." |
+| 2 | ecs-architect (C1-C3) | Phase 13 | Fixed max_force clamp in SteeringSystem (`if (force_mag > 1)` → `config.max_force`) but missed the identical bug in AntivaxSteeringSystem. Code review caught it. | Worker's task prompt only mentioned SteeringSystem. AntivaxSteeringSystem was a copy-paste of the same logic but wasn't in scope of C1-C3. | Applied same max_force fix to AntivaxSteeringSystem after code review flagged CRIT-1. | "When fixing a bug in one steering system, ALWAYS check ALL steering systems (SteeringSystem, AntivaxSteeringSystem, any future additions) for the same bug. Steering systems are often copy-pasted." |
 
 ---
 
