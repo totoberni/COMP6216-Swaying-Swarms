@@ -209,3 +209,13 @@ Should check #2 before terminating on timeout. 16-17 minutes is acceptable for c
 - WARN-3/CRIT-2: min_speed could exceed max_speed via sliders, causing oscillation.
 **Fixes applied:** max_force clamp in antivax steering, min/max speed guard.
 **Lesson:** Always include ALL steering-related systems when auditing force clamp bugs, not just the primary SteeringSystem.
+
+## DEC-025: Boid Model Compliance Fixes
+**When:** 2026-02-18 (Post Phase 13, branch Abe)
+**Context:** User tested simulation locally and found boids not behaving like proper swarm models — offspring had random speeds, separation was too weak.
+**Decision:** Three parallel fixes:
+1. Offspring velocity: spawn at `max_speed` instead of random [0, max_speed*0.5] (all 3 reproduction blocks)
+2. Separation formula: raw accumulation per context.md spec instead of normalized+averaged
+3. raygui build warnings: SYSTEM include for third-party headers
+**Rationale:** Offspring speed randomization created bimodal speed population breaking flocking. Separation normalization+averaging made it ~4x weaker than spec. raygui warnings were noise from third-party code.
+**Outcome:** Build clean, zero warnings, 35 tests pass. Uniform boid speeds and stronger separation.

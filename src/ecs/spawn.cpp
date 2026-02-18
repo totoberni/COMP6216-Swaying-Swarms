@@ -17,7 +17,6 @@ void spawn_normal_boids(flecs::world& world, int count) {
     std::uniform_real_distribution<float> dist_x(0.0f, config.world_width);
     std::uniform_real_distribution<float> dist_y(0.0f, config.world_height);
     std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
-    std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
     std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
     std::uniform_real_distribution<float> dist_infect(0.0f, 1.0f);
     std::uniform_real_distribution<float> dist_antivax(0.0f, 1.0f);
@@ -64,7 +63,6 @@ void spawn_doctor_boids(flecs::world& world, int count) {
     std::uniform_real_distribution<float> dist_x(0.0f, config.world_width);
     std::uniform_real_distribution<float> dist_y(0.0f, config.world_height);
     std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
-    std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
     std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
     std::uniform_real_distribution<float> dist_infect(0.0f, 1.0f);
 

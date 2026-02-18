@@ -47,7 +47,8 @@
 
 | # | Phase | What Went Wrong | Root Cause | Fix Applied | Prevention Rule |
 |---|-------|-----------------|------------|-------------|-----------------|
-| — | — | No mistakes recorded yet | — | — | — |
+| 1 | Phase 10 | Offspring spawned with random speed `dist_speed(0, max_speed*0.5)` instead of `max_speed`. Created bimodal speed population: parents at 180 px/s, offspring at random [0,90]. Over time offspring dominate and swarm becomes a mix of fast and slow boids that can't flock properly. | Worker used a random speed distribution for offspring without considering that boids in a swarm model should move at uniform speed. Initial spawn correctly used `max_speed` but reproduction didn't match. | Changed all 3 reproduction blocks (Normal, Doctor, Antivax) to `float speed = config.max_speed;`. Removed unused `dist_speed` distributions from spawn functions. | "Offspring MUST spawn at `config.max_speed` with random direction. Never randomize offspring speed — uniform speed is essential for proper flocking." |
+| 2 | Phase 10 | Separation formula normalized each neighbor's vector to unit length (`dx/dist`) and averaged by count (`sep_x /= sep_count`). Context.md spec uses raw accumulation: `close_dx += my.x - neighbor.x` without normalization or averaging. Result: separation force ~4x weaker than specified. | Worker implemented a "cleaner" normalized approach rather than following the context.md pseudocode exactly. The normalized+averaged version gives equal weight to all neighbors regardless of count, breaking the intended crowd-repulsion scaling. | Changed to raw accumulation: `sep_x += dx` (no `/dist`), removed averaging division. Same fix applied to AntivaxSteeringSystem repulsion. | "Separation and repulsion forces MUST use raw positional difference accumulation per context.md spec. Never normalize per-neighbor or average by count — the accumulation IS the force scaling mechanism." |
 
 ### Ralph Loop Iterations
 

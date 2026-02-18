@@ -59,6 +59,8 @@ add_executable(boid_swarm ${MAIN_SOURCES})
 target_include_directories(boid_swarm PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_include_directories(boid_swarm SYSTEM PRIVATE
     ${raygui_SOURCE_DIR}/src
 )
 
@@ -76,8 +78,10 @@ add_executable(render_demo
 target_include_directories(render_demo PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${raygui_SOURCE_DIR}/src
     ${flecs_SOURCE_DIR}/include
+)
+target_include_directories(render_demo SYSTEM PRIVATE
+    ${raygui_SOURCE_DIR}/src
 )
 
 target_link_libraries(render_demo PRIVATE

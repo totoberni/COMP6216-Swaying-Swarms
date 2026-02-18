@@ -75,17 +75,14 @@ void register_antivax_steering_system(flecs::world& world) {
                     float dx = pos.x - npos.x;
                     float dy = pos.y - npos.y;
 
-                    // Add repulsion force (stronger when closer)
-                    repulsion_x += dx / dist;
-                    repulsion_y += dy / dist;
+                    // Add repulsion force (raw accumulation)
+                    repulsion_x += dx;
+                    repulsion_y += dy;
                     doctor_count++;
                 }
 
                 // Apply repulsion force if any doctors detected
                 if (doctor_count > 0) {
-                    repulsion_x /= static_cast<float>(doctor_count);
-                    repulsion_y /= static_cast<float>(doctor_count);
-
                     float force_x = repulsion_x * config.antivax_repulsion_weight;
                     float force_y = repulsion_y * config.antivax_repulsion_weight;
 
@@ -156,8 +153,8 @@ void register_steering_system(flecs::world& world) {
 
                     // Separation: repel from ALL nearby boids (cross-swarm)
                     if (dist < config.separation_radius) {
-                        sep_x += dx / dist;
-                        sep_y += dy / dist;
+                        sep_x += dx;
+                        sep_y += dy;
                         sep_count++;
                     }
 
@@ -178,10 +175,8 @@ void register_steering_system(flecs::world& world) {
 
                 float force_x = 0.0f, force_y = 0.0f;
 
-                // Average and apply separation force
+                // Apply accumulated separation force (raw per context.md spec)
                 if (sep_count > 0) {
-                    sep_x /= static_cast<float>(sep_count);
-                    sep_y /= static_cast<float>(sep_count);
                     force_x += sep_x * config.separation_weight;
                     force_y += sep_y * config.separation_weight;
                 }
@@ -560,12 +555,11 @@ void register_reproduction_system(flecs::world& world) {
 
                     // Spawn offspring
                     std::uniform_real_distribution<float> dist_angle(0.0f, TWO_PI);
-                    std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
                     std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
 
                     for (int i = 0; i < count; ++i) {
                         float angle = dist_angle(rng);
-                        float speed = dist_speed(rng);
+                        float speed = config.max_speed;
 
                         auto child = w.entity()
                             .add<NormalBoid>()
@@ -671,12 +665,11 @@ void register_reproduction_system(flecs::world& world) {
 
                     // Spawn offspring
                     std::uniform_real_distribution<float> dist_angle(0.0f, TWO_PI);
-                    std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
                     std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
 
                     for (int i = 0; i < count; ++i) {
                         float angle = dist_angle(rng);
-                        float speed = dist_speed(rng);
+                        float speed = config.max_speed;
 
                         auto child = w.entity()
                             .add<DoctorBoid>()
@@ -782,12 +775,11 @@ void register_reproduction_system(flecs::world& world) {
 
                     // Spawn offspring — inherit AntivaxBoid tag from parents
                     std::uniform_real_distribution<float> dist_angle(0.0f, TWO_PI);
-                    std::uniform_real_distribution<float> dist_speed(0.0f, config.max_speed * 0.5f);
                     std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
 
                     for (int i = 0; i < count; ++i) {
                         float angle = dist_angle(rng);
-                        float speed = dist_speed(rng);
+                        float speed = config.max_speed;
 
                         auto child = w.entity()
                             .add<AntivaxBoid>()

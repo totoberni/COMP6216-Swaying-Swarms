@@ -5,10 +5,11 @@
 
 ## Phase 13 COMPLETE ✅ — Branch: `Abe`
 
-All parts complete. Build clean, 35 tests pass. Branch `Abe` is 12 commits ahead of origin/main.
+All parts complete. Build clean, zero warnings, 35 tests pass.
 - Part A (A1-A9): AntivaxBoid separate swarm — 10 commits on main
 - Part B (B1-B8): 12 unit tests (2 CureContract + 10 Antivax) — commits 33ebb77, 62fc012
-- Part C (C1-C4): Reynolds steering fixes + swarm flocking + min_speed — commit a0ed8c2 on Abe
+- Part C (C1-C4): Reynolds steering fixes + swarm flocking + min_speed — commit a0ed8c2
+- Post-C fixes: offspring velocity uniform, separation raw accumulation, raygui SYSTEM include
 
 ---
 
@@ -103,6 +104,7 @@ All rules in one commit (c0a3aef, 516 lines): aging, death, infection, cure, rep
 | ecs-architect | Phase 13 Part C1-C3: Steering fixes | Abe | ✅ Reynolds canonical + swarm filter | Phase 13 |
 | Subagent (sonnet) | Phase 13 Part C4: min_speed enforcement | Abe | ✅ min_speed=54.0 | Phase 13 |
 | code-reviewer | Phase 13 Part C: Post-implementation review | Abe | ✅ 2 critical fixed | Phase 13 |
+| ecs-architect + Orchestrator | Boid model compliance fixes | Abe | ✅ offspring vel + separation + raygui | Post-13 |
 
 ---
 
@@ -116,4 +118,4 @@ All rules in one commit (c0a3aef, 516 lines): aging, death, infection, cure, rep
 
 ## Session Decisions
 <!-- Scratch space for this session. Promote to decisions.md before session end. -->
-<!-- All promoted to decisions.md (DEC-016 through DEC-025). -->
+- DEC-025: Boid model compliance fixes — offspring velocity uniform, separation raw accumulation, raygui SYSTEM include. Promoted to decisions.md.
