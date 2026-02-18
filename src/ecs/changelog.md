@@ -1,8 +1,6 @@
 # Changelog — ecs
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
-- **21:13Z** | `src/ecs/systems.cpp` | Edited: '            // Update heading based on velocity             ' -> '            // Update heading based on velocity             ' | session:`cefb983f`
-- **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_movement_system(flecs::world& world) {     wor' -> 'void register_movement_system(flecs::world& world) {     wor' | session:`cefb983f`
 - **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_reproduction_system(flecs::world& world) {    ' -> 'void register_reproduction_system(flecs::world& world) {    ' | session:`cefb983f`
 - **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_render_sync_system(flecs::world& world) {     ' -> 'void register_render_sync_system(flecs::world& world) {     ' | session:`cefb983f`
 - **21:13Z** | `src/ecs/systems.cpp` | Edited: 'void register_movement_system(flecs::world& world) {     wor' -> 'void register_movement_system(flecs::world& world) {     wor' | session:`cefb983f`
@@ -31,3 +29,5 @@
 - **00:14Z** | `src/ecs/spawn.cpp` | Edited: '    stats.newborns_total = 0;     stats.newborns_normal = 0;' -> '    stats.newborns_total = 0;     stats.newborns_normal = 0;' | session:`f655d95a`
 - **00:17Z** | `src/ecs/systems.cpp` | Edited: '            // Only process antivax normal boids            ' -> '            // Only process AntivaxBoid entities (primary sw' | session:`f655d95a`
 - **00:17Z** | `src/ecs/world.cpp` | Edited: '    // Register tag components     world.component<NormalBoi' -> '    // Register tag components     world.component<NormalBoi' | session:`f655d95a`
+- **00:19Z** | `src/ecs/systems.h` | Edited: '#pragma once  #include <flecs.h>  void register_all_systems(' -> '#pragma once  #include <flecs.h>  void register_all_systems(' | session:`f655d95a`
+- **00:37Z** | `src/ecs/systems.h` | Edited: '#pragma once  #include <flecs.h>  void register_all_systems(' -> '#pragma once  #include <flecs.h>  void register_all_systems(' | session:`f655d95a`

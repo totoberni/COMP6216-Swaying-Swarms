@@ -228,23 +228,129 @@ Use the `/record-mistake` command or pipe JSON to `.claude/hooks/record-mistake.
 
 ---
 
-## Part B: Doctor Self-Cure Prevention (Task B1)
+## Part B: Tests (Tasks B1–B8)
 
-### Task B1: Verify and Test Doctor No-Self-Cure
+### Task B1: Doctor No-Self-Cure Test — COMPLETE ✅ (commit 33ebb77)
 
-**Files:** `src/ecs/systems.cpp` (CureSystem), `tests/` (new test)
+---
 
-**Changes:**
-1. Verify existing `if (nid == e.id()) continue;` in CureSystem
-2. Add explicit contract comment above the line
-3. Write a unit test:
-   - Create FLECS world with one infected DoctorBoid
-   - Run CureSystem for several frames → assert doctor remains infected
-   - Add second healthy DoctorBoid within cure radius → run → assert first can be cured
+### Task B2: Antivax Spawn — Mutually Exclusive Tags
 
-**Commit:** `test(sim): add doctor no-self-cure contract test`
+**Files:** `tests/test_cure.cpp` (or new `tests/test_antivax.cpp`)
 
-**Success criteria:** New test passes. All existing tests pass.
+**Test:** `AntivaxSpawn_MutuallyExclusiveTags`
+1. Create FLECS world, register components, set SimConfig with `p_antivax = 1.0f` (all normals become antivax)
+2. Call `spawn_normal_boids(world, 50)`
+3. Query all entities: assert NONE have both `NormalBoid` and `AntivaxBoid`
+4. Assert ALL spawned entities have `AntivaxBoid` (since p_antivax=1.0)
+5. Assert ZERO entities have the deprecated `Antivax` tag
+
+**Test:** `AntivaxSpawn_ZeroProbability`
+1. Same setup but `p_antivax = 0.0f`
+2. Spawn 50 normals → assert ALL have `NormalBoid`, NONE have `AntivaxBoid`
+
+**Commit:** `test(ecs): add antivax spawn mutually-exclusive tag tests`
+
+---
+
+### Task B3: Antivax Infection — Same-Swarm Only
+
+**Files:** `tests/test_antivax.cpp`
+
+**Test:** `AntivaxInfection_SameSwarmOnly`
+1. Create world with SimConfig `p_infect_normal = 1.0f` (deterministic infection)
+2. Spawn one infected `AntivaxBoid` at (500,500) and one healthy `AntivaxBoid` at (510,510) — within `r_interact_normal` (30.0)
+3. Register rebuild_grid_system and infection_system
+4. Progress 60 frames
+5. Assert the healthy antivax boid IS now infected
+
+**Test:** `AntivaxInfection_NoCrossSwarm`
+1. Same setup but the healthy neighbor is `NormalBoid` instead of `AntivaxBoid`
+2. Progress 60 frames
+3. Assert the NormalBoid is NOT infected (cross-swarm prevention)
+
+**Commit:** `test(sim): add antivax same-swarm infection tests`
+
+---
+
+### Task B4: Antivax Reproduction — Offspring Inherit Tag
+
+**Files:** `tests/test_antivax.cpp`
+
+**Test:** `AntivaxReproduction_OffspringInherit`
+1. Create world with SimConfig `p_offspring_normal = 1.0f`, `offspring_mean_normal = 2.0f`, `reproduction_cooldown = 0.0f`
+2. Spawn two `AntivaxBoid` entities: one Male, one Female, at adjacent positions within `r_interact_normal`
+3. Register rebuild_grid_system and reproduction_system
+4. Progress several frames
+5. Query all `AntivaxBoid` entities — assert count > 2 (offspring were born)
+6. Query all newborn entities — assert NONE have `NormalBoid` tag (offspring inherit AntivaxBoid)
+
+**Test:** `AntivaxReproduction_NoCrossSwarm`
+1. Same setup but one parent is `AntivaxBoid` and one is `NormalBoid`
+2. Progress several frames
+3. Assert no offspring (cross-swarm reproduction prevented)
+
+**Commit:** `test(sim): add antivax reproduction inheritance tests`
+
+---
+
+### Task B5: Doctor Cures Antivax
+
+**Files:** `tests/test_antivax.cpp`
+
+**Test:** `DoctorCuresAntivax`
+1. Create world with `p_cure = 1.0f` (deterministic)
+2. Spawn one infected `AntivaxBoid` at (500,500) and one healthy `DoctorBoid` at (510,510) — within `r_interact_doctor` (40.0)
+3. Register rebuild_grid_system and cure_system
+4. Progress 60 frames
+5. Assert the antivax boid NO LONGER has `Infected` tag
+
+**Commit:** `test(sim): add doctor-cures-antivax test`
+
+---
+
+### Task B6: Antivax Death Tracking
+
+**Files:** `tests/test_antivax.cpp`
+
+**Test:** `AntivaxDeath_StatsTracked`
+1. Create world with `t_death = 0.1f` (fast death for testing)
+2. Spawn one infected `AntivaxBoid`
+3. Register aging_system and death_system
+4. Progress enough frames for infection timer to exceed t_death
+5. Assert entity no longer has `Alive` tag
+6. Assert `stats.dead_antivax >= 1` and `stats.dead_total >= 1`
+
+**Commit:** `test(sim): add antivax death stats tracking test`
+
+---
+
+### Task B7: Antivax Stats Counting
+
+**Files:** `tests/test_antivax.cpp`
+
+**Test:** `AntivaxStats_AliveCount`
+1. Create world, spawn 5 `AntivaxBoid` entities with `Alive` tag
+2. Register stats_system (from `src/ecs/stats.h`)
+3. Progress 1 frame
+4. Assert `stats.antivax_alive == 5`
+
+**Commit:** `test(ecs): add antivax alive count stats test`
+
+---
+
+### Task B8: Antivax Doctor-Avoidance Steering
+
+**Files:** `tests/test_antivax.cpp`
+
+**Test:** `AntivaxSteering_FleesDoctor`
+1. Create world, spawn one `AntivaxBoid` at (500,500) with Velocity{0,0}
+2. Spawn one `DoctorBoid` at (550,500) — within `antivax_repulsion_radius` (100.0)
+3. Register rebuild_grid_system and antivax_steering_system
+4. Progress 60 frames
+5. Read the antivax boid's Velocity — assert `vel.vx < 0` (fleeing leftward, away from doctor at x=550)
+
+**Commit:** `test(ecs): add antivax doctor-avoidance steering test`
 
 ---
 
@@ -362,30 +468,19 @@ if (speed > 0.001f && speed < config.min_speed) {
 ```
 PHASE 13 TASK SEQUENCE:
 
-  Pre-Flight: Record 4 structural mistakes in mistakes.md
+  Pre-Flight: Record 4 structural mistakes in mistakes.md  ✅
       |
-  A1: AntivaxBoid component + stats fields
+  A1–A9: Antivax separate swarm (9 tasks)                  ✅ COMPLETE
       |
-  A2: Spawn AntivaxBoid from Normal pool
+  B1: Doctor no-self-cure unit test                         ✅ COMPLETE
       |
-  A3: Render antivax in orange
-      | (A4, A5, A6 can run in parallel after A3)
-  A4: Antivax infection (antivax x antivax only)
-  A5: Antivax reproduction (antivax x antivax, offspring inherit)
-  A6: Verify doctor cures antivax + no-self-cure contract
+  B2–B8: Antivax test coverage (7 tasks)                   ⏳ PENDING
+      | (B2-B8 can all run in parallel — separate test functions, one file)
       |
-  A7: Stats tracking + population graph line
-      |
-  A8: Antivax doctor-avoidance steering (update tag filter)
-      |
-  A9: Remove deprecated Antivax tag, cleanup
-      |
-  B1: Doctor no-self-cure unit test
-      |
-  C1: Fix cohesion steering --+
+  C1: Fix cohesion steering --+                             ⏳ PENDING
   C2: Fix alignment steering --+ (C1, C2 independent)
       |                        |
-  C3: Swarm-specific flocking <+ (depends on A2 + C1 + C2)
+  C3: Swarm-specific flocking <+ (depends on C1 + C2)
       |
   C4: Minimum speed enforcement
       |
@@ -394,13 +489,11 @@ PHASE 13 TASK SEQUENCE:
 
 ## Worker Assignment Strategy
 
-**Recommended:** Sequential single-worker via Ralph Loop (proven in Phases 10–12).
-- Most tasks touch `src/ecs/systems.cpp` — parallel workers create merge conflicts
-- Tasks are small (one commit each) — fresh context per task prevents rot
-- Orchestrator CAN parallelize A4/A5/A6 in worktrees if budget allows
-
-**Worker model:** Sonnet (cost-efficient, proven)
-**Estimated time:** 14 tasks x ~5 min = ~70 minutes via Ralph Loop
+**Proven approach:** Direct subagent dispatch from orchestrator (faster than Ralph Loop).
+- Ralph Loop failed on Bash permissions in Phase 13; direct Task tool subagents work reliably
+- Orchestrator verifies builds/tests between tasks, catches worker mistakes (e.g. A5 added deprecated tag)
+- Haiku for simple tasks (tag swaps, comments), Sonnet for complex multi-file tasks
+- B2-B8 tests go in single file `tests/test_antivax.cpp` — can be written by one worker or split
 
 ## Success Criteria (Phase 13 Complete)
 

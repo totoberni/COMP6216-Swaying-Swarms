@@ -3,12 +3,13 @@
 <!-- Update before /compact or session end. -->
 <!-- Sibling files: plan.md (mission), decisions.md (audit trail), mistakes.md (error patterns). -->
 
-## Phase 13 Active 🔧
+## Phase 13 In Progress 🔧
 
-Technical audit revealed 4 structural issues. Executing 14 atomic tasks via Ralph Loop.
-Part A (A1-A9): Antivax separate swarm — PRIORITY 1
-Part B (B1): Doctor self-cure test
-Part C (C1-C4): Steering model fixes
+Part A (A1-A9): Antivax separate swarm — COMPLETE ✅ (10 commits)
+Part B (B1): Doctor self-cure test — COMPLETE ✅ (commit 33ebb77, 25 tests pass)
+Part B (B2-B8): Antivax test coverage — PENDING (tasks defined in plan.md)
+Part C (C1-C4): Steering model fixes — PENDING (user requested pause before C tasks)
+Build clean, 25 tests pass (12 ConfigLoader + 11 SpatialGrid + 2 CureContract)
 
 ---
 
@@ -84,6 +85,20 @@ Ralph Loop completed 5/5 tasks in 4 iterations:
 Also: hook sed fix (dc3b081), README synthesized 585→163 lines (f4638cb)
 Build clean, 23 tests pass, all context.md spec requirements implemented.
 
+### Phase 13: Swarm Refinement & Steering Fixes — IN PROGRESS 🔧
+Part A (A1-A9) complete — AntivaxBoid promoted to primary swarm tag:
+- A1: AntivaxBoid component + stats fields (7c713d1)
+- A2: Spawn AntivaxBoid from normal pool (e6c3a1b)
+- A3: Render antivax in orange, swarm_type replaces is_doctor (f2b15ef)
+- A4+A5: Antivax infection + reproduction, same-swarm only (5b8a21a)
+- A6: Verified doctor-cures-antivax + no-self-cure contract (5271d3b)
+- A7: Antivax stats tracking + population graph orange line (a204f38)
+- A8: Antivax steering uses AntivaxBoid primary tag (4ace9ac)
+- A9: Deprecated Antivax tag removed from codebase (caf88d4)
+Part B1 complete — Doctor no-self-cure unit test (33ebb77), 25 tests pass.
+Part B2-B8 pending — Antivax test coverage (see plan.md).
+Part C pending — Steering fixes (C1-C4) paused per user request.
+
 ---
 
 ## Active Workers
@@ -113,6 +128,8 @@ Build clean, 23 tests pass, all context.md spec requirements implemented.
 | Orchestrator | README synthesis + hook fix + spec audit | main | ✅ f4638cb, dc3b081 | Phase 12 |
 | Ralph Loop | Phase 12: 5 refinements (4 iters) | main | ✅ 5 commits | Phase 12 |
 | Orchestrator | Hook fix + README synthesis | main | ✅ dc3b081, f4638cb | Phase 12 |
+| Orchestrator+Subagents | Phase 13 Part A: AntivaxBoid swarm (A1-A9) | main | ✅ 9 tasks, 10 commits | Phase 13 |
+| Subagent (sonnet) | Phase 13 Part B1: Doctor no-self-cure test | main | ✅ commit 33ebb77, 25 tests | Phase 13 |
 
 ---
 
@@ -127,5 +144,8 @@ Build clean, 23 tests pass, all context.md spec requirements implemented.
 ## Session Decisions
 <!-- Scratch space for this session. Promote to decisions.md before session end. -->
 
-- DEC-016: Phase 13 pre-flight — recorded 4 structural mistakes (cohesion, alignment, swarm-flocking, antivax-tag) in mistakes.md with prevention rules
-- DEC-017: Phase 13 execution strategy — Ralph Loop sequential (proven), Sonnet workers, A1→A9→B1→C1-C4 order
+- DEC-016: Phase 13 pre-flight — recorded 4 structural mistakes in mistakes.md with prevention rules
+- DEC-017: Phase 13 execution — switched from Ralph Loop (failed on permissions) to direct subagent dispatch. Parallel where files don't conflict. Sonnet for complex tasks, Haiku for simple ones.
+- DEC-018: Worker mistake caught — A5 subagent added deprecated `.add<Antivax>()` to offspring. Fixed by orchestrator before commit. Prevention: always verify subagent output for deprecated patterns.
+- DEC-019: A3 subagent failed (Bash permission denied in general-purpose agent). Orchestrator completed the task manually, also fixed render_demo.cpp which the agent missed.
+- DEC-020: Part A+B complete but zero test coverage for antivax behaviors. Adding B2-B8 test tasks before proceeding to Part C.
