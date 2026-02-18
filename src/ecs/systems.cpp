@@ -52,9 +52,9 @@ void register_antivax_steering_system(flecs::world& world) {
             const SpatialGrid& grid = w.get<SpatialGrid>();
             float dt = it.delta_time();
 
-            // Only process antivax normal boids
-            auto q = w.query<const Position, Velocity, const NormalBoid, const Antivax, const Alive>();
-            q.each([&](flecs::entity e, const Position& pos, Velocity& vel, const NormalBoid&, const Antivax&, const Alive&) {
+            // Only process AntivaxBoid entities (primary swarm tag)
+            auto q = w.query<const Position, Velocity, const AntivaxBoid, const Alive>();
+            q.each([&](flecs::entity e, const Position& pos, Velocity& vel, const AntivaxBoid&, const Alive&) {
                 // Query for doctors within visual range
                 auto neighbors = grid.query_neighbors(pos.x, pos.y, config.antivax_repulsion_radius);
 
