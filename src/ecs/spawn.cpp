@@ -29,7 +29,6 @@ void spawn_normal_boids(flecs::world& world, int count) {
         float speed = config.max_speed * 1.0f; // Start with moderate speed
 
         auto boid = world.entity()
-            .add<NormalBoid>()
             .add<Alive>()
             .set(Position{x, y})
             .set(Velocity{speed * std::cos(angle), speed * std::sin(angle)})
@@ -44,9 +43,11 @@ void spawn_normal_boids(flecs::world& world, int count) {
             boid.add<Female>();
         }
 
-        // Assign antivax status
+        // Assign swarm tag — mutually exclusive
         if (dist_antivax(rng) < config.p_antivax) {
-            boid.add<Antivax>();
+            boid.add<AntivaxBoid>();
+        } else {
+            boid.add<NormalBoid>();
         }
 
         // Initial infection
