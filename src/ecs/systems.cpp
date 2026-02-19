@@ -199,7 +199,8 @@ void register_steering_system(flecs::world& world) {
 
                 // Clamp total force to max_force
                 float force_mag = std::sqrt(force_x * force_x + force_y * force_y);
-                if (force_mag > 1) {
+                if (force_mag > config.max_force) {
+                    // maybe: max_force / force_mag ??
                     float scale = 1 / force_mag;
                     force_x *= scale;
                     force_y *= scale;
@@ -211,7 +212,7 @@ void register_steering_system(flecs::world& world) {
 
                 // Clamp velocity to max_speed
                 float speed = std::sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
-                if (speed > config.max_speed) {
+                if (speed != config.max_speed) {
                     float scale = config.max_speed / speed;
                     vel.vx *= scale;
                     vel.vy *= scale;
@@ -221,9 +222,9 @@ void register_steering_system(flecs::world& world) {
 }
 
 void register_movement_system(flecs::world& world) {
-    world.system<Position, const Velocity, Heading>("MovementSystem")
+    world.system<Position, Velocity, Heading>("MovementSystem")
         .kind(flecs::OnUpdate)
-        .each([](flecs::iter& it, size_t index, Position& pos, const Velocity& vel, Heading& heading) {
+        .each([](flecs::iter& it, size_t index, Position& pos, Velocity& vel, Heading& heading) {
             const SimConfig& config = it.world().get<SimConfig>();
             float dt = it.delta_time();
 
@@ -232,10 +233,22 @@ void register_movement_system(flecs::world& world) {
             pos.y += vel.vy * dt;
 
             // Wrap around world bounds
-            if (pos.x < 0.0f) pos.x += config.world_width;
-            if (pos.x >= config.world_width) pos.x -= config.world_width;
-            if (pos.y < 0.0f) pos.y += config.world_height;
-            if (pos.y >= config.world_height) pos.y -= config.world_height;
+            if (pos.x < 0.0f) {
+                pos.x = -1.0f * pos.x; // Bounce back from left edge
+                vel.vx = -1.0f * vel.vx; // Reverse velocity on bounce
+            }
+            if (pos.x >= config.world_width) {
+                pos.x = 2 * config.world_width - pos.x; // Bounce back from right edge
+                vel.vx = -1.0f * vel.vx; // Reverse velocity on bounce
+            }
+            if (pos.y < 0.0f) {
+                pos.y = -1.0f * pos.y; // Bounce back from bottom edge
+                vel.vy = -1.0f * vel.vy; // Reverse velocity on bounce
+            }
+            if (pos.y >= config.world_height) {
+                pos.y = 2 * config.world_height - pos.y; // Bounce back from top edge
+                vel.vy = -1.0f * vel.vy; // Reverse velocity on bounce
+            }
 
             // Update heading based on velocity
             float speed = vel.vx * vel.vx + vel.vy * vel.vy;
