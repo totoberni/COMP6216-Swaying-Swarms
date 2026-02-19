@@ -8,7 +8,7 @@
 - Pure C++ — NO FLECS includes. Used as FLECS singleton but doesn't depend on FLECS.
 - Cell size = max interaction radius (configurable)
 - Use flat arrays, not std::unordered_map
-- query_neighbors() returns results sorted by distance ascending
+- query_neighbors() fills a caller-supplied vector (unsorted, amortized zero-alloc)
 - World bounds: 1920×1080 default, configurable
 
 ## Recent Changes

@@ -18,3 +18,9 @@ Build commands: cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build
 Rules: CPM.cmake for deps (pin exact versions), CMAKE_CXX_STANDARD=17,
 target_link_libraries PRIVATE, verify build compiles after every change,
 read FULL error output before attempting fixes.
+
+## Team Communication
+- When assigned a task: `TaskUpdate(status: "in_progress")` before starting
+- When done: `TaskUpdate(status: "completed")`, then `SendMessage` to team lead with summary
+- If blocked: `SendMessage` to team lead describing the issue
+- After completing a task: check `TaskList` for next available work

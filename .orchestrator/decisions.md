@@ -140,4 +140,122 @@ Should check #2 before terminating on timeout. 16-17 minutes is acceptable for c
 **Rationale:** Ralph Loop gives each iteration a fresh 200K context window, preventing context rot. Stateless design means crashed iterations lose nothing — the task file is the single source of truth.
 **Alternatives rejected:** Single long-running worker (context rot after 3-4 tasks), parallel workers per extension (dependencies between tasks, e.g. sex system needs components before antivax can reference them).
 
-<!-- Next decision: DEC-015 -->
+## DEC-015: Phase 13 Pre-Flight Mistake Recording
+**When:** 2026-02-17 (Phase 13 start)
+**Context:** Four structural mistakes identified from Phases 9 and 11 that caused incorrect steering behavior and ambiguous swarm identity.
+**Decision:** Recorded all 4 mistakes in mistakes.md with prevention rules BEFORE any worker dispatch.
+**Rationale:** Prevention rules are embedded in worker task prompts to avoid repeating known errors. This is the orchestrator's primary quality mechanism.
+**Outcome:** All 4 prevention rules carried into Phase 13 task prompts. No recurrence of any recorded mistake.
+
+## DEC-016: Phase 13 Execution — Direct Subagent Dispatch
+**When:** 2026-02-17 (Phase 13)
+**Context:** Ralph Loop (`ralph.sh`) failed due to Bash permission errors in the worker process. Needed an alternative execution strategy.
+**Decision:** Switched to direct subagent dispatch via Task tool. Parallelize where files don't conflict. Sonnet for complex multi-file tasks, Haiku for simple tag/comment changes.
+**Rationale:** Task tool subagents inherit permissions from the orchestrator session. Ralph Loop spawns independent `claude -p` processes that don't inherit the permission context. Direct dispatch is also faster for small tasks.
+**Alternatives rejected:** Ralph Loop (broken permissions), single sequential worker (too slow for 9 independent tasks).
+
+## DEC-017: Worker Mistake — A5 Deprecated Tag in Offspring
+**When:** 2026-02-17 (Phase 13, Task A5)
+**Context:** A5 subagent added `.add<Antivax>()` (deprecated additive tag) to reproduction offspring alongside the correct `.add<AntivaxBoid>()`.
+**Decision:** Orchestrator caught the error in post-dispatch review and removed the deprecated tag before commit.
+**Rationale:** Recorded as DEC-018/mistake to establish pattern: always verify subagent output for deprecated patterns before committing.
+**Lesson:** Worker prompts must explicitly list deprecated symbols to avoid.
+
+## DEC-018: A3 Subagent Failure — Manual Completion
+**When:** 2026-02-17 (Phase 13, Task A3)
+**Context:** A3 subagent (general-purpose type) failed with Bash permission denied when trying to build.
+**Decision:** Orchestrator completed A3 manually, also fixed render_demo.cpp which the agent's plan had missed.
+**Rationale:** Faster to complete manually than debug agent permissions. Also revealed render_demo.cpp gap in the original task spec.
+
+## DEC-019: B2-B8 Test Coverage Before Part C
+**When:** 2026-02-17 (Phase 13)
+**Context:** Parts A and B1 complete but zero test coverage for antivax spawn, infection, reproduction, death, stats, and steering behaviors.
+**Decision:** Added B2-B8 test tasks to plan.md. All tests go in one file (`tests/test_antivax.cpp`) written by a single worker.
+**Rationale:** Test coverage prevents regressions during Part C steering rewrites. Single worker because all tests share the same file — parallel writing would cause conflicts.
+
+## DEC-020: B2-B8 Single Worker Strategy
+**When:** 2026-02-18 (Phase 13, Part B)
+**Context:** B2-B8 defines 7 test tasks (10 test cases) all targeting `tests/test_antivax.cpp`.
+**Decision:** Dispatched one sonnet subagent to write all 10 tests in a single file, plus expose 6 system registration functions in systems.h.
+**Rationale:** All tests go in one file — splitting across workers would cause merge conflicts. Worker also needed to add forward declarations to systems.h for unit test access.
+**Outcome:** 10 tests written, 35 tests pass. One fix required (see DEC-021).
+
+## DEC-021: B4 Reproduction Test Timeout Fix
+**When:** 2026-02-18 (Phase 13, Part B)
+**Context:** `ctest` hung indefinitely. Root cause: B4 test used `reproduction_cooldown = 0.0f` with `p_offspring_normal = 1.0f` and `offspring_mean_normal = 3.0f` over 120 frames, causing exponential population growth.
+**Decision:** Changed `reproduction_cooldown = 60.0f` and reduced frame count from 120 to 5. Applied same fix to NoCrossSwarm test.
+**Rationale:** With zero cooldown, every offspring can reproduce next frame. 3^120 offspring is unbounded. A long cooldown and few frames ensures offspring are born without explosion.
+**Lesson:** Always use non-zero cooldowns and minimal frame counts in reproduction tests.
+
+## DEC-022: C1+C2+C3 Combined, C4 Parallel
+**When:** 2026-02-18 (Phase 13, Part C)
+**Context:** C1 (cohesion), C2 (alignment), and C3 (swarm filtering) all modify the SteeringSystem in systems.cpp. C4 (min_speed) modifies the MovementSystem and adds a config field.
+**Decision:** Combined C1+C2+C3 into one ecs-architect worker. Dispatched C4 as a parallel sonnet worker.
+**Rationale:** C1-C3 touch overlapping code regions in the same function — parallel edits would conflict. C4 is in a different function (MovementSystem) and different files (components.h, config.ini, config_loader.cpp), so it can run concurrently.
+**Outcome:** Both workers completed successfully. Code review then caught two additional issues.
+
+## DEC-023: Branch Abe for Part C
+**When:** 2026-02-18 (Phase 13)
+**Context:** User requested a branch for Part C work since steering fixes were assigned to a different team member (Abe).
+**Decision:** Created branch `Abe` from main at commit 62fc012 (after B2-B8). Part C committed on this branch.
+**Rationale:** User's team workflow requires branch-per-member. Branch created after B tests were on main to keep test infrastructure shared.
+
+## DEC-024: Post-Implementation Code Review
+**When:** 2026-02-18 (Phase 13, Part C)
+**Context:** C1-C4 changes are critical steering rewrites affecting all boid movement. High risk of subtle bugs.
+**Decision:** Dispatched code-reviewer subagent after both C workers completed, before committing.
+**Findings:**
+- CRIT-1: AntivaxSteeringSystem still had `if (force_mag > 1)` instead of `config.max_force` — same bug that C1-C3 fixed in SteeringSystem but wasn't in scope.
+- WARN-3/CRIT-2: min_speed could exceed max_speed via sliders, causing oscillation.
+**Fixes applied:** max_force clamp in antivax steering, min/max speed guard.
+**Lesson:** Always include ALL steering-related systems when auditing force clamp bugs, not just the primary SteeringSystem.
+
+## DEC-025: Boid Model Compliance Fixes
+**When:** 2026-02-18 (Post Phase 13, branch Abe)
+**Context:** User tested simulation locally and found boids not behaving like proper swarm models — offspring had random speeds, separation was too weak.
+**Decision:** Three parallel fixes:
+1. Offspring velocity: spawn at `max_speed` instead of random [0, max_speed*0.5] (all 3 reproduction blocks)
+2. Separation formula: raw accumulation per context.md spec instead of normalized+averaged
+3. raygui build warnings: SYSTEM include for third-party headers
+**Rationale:** Offspring speed randomization created bimodal speed population breaking flocking. Separation normalization+averaging made it ~4x weaker than spec. raygui warnings were noise from third-party code.
+**Outcome:** Build clean, zero warnings, 35 tests pass. Uniform boid speeds and stronger separation.
+
+## DEC-026: Web Audit of Boid Model & Parameter Tuning
+**When:** 2026-02-18 (Post Phase 13, branch Abe)
+**Context:** Boid alignment was visually "iffy" — swarms formed but turning was sluggish and unresponsive. Web audit compared our implementation against two canonical reference models.
+**Sources audited:**
+- Model A: V. Hunter Adams / Cornell ECE (simple boids, no force clamp)
+- Model B: Daniel Shiffman / Processing.org / Reynolds GDC'99 (steering model with per-force maxforce)
+**Findings:**
+- CRITICAL: `max_force = 6.0` with `max_speed = 180.0` gave 60-second 180-degree turn time (vs 0.33s Adams, 2.2s Shiffman)
+- WARNING: `separation_radius = 25` at 50% of alignment_radius caused separation to dominate total force after clamping
+- INFO (all correct): alignment/cohesion formulas, separation raw accumulation, `*dt` Euler integration, speed clamping
+**Decision:** Set `max_force = 180.0` (= max_speed) and `separation_radius = 12.0` (~24% of alignment_radius).
+**Rationale:** Force/speed ratio of 1.0 gives ~2s turn time, matching Shiffman's reference. Smaller separation radius limits edge-of-zone force dominance (see Finding 4 in docs/boid_model_reference.md).
+**Outcome:** Build clean, 35 tests pass. Parameters updated in config.ini, components.h, context.md.
+
+## DEC-027: Formal Boid Model Reference Document
+**When:** 2026-02-18 (Post Phase 13, branch Abe)
+**Context:** Needed formal mathematical grounding for the hybrid boid model used in our simulation, with LaTeX equations comparing against reference implementations.
+**Decision:** Created `docs/boid_model_reference.md` with:
+1. Model A (Adams) — formal equations, frame-based, no force clamp
+2. Model B (Shiffman/Reynolds) — formal equations, per-force truncation
+3. Our Hybrid Model (COMP6216) — separation=Model A, alignment/cohesion=Model B, frame-rate independent
+4. Finding 4 derivation: separation force asymmetry (Model A: |f|∝d, Model B: |f|∝1/d)
+5. Frame-rate independence proof: `*dt` does NOT undermine the model, improves on frame-dependent references
+6. Turn-time comparison table (before/after fix)
+**Rationale:** Academic documentation for the coursework. Proves our implementation choices are mathematically grounded.
+
+## DEC-028: Migration to Claude Code Agent Teams
+**When:** 2026-02-18 (Post Phase 13)
+**Context:** Project used custom orchestrator infrastructure (`.orchestrator/` state files, `ralph.sh` loops, `claude -p` worker spawning, manual PID tracking, file-based inbox). Claude Code now has built-in Agent Teams (TeamCreate, TaskCreate, SendMessage, automatic lifecycle management).
+**Decision:** Migrate from custom coordination to built-in Agent Teams while preserving the audit trail (decisions.md, mistakes.md), changelog hooks, and module boundaries.
+**Changes:**
+- Removed: SubagentStop hooks, `record-process.sh`, `ralph.sh`, `docs/current-task.md`, `record-process.md` command
+- Added: TaskCompleted hook registration, Agent Teams coordination section in CLAUDE.md
+- Rewritten: `orchestrator.md` agent definition (team lead role using TeamCreate/TaskCreate/SendMessage)
+- Updated: All 5 worker agents with Team Communication protocol
+- Simplified: `state.md` Active Workers table replaced with Active Team reference to TaskList
+**Rationale:** Built-in Agent Teams provides automatic lifecycle management, message delivery, task tracking, and idle notifications — eliminating the need for PID monitoring, file-based inbox, and custom hooks. Reduces orchestrator complexity while preserving the quality mechanisms (mistakes.md guardrails, decisions.md audit trail).
+**Preserved unchanged:** decisions.md, mistakes.md, context.md, update-changelog.sh hook, module boundaries, code style, build/test infrastructure.
+**Alternatives rejected:** Keeping custom system (technical debt, duplicated functionality), hybrid approach (confusing two coordination mechanisms).

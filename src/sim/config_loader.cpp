@@ -71,6 +71,7 @@ bool apply_field(SimConfig& config, const std::string& key,
     // Movement
     else if (key == "max_speed")                { config.max_speed = parse_float(val, line_num); }
     else if (key == "max_force")                { config.max_force = parse_float(val, line_num); }
+    else if (key == "min_speed")                { config.min_speed = parse_float(val, line_num); }
     else if (key == "separation_weight")        { config.separation_weight = parse_float(val, line_num); }
     else if (key == "alignment_weight")         { config.alignment_weight = parse_float(val, line_num); }
     else if (key == "cohesion_weight")          { config.cohesion_weight = parse_float(val, line_num); }
@@ -127,7 +128,14 @@ bool load_config(const std::string& path, SimConfig& config) {
         }
 
         std::string key = trim(trimmed.substr(0, eq_pos));
-        std::string val = trim(trimmed.substr(eq_pos + 1));
+        std::string val = trimmed.substr(eq_pos + 1);
+
+        // Strip inline comments (';' or '#' after value)
+        auto comment_pos = val.find_first_of(";#");
+        if (comment_pos != std::string::npos) {
+            val = val.substr(0, comment_pos);
+        }
+        val = trim(val);
 
         if (key.empty() || val.empty()) {
             throw std::runtime_error(

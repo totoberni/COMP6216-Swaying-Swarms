@@ -24,3 +24,14 @@
 - **00:00Z** | `include/components.h` | Edited: '    int newborns_normal = 0;     int newborns_doctor = 0;   ' -> '    int newborns_normal = 0;     int newborns_doctor = 0;   ' | session:`f655d95a`
 - **00:03Z** | `include/render_state.h` | Edited: '    bool is_doctor; ' -> '    int swarm_type;  // 0=normal, 1=doctor, 2=antivax ' | session:`f655d95a`
 - **00:17Z** | `include/components.h` | Edited: 'struct NormalBoid {}; struct DoctorBoid {}; struct Male {}; ' -> 'struct NormalBoid {}; struct DoctorBoid {}; struct Male {}; ' | session:`f655d95a`
+- **01:35Z** | `include/components.h` | Edited: '    float max_speed                = 180.0f;  // 3.0 px/fram' -> '    float max_speed                = 180.0f;  // 3.0 px/fram' | session:`f655d95a`
+- **02:51Z** | `include/components.h` | Edited: '    // --- Boid movement parameters (per-second; converted f' -> '    // --- Boid movement parameters (per-second; converted f' | session:`f655d95a`
+- **23:31Z** | `include/spatial_grid.h` | Edited: '    // Returns (entity_id, distance) pairs sorted by distanc' -> '    // Returns (entity_id, distance) pairs sorted by distanc' | session:`4dfbd6b1`
+- **23:31Z** | `include/components.h` | Edited: '    // --- Boid movement parameters (per-second; converted f' -> '    // --- Boid movement (Shiffman/Processing.org Model B, s' | session:`4dfbd6b1`
+- **23:59Z** | `include/components.h` | Edited: '    float max_force                = 3.0f;    // Shiffman ma' -> '    float max_force                = 180.0f;  // Shiffman ma' | session:`4dfbd6b1`
+
+## 2026-02-19
+
+- **00:33Z** | `include/components.h` | Edited: 'struct PopulationHistoryPoint {     int normal_alive = 0;   ' -> 'struct PopulationHistoryPoint {     int normal_alive = 0;   ' | session:`4dfbd6b1`
+- **00:43Z** | `include/spatial_grid.h` | Edited: '    // Returns (entity_id, distance) pairs sorted by distanc' -> '    // Fills `results` with (entity_id, distance) pairs with' | session:`4dfbd6b1`
+- **01:33Z** | `include/spatial_grid.h` | File written/created | session:`414c9a66`

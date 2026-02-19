@@ -35,10 +35,18 @@ void register_stats_system(flecs::world& world) {
             // Note: dead_total, dead_normal, dead_doctor, newborns_* are cumulative
             // and updated by the death and reproduction systems
 
+            // Count total infected across all swarms
+            int infected_count = 0;
+            auto q_infected = w.query<const Alive, const Infected>();
+            q_infected.each([&infected_count](const Alive&, const Infected&) {
+                infected_count++;
+            });
+
             // Record population history for graph
             stats.history[stats.history_index].normal_alive = stats.normal_alive;
             stats.history[stats.history_index].doctor_alive = stats.doctor_alive;
             stats.history[stats.history_index].antivax_alive = stats.antivax_alive;
+            stats.history[stats.history_index].infected_count = infected_count;
             stats.history_index = (stats.history_index + 1) % SimStats::HISTORY_SIZE;
             if (stats.history_count < SimStats::HISTORY_SIZE) {
                 stats.history_count++;

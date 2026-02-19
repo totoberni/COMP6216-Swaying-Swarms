@@ -16,3 +16,9 @@ When invoked with changed files:
 4. If >25 entries, archive oldest to changelog-archive.md
 
 Format: `- **HH:MMZ** | \`filename\` | description | agent:caller-name`
+
+## Team Communication
+- When assigned a task: `TaskUpdate(status: "in_progress")` before starting
+- When done: `TaskUpdate(status: "completed")`, then `SendMessage` to team lead with summary
+- If blocked: `SendMessage` to team lead describing the issue
+- After completing a task: check `TaskList` for next available work

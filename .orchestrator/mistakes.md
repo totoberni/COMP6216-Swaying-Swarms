@@ -47,7 +47,8 @@
 
 | # | Phase | What Went Wrong | Root Cause | Fix Applied | Prevention Rule |
 |---|-------|-----------------|------------|-------------|-----------------|
-| — | — | No mistakes recorded yet | — | — | — |
+| 1 | Phase 10 | Offspring spawned with random speed `dist_speed(0, max_speed*0.5)` instead of `max_speed`. Created bimodal speed population: parents at 180 px/s, offspring at random [0,90]. Over time offspring dominate and swarm becomes a mix of fast and slow boids that can't flock properly. | Worker used a random speed distribution for offspring without considering that boids in a swarm model should move at uniform speed. Initial spawn correctly used `max_speed` but reproduction didn't match. | Changed all 3 reproduction blocks (Normal, Doctor, Antivax) to `float speed = config.max_speed;`. Removed unused `dist_speed` distributions from spawn functions. | "Offspring MUST spawn at `config.max_speed` with random direction. Never randomize offspring speed — uniform speed is essential for proper flocking." |
+| 2 | Phase 10 | Separation formula normalized each neighbor's vector to unit length (`dx/dist`) and averaged by count (`sep_x /= sep_count`). Context.md spec uses raw accumulation: `close_dx += my.x - neighbor.x` without normalization or averaging. Result: separation force ~4x weaker than specified. | Worker implemented a "cleaner" normalized approach rather than following the context.md pseudocode exactly. The normalized+averaged version gives equal weight to all neighbors regardless of count, breaking the intended crowd-repulsion scaling. | Changed to raw accumulation: `sep_x += dx` (no `/dist`), removed averaging division. Same fix applied to AntivaxSteeringSystem repulsion. | "Separation and repulsion forces MUST use raw positional difference accumulation per context.md spec. Never normalize per-neighbor or average by count — the accumulation IS the force scaling mechanism." |
 
 ### Ralph Loop Iterations
 
@@ -59,7 +60,8 @@
 
 | # | Subagent | Phase | What Went Wrong | Root Cause | Fix Applied | Prevention Rule |
 |---|----------|-------|-----------------|------------|-------------|-----------------|
-| — | — | — | No mistakes recorded yet | — | — | — |
+| 1 | sonnet (B2-B8 tests) | Phase 13 | Reproduction test used `reproduction_cooldown = 0.0f` with `p_offspring_normal = 1.0f` and `offspring_mean_normal = 3.0f` over 120 frames. Exponential population growth caused test to hang indefinitely. | Worker copied test parameters from plan.md spec literally without considering exponential growth dynamics. Zero cooldown means every offspring reproduces next frame: 3^120 → unbounded. | Changed `reproduction_cooldown = 60.0f` and frame count from 120 to 5. Applied same fix to NoCrossSwarm test. | "Reproduction tests MUST use non-zero cooldowns (≥60.0f) and minimal frame counts (≤10). Zero cooldown with p=1.0 causes exponential growth." |
+| 2 | ecs-architect (C1-C3) | Phase 13 | Fixed max_force clamp in SteeringSystem (`if (force_mag > 1)` → `config.max_force`) but missed the identical bug in AntivaxSteeringSystem. Code review caught it. | Worker's task prompt only mentioned SteeringSystem. AntivaxSteeringSystem was a copy-paste of the same logic but wasn't in scope of C1-C3. | Applied same max_force fix to AntivaxSteeringSystem after code review flagged CRIT-1. | "When fixing a bug in one steering system, ALWAYS check ALL steering systems (SteeringSystem, AntivaxSteeringSystem, any future additions) for the same bug. Steering systems are often copy-pasted." |
 
 ---
 

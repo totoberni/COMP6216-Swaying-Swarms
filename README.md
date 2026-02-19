@@ -131,7 +131,7 @@ config.ini         Default simulation parameters
 - No Raylib outside `src/render/`, no sim logic in render code
 
 ### Agent-Managed Files (leave alone)
-`.claude/`, `.orchestrator/`, `CLAUDE.md` files, `src/*/changelog.md`, `ralph.sh`, `docs/` — these support the AI agent workflow and don't affect compilation.
+`.claude/`, `.orchestrator/`, `CLAUDE.md` files, `src/*/changelog.md`, `docs/` — these support the AI agent workflow and don't affect compilation.
 
 ---
 

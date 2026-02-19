@@ -30,7 +30,7 @@ namespace RenderConfig {
     // --- Stats overlay ---
     constexpr int STATS_PANEL_X = 10;
     constexpr int STATS_PANEL_Y = 10;
-    constexpr int STATS_PANEL_WIDTH = 250;
+    constexpr int STATS_PANEL_WIDTH = 300;
     constexpr int STATS_PANEL_HEIGHT = 200;
     constexpr int STATS_FONT_SIZE = 20;
     constexpr int STATS_LINE_HEIGHT = 25;

@@ -22,3 +22,9 @@ Rules:
 - Cached queries for hot-path iteration
 - One system per behavior
 - Register in correct pipeline phase
+
+## Team Communication
+- When assigned a task: `TaskUpdate(status: "in_progress")` before starting
+- When done: `TaskUpdate(status: "completed")`, then `SendMessage` to team lead with summary
+- If blocked: `SendMessage` to team lead describing the issue
+- After completing a task: check `TaskList` for next available work

@@ -6,7 +6,7 @@ This is the authoritative behavioral specification for the simulation. All agent
 
 ## The Model
 
-The simulation runs a 2D pandemic model with **three separate boid swarms**, each following the Reynolds boid flocking model with swarm-specific behavioral extensions:
+The simulation runs a 2D pandemic model with **three separate boid swarms**, each following the Shiffman/Reynolds boid flocking model (Model B) with swarm-specific behavioral extensions:
 
 1. **Normal Boid Swarm** — The general population. Subject to infection, reproduction, and promotion to Doctor.
 2. **Doctor Boid Swarm** — Healers. Can cure infected boids of any swarm. Separate flocking group.
@@ -17,59 +17,10 @@ The simulation runs a 2D pandemic model with **three separate boid swarms**, eac
 - What behavioral strategies for the doctor swarm best contain infection spread?
 - How does the antivax subpopulation affect pandemic outcomes?
 
----
+### Boid Flocking Model
+For the formal mathematical definition of the Pure Shiffman Model B implementation (separation, alignment, cohesion, force clamping, frame-rate independence), see `docs/boid_model_reference.md`.
 
-## Core Boid Flocking Model (All Three Swarms)
-
-Every boid in every swarm follows the Reynolds boid model (1987). The three fundamental steering behaviors are:
-
-### Separation
-Each boid steers away from nearby flockmates within `separation_radius` (default: 25.0) to avoid crowding. Separation applies to ALL nearby boids regardless of swarm — no boid should collide with any other.
-
-**Canonical formula:**
-```
-for each neighbor within separation_radius:
-    close_dx += my.x - neighbor.x
-    close_dy += my.y - neighbor.y
-velocity += (close_dx, close_dy) * separation_weight
-```
-
-### Alignment
-Each boid steers toward the average heading of nearby **same-swarm** flockmates within `alignment_radius` (default: 50.0). Cross-swarm boids are excluded from alignment — this is what causes the three swarms to form distinct flocks.
-
-**Canonical formula (Reynolds GDC'99):**
-```
-avg_vel = average velocity of same-swarm neighbors within alignment_radius
-desired = normalize(avg_vel) * max_speed
-steering = (desired - current_velocity) * alignment_weight
-```
-
-The normalization to `max_speed` is critical: it ensures the boid always steers toward the flock's *direction*, not its *speed*. Without normalization, alignment force weakens when neighbors are slow, breaking flock cohesion.
-
-### Cohesion
-Each boid steers toward the center of mass of nearby **same-swarm** flockmates within `cohesion_radius` (default: 50.0). Cross-swarm boids are excluded — each swarm coheres independently.
-
-**Canonical formula (Reynolds GDC'99):**
-```
-com = center of mass of same-swarm neighbors within cohesion_radius
-desired = normalize(com - position) * max_speed
-steering = (desired - current_velocity) * cohesion_weight
-```
-
-The normalization to `max_speed` is critical: without it, the force magnitude scales with distance from center-of-mass, causing oscillation (too strong when far) and stalling (too weak when near).
-
-### Speed Limits
-- **Maximum speed:** `max_speed` (default: 180.0 units/second). Velocity is clamped after all forces are applied.
-- **Maximum steering force:** `max_force` (default: 6.0 units/second). The total steering vector (sum of separation + alignment + cohesion + any special forces) is clamped before being added to velocity.
-- **Minimum speed:** Recommended at ~30% of max_speed to prevent boids from stalling. Flocking entities should never be stationary.
-
-### Swarm-Specific Flocking Rule
-This is the mechanism that produces three visually distinct swarms:
-- **Separation:** Applies to ALL nearby boids (prevents collisions across swarms)
-- **Alignment:** Applies ONLY to same-swarm neighbors (makes each swarm head in its own direction)
-- **Cohesion:** Applies ONLY to same-swarm neighbors (makes each swarm cluster independently)
-
-Without this filtering, all three swarms would merge into one super-flock.
+For all simulation parameters and their defaults, see `config.ini` and `include/components.h` (SimConfig struct).
 
 ---
 
@@ -82,7 +33,7 @@ Without this filtering, all three swarms would merge into one super-flock.
 **Infection:**
 - At spawn: `p_initial_infect_normal` (default: 0.05) chance of starting infected
 - On collision with another Normal boid within `r_interact_normal` (default: 30.0): infected Normal has `p_infect_normal` (default: 0.5) probability of spreading infection
-- Cross-swarm infection does NOT happen: Normal boids cannot infect Doctors or Antivax boids, and vice versa
+- Normal↔Antivax cross-infection IS allowed (same epidemiological population). Normal boids cannot infect Doctors, and vice versa
 - Infected boids die after `t_death` (default: 5.0 seconds) if not cured
 
 **Reproduction:**
@@ -163,8 +114,8 @@ Without this filtering, all three swarms would merge into one super-flock.
 - Consequence: Antivax flocks dynamically avoid doctors, making them harder to cure but still possible if cornered
 
 **Infection:**
-- Antivax boids can infect each other: same rules as Normal boids (`p_infect_normal`, `r_interact_normal`)
-- Cross-swarm infection does NOT happen: Antivax cannot infect Normal or Doctor boids
+- Antivax boids can infect each other and Normal boids: same rules as Normal boids (`p_infect_normal`, `r_interact_normal`)
+- Normal↔Antivax cross-infection IS allowed (same epidemiological population). Antivax cannot infect Doctor boids
 - Infected Antivax boids die after `t_death` if not cured
 - Doctors CAN still cure Antivax boids if they get close enough (despite avoidance behavior)
 
@@ -183,93 +134,10 @@ Without this filtering, all three swarms would merge into one super-flock.
 
 | Event | Normal×Normal | Doctor×Doctor | Antivax×Antivax | Doctor×Normal | Doctor×Antivax | Normal×Antivax |
 |-------|:---:|:---:|:---:|:---:|:---:|:---:|
-| Infection | p_infect_normal | p_infect_doctor | p_infect_normal | ✗ | ✗ | ✗ |
+| Infection | p_infect_normal | p_infect_doctor | p_infect_normal | ✗ | ✗ | p_infect_normal |
 | Reproduction | p_offspring_normal, N(2,1) | p_offspring_doctor, N(1,1) | p_offspring_normal, N(2,1) | ✗ | ✗ | ✗ |
 | Cure | ✗ | p_cure | ✗ | p_cure (doctor cures normal) | p_cure (doctor cures antivax) | ✗ |
 | Promotion | → Doctor (p_become_doctor) | ✗ | ✗ | — | — | — |
-
----
-
-## Simulation Parameters Reference
-
-All parameters are stored in the `SimConfig` singleton and loaded from `config.ini`. Sliders override config values at runtime.
-
-### Infection & Cure
-
-| Parameter | Field | Default | Description |
-|-----------|-------|---------|-------------|
-| Initial infection (normal) | `p_initial_infect_normal` | 0.05 | Chance normal/antivax boid starts infected |
-| Initial infection (doctor) | `p_initial_infect_doctor` | 0.02 | Chance doctor starts infected |
-| Infection spread (normal) | `p_infect_normal` | 0.50 | Normal/Antivax×same infection on collision |
-| Infection spread (doctor) | `p_infect_doctor` | 0.50 | Doctor×Doctor infection on collision |
-| Cure probability | `p_cure` | 0.80 | Doctor cures infected boid on collision |
-
-### Reproduction
-
-| Parameter | Field | Default | Description |
-|-----------|-------|---------|-------------|
-| Reproduction (normal) | `p_offspring_normal` | 0.40 | Normal/Antivax reproduction chance |
-| Reproduction (doctor) | `p_offspring_doctor` | 0.05 | Doctor reproduction chance |
-| Offspring count (normal) | `offspring_mean_normal` / `offspring_stddev_normal` | 2.0 / 1.0 | N(2,1) kids, clamped ≥0 |
-| Offspring count (doctor) | `offspring_mean_doctor` / `offspring_stddev_doctor` | 1.0 / 1.0 | N(1,1) kids, clamped ≥0 |
-| Reproduction cooldown | `reproduction_cooldown` | 5.0 sec | Minimum time between reproductions |
-
-### Transitions
-
-| Parameter | Field | Default | Description |
-|-----------|-------|---------|-------------|
-| Doctor promotion | `p_become_doctor` | 0.05 | Adult normal → doctor chance per frame |
-| Antivax transition | `p_antivax` | 0.10 | Normal boid → antivax at spawn |
-
-### Interaction Radii
-
-| Parameter | Field | Default | Description |
-|-----------|-------|---------|-------------|
-| Normal/Antivax interact | `r_interact_normal` | 30.0 | Collision radius for normal/antivax |
-| Doctor interact | `r_interact_doctor` | 40.0 | Doctor interaction radius |
-
-### Timing
-
-| Parameter | Field | Default | Description |
-|-----------|-------|---------|-------------|
-| Death time | `t_death` | 5.0 sec | Seconds after infection before death |
-| Adult age | `t_adult` | 8.33 sec | Seconds before eligible for doctor promotion |
-
-### World & Population
-
-| Parameter | Field | Default | Description |
-|-----------|-------|---------|-------------|
-| World size | `world_width` × `world_height` | 1920 × 1080 | Simulation bounds |
-| Initial normal count | `initial_normal_count` | 200 | Starting normal boid population |
-| Initial doctor count | `initial_doctor_count` | 10 | Starting doctor boid population |
-
-### Movement & Flocking
-
-| Parameter | Field | Default | Description |
-|-----------|-------|---------|-------------|
-| Max speed | `max_speed` | 180.0 /sec | Boid velocity cap |
-| Max force | `max_force` | 6.0 /sec | Steering force cap |
-| Separation weight | `separation_weight` | 1.5 | Avoid nearby boids (all swarms) |
-| Alignment weight | `alignment_weight` | 1.0 | Match heading (same-swarm only) |
-| Cohesion weight | `cohesion_weight` | 1.0 | Steer toward group center (same-swarm only) |
-| Separation radius | `separation_radius` | 25.0 | Protected range for separation |
-| Alignment radius | `alignment_radius` | 50.0 | Visual range for alignment |
-| Cohesion radius | `cohesion_radius` | 50.0 | Visual range for cohesion |
-
-### Infected Debuffs (Multipliers)
-
-| Parameter | Normal/Antivax | Doctor |
-|-----------|:-:|:-:|
-| Interaction radius | ×0.8 (`debuff_r_interact_normal_infected`) | ×0.7 (`debuff_r_interact_doctor_infected`) |
-| Reproduction probability | ×0.5 (`debuff_p_offspring_normal_infected`) | ×0.5 (`debuff_p_offspring_doctor_infected`) |
-| Cure probability | — | ×0.5 (`debuff_p_cure_infected`) |
-
-### Antivax-Specific
-
-| Parameter | Field | Default | Description |
-|-----------|-------|---------|-------------|
-| Repulsion radius | `antivax_repulsion_radius` | 100.0 | Visual range for detecting doctors |
-| Repulsion weight | `antivax_repulsion_weight` | 3.0 | Strength of doctor-avoidance force |
 
 ---
 
@@ -310,15 +178,7 @@ The simulation is interactive with a GUI showing real-time data:
 - `src/spatial/` — Fixed-cell spatial hash grid (pure C++, no FLECS/Raylib)
 - `src/render/` — Raylib window, drawing, raygui stats overlay
 - `include/` — Shared headers (API contract between modules)
-- `tests/` — Unit tests (23 total: 12 ConfigLoader + 11 SpatialGrid)
+- `docs/` — Boid model formal reference, task logs
+- `tests/` — Unit tests (35 total: 12 ConfigLoader + 11 SpatialGrid + 2 CureContract + 10 Antivax)
 - `config.ini` — Default simulation parameters
 
----
-
-## Known Issues Requiring Fixes
-
-1. **Cohesion steering is incorrect:** Force magnitude scales with distance from center-of-mass instead of using normalized desired velocity. Causes oscillation and poor flock formation.
-2. **Alignment steering is partially incorrect:** Average neighbor velocity is not normalized to max_speed before computing steering difference. Weakens alignment when neighbors are slow.
-3. **No swarm-specific flocking:** All boids align/cohere with all other boids regardless of swarm type. Must filter to same-swarm for alignment/cohesion.
-4. **Antivax is a tag, not a separate swarm:** Currently `Antivax` is an additive tag on `NormalBoid` entities. Must be promoted to `AntivaxBoid` as a primary swarm classification.
-5. **No minimum speed enforcement:** Boids can stall when opposing forces cancel.
