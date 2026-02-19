@@ -42,6 +42,10 @@ int main(int argc, char* argv[]) {
             sim_state.reset_requested = true;
         }
 
+        if (IsKeyPressed(KEY_H)) {
+            sim_state.show_stats_overlay = !sim_state.show_stats_overlay;
+        }
+
         if (sim_state.reset_requested) {
             reset_simulation(world);
             sim_state.reset_requested = false;
