@@ -179,6 +179,6 @@ The simulation is interactive with a GUI showing real-time data:
 - `src/render/` — Raylib window, drawing, raygui stats overlay
 - `include/` — Shared headers (API contract between modules)
 - `docs/` — Boid model formal reference, task logs
-- `tests/` — Unit tests (35 total: 12 ConfigLoader + 11 SpatialGrid + 2 CureContract + 10 Antivax)
+- `tests/` — Unit tests (40 total: 13 ConfigLoader + 15 SpatialGrid + 2 CureContract + 10 Antivax)
 - `config.ini` — Default simulation parameters
 

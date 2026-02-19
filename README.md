@@ -1,10 +1,11 @@
 # COMP6216-Swaying-Swarms
 
-2D pandemic boid simulation: two swarms (Normal Boids, Doctor Boids) with infection, cure, reproduction, death, and promotion mechanics. Built with C++17, FLECS ECS, and Raylib.
+2D pandemic boid simulation: three swarms (Normal Boids, Doctor Boids, Antivax Boids) with infection, cure, reproduction, death, and promotion mechanics. Built with C++17, FLECS ECS, and Raylib.
 
 ## Research Questions
 - Optimal number of doctors to save a swarm from a pandemic
 - Optimal behaviours of a doctor swarm to save a swarm from a pandemic
+- How does an antivax subpopulation affect pandemic outcomes?
 
 ---
 
@@ -79,8 +80,8 @@ The simulation reads an optional INI config file. A fully documented default is 
 | **Pause / Resume** button | Toggles simulation |
 | **Reset** button | Destroys all boids, re-spawns initial population |
 | **Sliders** | p_infect_normal, p_cure, r_interact_normal, r_interact_doctor |
-| **Population graph** | Real-time line chart (green=normal, blue=doctor, 500-frame window) |
-| **Stats panel** | Normal alive, doctor alive, dead (total/normal/doctor), newborns (total/normal/doctor) |
+| **Population graph** | Real-time line chart (green=normal, blue=doctor, orange=antivax, 500-frame window) |
+| **Stats panel** | Normal/doctor/antivax alive, dead, and newborns |
 
 ---
 
@@ -93,7 +94,7 @@ src/ecs/           FLECS systems, world init, spawning, stats
 src/sim/           Behavior logic: infection, cure, reproduction, death, aging, promotion, config loader
 src/spatial/       Fixed-cell spatial hash grid (pure C++, no FLECS/Raylib)
 src/render/        Raylib rendering, raygui stats overlay, sliders, population graph
-tests/             23 unit tests (11 spatial grid + 12 config loader)
+tests/             40 unit tests (15 spatial grid + 13 config loader + 2 cure contract + 10 antivax)
 config.ini         Default simulation parameters
 ```
 
@@ -141,14 +142,15 @@ All core simulation features from `context.md` are implemented. The project is i
 
 | Feature | Status |
 |---|---|
-| Flocking (cohesion, alignment, separation) | ✅ |
+| Flocking (Reynolds steering, swarm-specific alignment/cohesion) | ✅ |
 | Infection, death, cure, reproduction, aging, promotion | ✅ |
-| Infected debuffs, sex system, antivax boids | ✅ |
+| Three swarms (Normal, Doctor, Antivax with doctor avoidance) | ✅ |
+| Infected debuffs, sex system | ✅ |
 | Interactive sliders, pause/reset, population graph | ✅ |
 | INI config file loader | ✅ |
 | Obstacles (future extension) | Planned |
 
-**Runtime:** 60 FPS, 23 tests passing.
+**Runtime:** 60 FPS, 40 tests passing.
 
 ---
 

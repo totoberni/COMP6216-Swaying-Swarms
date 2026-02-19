@@ -39,7 +39,12 @@ We store states in **matrices**, handled as **tables** by FLECS:
 - Implement hospitals areas of some kind.
 
 ### Fixes
+<<<<<<< HEAD
 - Cooldown for sickness after cure. This is natural immunity. Requires: sickness applies a chance of death and chance of natural heal every second. Regardless of when boids heal, they have a time-dependent decaying immunity (from 100 immunity to 0) lasting 10s.Prevents swarms from being constantly sick. All of these interactions MUST have their configurable parameters in config.ini.
+=======
+- Infection is currently being checked every frame (60/s), two fixes: check infection every second (edit the check to respect time int) or edit the infection rate
+- Cooldown for sickness after cure. This is natural immunity. Requires: sickness applies a chance of death and chance of natural heal every second. Regardless of when boids heal, they have a time-dependent decaying immunity (from 100 immunity to 0) lasting 10s.Prevents swarms from being constantly sick.
+>>>>>>> 684d62e (chore: updated README.md after updates)
 - [Bryan] Make the population graph toggleable
 - The control pane should be collapsable to provide full view of simulation
 - The control pane has overflowing sliders to be fixed (overflow into simulation box)
