@@ -44,7 +44,9 @@ void init_world(flecs::world& world, const std::string& config_path) {
     // Set RenderState singleton (empty)
     world.set<RenderState>({});
 
-    // Create SpatialGrid singleton — cell size matches largest interaction radius
+    // Create SpatialGrid singleton — cell size = largest infection radius (most-frequent queries).
+    // Steering queries (alignment/cohesion) use larger radii but the grid's dynamic search
+    // window (ceil(radius/cell_size) cells) handles those automatically.
     float cell_size = std::max(config.r_interact_normal, config.r_interact_doctor);
     SpatialGrid grid(config.world_width, config.world_height, cell_size);
     world.set<SpatialGrid>(std::move(grid));

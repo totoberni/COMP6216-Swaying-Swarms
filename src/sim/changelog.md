@@ -10,3 +10,4 @@
 ## 2026-02-18
 
 - **01:35Z** | `src/sim/config_loader.cpp` | Edited: '    else if (key == "max_force")                { config.max' -> '    else if (key == "max_force")                { config.max' | session:`f655d95a`
+- **23:31Z** | `src/sim/config_loader.cpp` | Edited: '        std::string key = trim(trimmed.substr(0, eq_pos));  ' -> '        std::string key = trim(trimmed.substr(0, eq_pos));  ' | session:`4dfbd6b1`

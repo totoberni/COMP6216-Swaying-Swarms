@@ -245,3 +245,17 @@ Should check #2 before terminating on timeout. 16-17 minutes is acceptable for c
 5. Frame-rate independence proof: `*dt` does NOT undermine the model, improves on frame-dependent references
 6. Turn-time comparison table (before/after fix)
 **Rationale:** Academic documentation for the coursework. Proves our implementation choices are mathematically grounded.
+
+## DEC-028: Migration to Claude Code Agent Teams
+**When:** 2026-02-18 (Post Phase 13)
+**Context:** Project used custom orchestrator infrastructure (`.orchestrator/` state files, `ralph.sh` loops, `claude -p` worker spawning, manual PID tracking, file-based inbox). Claude Code now has built-in Agent Teams (TeamCreate, TaskCreate, SendMessage, automatic lifecycle management).
+**Decision:** Migrate from custom coordination to built-in Agent Teams while preserving the audit trail (decisions.md, mistakes.md), changelog hooks, and module boundaries.
+**Changes:**
+- Removed: SubagentStop hooks, `record-process.sh`, `ralph.sh`, `docs/current-task.md`, `record-process.md` command
+- Added: TaskCompleted hook registration, Agent Teams coordination section in CLAUDE.md
+- Rewritten: `orchestrator.md` agent definition (team lead role using TeamCreate/TaskCreate/SendMessage)
+- Updated: All 5 worker agents with Team Communication protocol
+- Simplified: `state.md` Active Workers table replaced with Active Team reference to TaskList
+**Rationale:** Built-in Agent Teams provides automatic lifecycle management, message delivery, task tracking, and idle notifications — eliminating the need for PID monitoring, file-based inbox, and custom hooks. Reduces orchestrator complexity while preserving the quality mechanisms (mistakes.md guardrails, decisions.md audit trail).
+**Preserved unchanged:** decisions.md, mistakes.md, context.md, update-changelog.sh hook, module boundaries, code style, build/test infrastructure.
+**Alternatives rejected:** Keeping custom system (technical debt, duplicated functionality), hybrid approach (confusing two coordination mechanisms).

@@ -137,7 +137,8 @@ void reset_simulation(flecs::world& world) {
         stats.history[i] = {};
     }
 
-    // Rebuild spatial grid with current config (sliders may have changed radii)
+    // Rebuild spatial grid with current config (sliders may have changed radii).
+    // Cell size = largest infection radius; steering uses dynamic search window expansion.
     const SimConfig& config = world.get<SimConfig>();
     float cell_size = std::max(config.r_interact_normal, config.r_interact_doctor);
     SpatialGrid new_grid(config.world_width, config.world_height, cell_size);

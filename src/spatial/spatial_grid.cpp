@@ -1,6 +1,5 @@
 #include "spatial_grid.h"
 #include <cmath>
-#include <algorithm>
 
 namespace {
     // Small epsilon to prevent entities from landing exactly on upper boundary
@@ -23,29 +22,32 @@ void SpatialGrid::clear() {
     }
 }
 
-void SpatialGrid::insert(uint64_t entity_id, float x, float y) {
+void SpatialGrid::insert(uint64_t entity_id, float x, float y,
+                          float vx, float vy, uint8_t swarm_type, uint8_t flags) {
     // Clamp to grid bounds (epsilon prevents exact boundary hits causing out-of-bounds indexing)
     x = std::max(0.0f, std::min(x, world_w_ - BOUNDARY_EPSILON));
     y = std::max(0.0f, std::min(y, world_h_ - BOUNDARY_EPSILON));
 
     int idx = cell_index(x, y);
     if (idx >= 0 && idx < static_cast<int>(cells_.size())) {
-        cells_[idx].push_back({entity_id, x, y});
+        cells_[idx].push_back({entity_id, x, y, vx, vy, swarm_type, flags});
     }
 }
 
-std::vector<std::pair<uint64_t, float>> SpatialGrid::query_neighbors(float x, float y, float radius) const {
-    std::vector<std::pair<uint64_t, float>> results;
+void SpatialGrid::query_neighbors(float x, float y, float radius,
+                                   std::vector<QueryResult>& results) const {
+    results.clear();
 
-    // Determine cell range to check (current cell + 8 neighbors)
+    // Determine cell of query point
     int col = static_cast<int>(x / cell_size_);
     int row = static_cast<int>(y / cell_size_);
 
     float radius_sq = radius * radius;
 
-    // Check 3x3 grid centered on current cell
-    for (int dy = -1; dy <= 1; ++dy) {
-        for (int dx = -1; dx <= 1; ++dx) {
+    // Dynamic search window: expand beyond 3x3 when radius > cell_size
+    int cell_range = static_cast<int>(std::ceil(radius / cell_size_));
+    for (int dy = -cell_range; dy <= cell_range; ++dy) {
+        for (int dx = -cell_range; dx <= cell_range; ++dx) {
             int check_col = col + dx;
             int check_row = row + dy;
 
@@ -67,17 +69,11 @@ std::vector<std::pair<uint64_t, float>> SpatialGrid::query_neighbors(float x, fl
                 float dist_sq = dx_val * dx_val + dy_val * dy_val;
 
                 if (dist_sq <= radius_sq) {
-                    results.push_back({entry.entity_id, std::sqrt(dist_sq)});
+                    results.push_back({&entry, dist_sq});
                 }
             }
         }
     }
-
-    // Sort by distance ascending
-    std::sort(results.begin(), results.end(),
-        [](const auto& a, const auto& b) { return a.second < b.second; });
-
-    return results;
 }
 
 int SpatialGrid::cell_index(float x, float y) const {

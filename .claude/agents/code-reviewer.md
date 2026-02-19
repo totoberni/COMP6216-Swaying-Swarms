@@ -18,3 +18,9 @@ Report format:
 ## Critical (must fix): Memory safety, thread safety, build errors, module boundary violations, FLECS misuse
 ## Warnings (should fix): Magic numbers, missing error handling, >50-line functions, unused includes
 ## Suggestions: Naming, performance, docs
+
+## Team Communication
+- When assigned a task: `TaskUpdate(status: "in_progress")` before starting
+- When done: `TaskUpdate(status: "completed")`, then `SendMessage` to team lead with summary
+- If blocked: `SendMessage` to team lead describing the issue
+- After completing a task: check `TaskList` for next available work

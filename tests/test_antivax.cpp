@@ -146,8 +146,8 @@ TEST(AntivaxInfection, SameSwarmOnly) {
         << "Adjacent AntivaxBoid should become infected (same-swarm infection)";
 }
 
-// Infected antivax must NOT infect a NormalBoid neighbor
-TEST(AntivaxInfection, NoCrossSwarm) {
+// Infected antivax CAN infect a NormalBoid neighbor (same epidemiological population)
+TEST(AntivaxInfection, CrossSwarmInfection) {
     flecs::world world;
     register_components(world);
 
@@ -187,8 +187,8 @@ TEST(AntivaxInfection, NoCrossSwarm) {
         world.progress(1.0f / 60.0f);
     }
 
-    EXPECT_FALSE(normal.has<Infected>())
-        << "NormalBoid should NOT be infected by an AntivaxBoid (cross-swarm prevention)";
+    EXPECT_TRUE(normal.has<Infected>())
+        << "NormalBoid should be infected by AntivaxBoid (same epidemiological population)";
 }
 
 // ============================================================

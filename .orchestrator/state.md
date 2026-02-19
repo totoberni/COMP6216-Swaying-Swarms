@@ -20,7 +20,7 @@ All parts complete. Build clean, zero warnings, 35 tests pass.
 - After fixing a worker mistake → append to `.orchestrator/mistakes.md` (worker's table)
 - Before spawning a worker → check `.orchestrator/mistakes.md` for that worker's error history
 - Before clearing session decisions → promote important ones to `.orchestrator/decisions.md`
-- After agents complete tasks → update Active Workers and Jobs Complete tables below
+- After agents complete tasks → update Jobs Complete table below
 
 ---
 
@@ -74,15 +74,15 @@ All rules in one commit (c0a3aef, 516 lines): aging, death, infection, cure, rep
 
 ---
 
-## Active Workers
-<!-- record-process.sh upserts rows here on SubagentStop. -->
-<!-- Format must be preserved — hook parses by | delimiters. -->
-| Worker | Task | Branch | Worktree | Session ID | PID | Status | Started |
-|--------|------|--------|----------|------------|-----|--------|---------|
-| — | No active workers | — | — | — | — | — | — |
+## Active Team
+<!-- Agent Teams manages lifecycle via TeamCreate/TaskList/SendMessage. -->
+<!-- No manual PID/session tracking needed. -->
+**Team name:** (none — set at phase start)
+
+Active work is tracked via `TaskList`. Use `TaskList` to see current task status.
 
 ## Jobs Complete
-<!-- record-process.sh moves rows here when status=completed. -->
+<!-- Orchestrator updates this table when phases complete. -->
 | Worker | Task | Branch | Result | Completed |
 |--------|------|--------|--------|-----------|
 | ECS Worker | Phase 8: ECS core module | feature/ecs-core | ✅ Merged | Phase 8 |

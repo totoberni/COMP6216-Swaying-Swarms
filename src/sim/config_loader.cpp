@@ -128,7 +128,14 @@ bool load_config(const std::string& path, SimConfig& config) {
         }
 
         std::string key = trim(trimmed.substr(0, eq_pos));
-        std::string val = trim(trimmed.substr(eq_pos + 1));
+        std::string val = trimmed.substr(eq_pos + 1);
+
+        // Strip inline comments (';' or '#' after value)
+        auto comment_pos = val.find_first_of(";#");
+        if (comment_pos != std::string::npos) {
+            val = val.substr(0, comment_pos);
+        }
+        val = trim(val);
 
         if (key.empty() || val.empty()) {
             throw std::runtime_error(

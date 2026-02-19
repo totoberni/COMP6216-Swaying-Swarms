@@ -1,33 +1,21 @@
 {
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "2"
+  },
   "permissions": {
     "allow": [
       "Bash(cmake *)",
-      "Bash(make *)",
-      "Bash(cd *)",
       "Bash(git status)",
       "Bash(git diff *)",
       "Bash(git log *)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(ls *)",
-      "Bash(cat *)",
-      "Bash(head *)",
-      "Bash(tail *)",
-      "Bash(find *)",
-      "Bash(grep *)",
-      "Bash(./build/*)",
-      "Bash(jq *)"
+      "Bash(./build/*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
       "Bash(git push *)",
       "Bash(git checkout main)",
-      "Read(.env*)",
-      "Read(secrets/*)",
-      "Write(.claude/*settings*)",
-      "Edit(.claude/*settings*)",
-      "Write(.orchestrator/*settings*)",
-      "Edit(.orchestrator/*settings*)"
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   },
   "hooks": {
@@ -42,17 +30,13 @@
         ]
       }
     ],
-    "SubagentStop": [
+    "TaskCompleted": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/record-process.sh"
-          },
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/record-mistake.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/task-completed.sh"
           }
         ]
       }

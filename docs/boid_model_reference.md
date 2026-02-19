@@ -1,6 +1,6 @@
 # Boid Flocking Model — Formal Mathematical Reference
 
-This document formally defines two canonical boid flocking models from the literature and our hybrid implementation used in the COMP6216 pandemic simulation. It includes mathematical derivations of key behavioral differences and a frame-rate independence analysis.
+This document formally defines two canonical boid flocking models from the literature and our Pure Shiffman Model B implementation used in the COMP6216 pandemic simulation. It includes mathematical derivations of key behavioral differences and a frame-rate independence analysis.
 
 ---
 
@@ -69,9 +69,11 @@ No $\Delta t$. One step = one frame. Speed is clamped to $[v_{\min}, v_{\max}]$,
 
 ## 2. Model B — "Reynolds Steering" (Shiffman / Processing.org / Reynolds GDC'99)
 
-**Sources:** [Processing.org Flocking](https://processing.org/examples/flocking.html), [Reynolds GDC'99](https://www.red3d.com/cwr/steer/gdc99/), [Reynolds 1987](https://www.red3d.com/cwr/boids/).
+**Sources:** [Processing.org Flocking](https://processing.org/examples/flocking.html), [Reynolds GDC'99](https://www.red3d.com/cwr/steer/gdc99/), [Reynolds 1987](https://www.red3d.com/cwr/boids/), [Shiffman, *The Nature of Code*, Chapter 6](https://natureofcode.com/autonomous-agents/).
 
 This model uses the **Reynolds steering paradigm**: each behavior computes a *desired velocity*, and the steering force is the error between desired and current velocity, individually truncated to $f_{\max}$.
+
+**Note on Reynolds 1987 vs Shiffman:** Reynolds' original 1987 paper uses **priority-based force allocation** (separation first, then alignment, then cohesion — each consuming part of a force budget). Shiffman's implementation uses a **linear weighted combination** of all three forces, which is simpler and more widely adopted. Our implementation follows Shiffman's linear combination approach.
 
 ### 2.1 Definitions
 
@@ -138,15 +140,30 @@ No $\Delta t$. Frame-based, like Model A.
 
 **Key ratio:** $f_{\max} / v_{\max} = 0.03 / 2 = 0.015 = 1.5\%$ per frame.
 
+### 2.7 Reference Parameters (Nature of Code / GitHub)
+
+Shiffman's *Nature of Code* book uses slightly different values:
+
+| Parameter | Symbol | Value | Unit |
+|-----------|--------|-------|------|
+| Max speed | $v_{\max}$ | 3 | px/frame |
+| Max force | $f_{\max}$ | 0.05 | px/frame |
+
+**Key ratio:** $f_{\max} / v_{\max} = 0.05 / 3 = 0.0167 = 1.67\%$ per frame.
+
+Our per-second conversion uses these Nature of Code values: $v_{\max} = 3 \times 60 = 180$ px/s, $f_{\max} = 0.05 \times 60^2 = 180.0$ px/s$^2$ (see Section 5.4 for derivation).
+
 ---
 
-## 3. Our Hybrid Model (COMP6216)
+## 3. Our Model — Pure Shiffman Model B (COMP6216)
 
-Our implementation combines elements of both models with **frame-rate independent** Euler integration.
+Our implementation is a **pure Shiffman Model B** with **frame-rate independent** Euler integration and swarm-specific neighbor filtering.
 
-### 3.1 Separation (Model A — Raw Accumulation, Cross-Swarm)
+### 3.1 Separation (Model B — Inverse-Distance Weighted, Cross-Swarm)
 
-$$\mathbf{f}_{\text{sep}} = \sum_{j \in N_p(i)} (\mathbf{p}_i - \mathbf{p}_j)$$
+$$\mathbf{s} = \frac{1}{|N_p(i)|} \sum_{j \in N_p(i)} \frac{\hat{\mathbf{d}}_{ij}}{d_{ij}}$$
+
+$$\mathbf{f}_{\text{sep}} = \text{truncate}\!\left(\frac{\mathbf{s}}{\|\mathbf{s}\|} \cdot v_{\max} - \mathbf{v}_i,\; f_{\max}\right)$$
 
 Applies to **all** nearby boids regardless of swarm type (prevents collisions across swarms).
 
@@ -156,23 +173,21 @@ Let $S(i) = \{j \in N_v(i) : \text{swarm}(j) = \text{swarm}(i)\}$ be the same-sw
 
 $$\bar{\mathbf{v}} = \frac{1}{|S(i)|} \sum_{j \in S(i)} \mathbf{v}_j$$
 
-$$\mathbf{f}_{\text{ali}} = \left(\frac{\bar{\mathbf{v}}}{\|\bar{\mathbf{v}}\|} \cdot v_{\max} - \mathbf{v}_i\right) \cdot w_{\text{ali}}$$
+$$\mathbf{f}_{\text{ali}} = \text{truncate}\!\left(\frac{\bar{\mathbf{v}}}{\|\bar{\mathbf{v}}\|} \cdot v_{\max} - \mathbf{v}_i,\; f_{\max}\right)$$
 
 ### 3.3 Cohesion (Model B — Reynolds Steering, Same-Swarm Only)
 
 $$\mathbf{c} = \frac{1}{|S(i)|} \sum_{j \in S(i)} \mathbf{p}_j$$
 
-$$\mathbf{f}_{\text{coh}} = \left(\frac{\mathbf{c} - \mathbf{p}_i}{\|\mathbf{c} - \mathbf{p}_i\|} \cdot v_{\max} - \mathbf{v}_i\right) \cdot w_{\text{coh}}$$
+$$\mathbf{f}_{\text{coh}} = \text{truncate}\!\left(\frac{\mathbf{c} - \mathbf{p}_i}{\|\mathbf{c} - \mathbf{p}_i\|} \cdot v_{\max} - \mathbf{v}_i,\; f_{\max}\right)$$
 
 ### 3.4 Force Accumulation and Clamping
 
-Forces are accumulated first, then the **total** is clamped (not per-behavior):
+Each force is individually truncated to $f_{\max}$ (per-behavior), then weighted and summed:
 
-$$\mathbf{F} = \mathbf{f}_{\text{sep}} \cdot w_{\text{sep}} + \mathbf{f}_{\text{ali}} + \mathbf{f}_{\text{coh}}$$
+$$\mathbf{F} = w_{\text{sep}} \cdot \mathbf{f}_{\text{sep}} + w_{\text{ali}} \cdot \mathbf{f}_{\text{ali}} + w_{\text{coh}} \cdot \mathbf{f}_{\text{coh}}$$
 
-$$\mathbf{F} \leftarrow \text{truncate}(\mathbf{F},\; F_{\max})$$
-
-**Note:** In Model B, each force is individually truncated to $f_{\max}$ before summation. In our model, only the total is clamped. This means a large separation force can completely suppress alignment and cohesion after clamping.
+**No total force clamp is applied**, matching Shiffman's reference implementation. Each behavior is individually truncated to $f_{\max}$ before weighting, but the weighted sum is used directly as the acceleration. This means the maximum total force is $(w_{\text{sep}} + w_{\text{ali}} + w_{\text{coh}}) \cdot f_{\max}$ when all behaviors agree, allowing multi-behavior cooperation for responsive steering.
 
 ### 3.5 Update Rule (Frame-Rate Independent)
 
@@ -183,16 +198,16 @@ where $\Delta t$ is the real time elapsed since the last frame (seconds). This i
 
 A minimum speed $v_{\min}$ is also enforced: if $\|\mathbf{v}_i\| < v_{\min}$, velocity is rescaled to $v_{\min}$.
 
-### 3.6 Parameters
+### 3.6 Parameters (Shiffman Nature of Code, scaled to per-second)
 
-| Parameter | Symbol | Old Default | New Default | Unit |
-|-----------|--------|-------------|-------------|------|
-| Max speed | $v_{\max}$ | 180.0 | 180.0 | px/s |
-| **Max force** | $F_{\max}$ | **6.0** | **180.0** | px/s$^2$ |
-| Min speed | $v_{\min}$ | 54.0 | 54.0 | px/s |
-| **Separation radius** | $r_p$ | **25.0** | **12.0** | px |
-| Alignment radius | $r_v$ | 50.0 | 50.0 | px |
-| Cohesion radius | $r_v$ | 50.0 | 50.0 | px |
+| Parameter | Symbol | Value | Shiffman Source | Unit |
+|-----------|--------|-------|-----------------|------|
+| Max speed | $v_{\max}$ | 180.0 | 3.0 px/frame × 60 | px/s |
+| Max force | $f_{\max}$ | 180.0 | 0.05 × 60² (preserves per-frame ratio) | px/s$^2$ |
+| Min speed | $v_{\min}$ | 54.0 | 30% of max_speed | px/s |
+| Separation radius | $r_p$ | 25.0 | desiredSeparation = 25 | px |
+| Alignment radius | $r_v$ | 50.0 | neighbordist = 50 | px |
+| Cohesion radius | $r_v$ | 50.0 | neighbordist = 50 | px |
 | Separation weight | $w_{\text{sep}}$ | 1.5 | 1.5 | — |
 | Alignment weight | $w_{\text{ali}}$ | 1.0 | 1.0 | — |
 | Cohesion weight | $w_{\text{coh}}$ | 1.0 | 1.0 | — |
@@ -246,7 +261,7 @@ $$\boxed{\|\mathbf{f}_j\|_{\text{Model B}} = \frac{1}{d}}$$
 
 **Why Model A still works:** In Adams' implementation, the protected range $r_p = 8$ is very small (20% of visual range $r_v = 40$). Within such a small zone, all neighbors are approximately equidistant, so the asymmetry has minimal practical effect. The accumulation count $n$ provides the primary scaling — more crowded = stronger repulsion.
 
-**Why this matters for our model:** Our separation radius (originally 25, now 12) is larger relative to the alignment radius than Adams' protected range. At $r_p = 25$ with $r_v = 50$, boids at the far edge of the separation zone contribute forces 25x stronger than near-collision boids. Reducing to $r_p = 12$ limits the maximum single-neighbor contribution and restores the count-driven scaling behavior that Model A relies upon.
+**Our model now uses Model B separation** with inverse-distance weighting. This means closer boids produce stronger repulsion, which is the intuitive behavior. The $r_p = 25$ radius (matching Shiffman's `desiredSeparation`) works naturally with Model B's $1/d$ scaling.
 
 ### 4.4 Formal Ratio
 
@@ -324,16 +339,29 @@ The original master plan specified frame-based values. The conversion to per-sec
 
 $$v_{\max}^{\text{sec}} = v_{\max}^{\text{frame}} \cdot \text{fps} = 3.0 \times 60 = 180.0 \text{ px/s}$$
 
-For force, the frame-based $F_{\max}^{\text{frame}}$ represents the maximum velocity change per frame. In our model, velocity change per frame is $F_{\max}^{\text{sec}} \cdot \Delta t$. For equivalence:
+For force, the naive conversion $F_{\max}^{\text{sec}} = F_{\max}^{\text{frame}} \cdot \text{fps}$ preserves the **absolute per-frame velocity change** but **not the behavioral steering ratio**. Since $v_{\max}$ was also multiplied by fps, the per-frame steering ratio becomes:
 
-$$F_{\max}^{\text{sec}} \cdot \Delta t = F_{\max}^{\text{frame}}$$
-$$F_{\max}^{\text{sec}} = \frac{F_{\max}^{\text{frame}}}{\Delta t} = F_{\max}^{\text{frame}} \cdot \text{fps}$$
+$$\frac{F_{\max}^{\text{sec}} \cdot \Delta t}{v_{\max}^{\text{sec}}} = \frac{F_{\max}^{\text{frame}} \cdot \text{fps} \cdot (1/\text{fps})}{v_{\max}^{\text{frame}} \cdot \text{fps}} = \frac{F_{\max}^{\text{frame}}}{v_{\max}^{\text{frame}} \cdot \text{fps}}$$
 
-With $F_{\max}^{\text{frame}} = 0.1$ and fps $= 60$:
+This is **fps times smaller** than Shiffman's ratio $F_{\max}^{\text{frame}} / v_{\max}^{\text{frame}}$. With the naive conversion ($F = 3.0$, $v = 180$): ratio = $3/(60 \times 180) = 0.028\%$ per frame, versus Shiffman's $0.05/3 = 1.67\%$. That is 60x weaker steering.
 
-$$F_{\max}^{\text{sec}} = 0.1 \times 60 = 6.0 \text{ px/s}^2$$
+**Correct conversion — preserving the per-frame steering ratio:**
 
-This conversion is **dimensionally correct**. The old value of $6.0$ faithfully reproduced the frame-based behavior of $F_{\max}^{\text{frame}} = 0.1$. The problem was that the original frame-based value itself was too conservative — it resulted in 60-second turn times, far slower than reference implementations.
+We require:
+
+$$\frac{F_{\max}^{\text{sec}} \cdot \Delta t}{v_{\max}^{\text{sec}}} = \frac{F_{\max}^{\text{frame}}}{v_{\max}^{\text{frame}}}$$
+
+Solving for $F_{\max}^{\text{sec}}$:
+
+$$F_{\max}^{\text{sec}} = \frac{F_{\max}^{\text{frame}} \cdot v_{\max}^{\text{sec}} \cdot \text{fps}}{v_{\max}^{\text{frame}}} = F_{\max}^{\text{frame}} \cdot \text{fps}^2$$
+
+The second equality holds because $v_{\max}^{\text{sec}} / v_{\max}^{\text{frame}} = \text{fps}$.
+
+With Shiffman's Nature of Code values ($F_{\max}^{\text{frame}} = 0.05$, fps $= 60$):
+
+$$F_{\max}^{\text{sec}} = 0.05 \times 60^2 = 0.05 \times 3600 = 180.0 \text{ px/s}^2$$
+
+**Verification:** per-frame ratio = $(180.0 / 60) / 180.0 = 3.0 / 180.0 = 1.67\%$, matching Shiffman's $0.05 / 3 = 1.67\%$.
 
 ---
 
@@ -367,34 +395,30 @@ Total velocity change: $2 v_{\max} = 4$ px/frame.
 
 $$T_{180} = \frac{4}{0.03} = 133 \text{ frames} = 2.2\text{s at 60fps}$$
 
-### 6.4 Our Model — Before Fix
+### 6.4 Our Model (Pure Shiffman Model B)
 
-$F_{\max} = 6.0$ px/s$^2$, $v_{\max} = 180$ px/s, $\Delta t = 1/60$ s.
+$f_{\max} = 180.0$ px/s$^2$, $v_{\max} = 180$ px/s, $\Delta t = 1/60$ s.
 
-$$\Delta v_{\text{frame}} = F_{\max} \cdot \Delta t = 6.0 \times \frac{1}{60} = 0.1 \text{ px/s per frame}$$
+$$\Delta v_{\text{frame}} = f_{\max} \cdot \Delta t = 180.0 \times \frac{1}{60} = 3.0 \text{ px/s per frame}$$
 
 Total velocity change: $2 v_{\max} = 360$ px/s.
 
-$$T_{180} = \frac{360}{0.1 \times 60} = \frac{360}{6.0} = 60\text{s}$$
-
-### 6.5 Our Model — After Fix
-
-$F_{\max} = 180.0$ px/s$^2$, $v_{\max} = 180$ px/s.
-
-$$\Delta v_{\text{frame}} = 180.0 \times \frac{1}{60} = 3.0 \text{ px/s per frame}$$
-
 $$T_{180} = \frac{360}{3.0 \times 60} = \frac{360}{180} = 2.0\text{s}$$
 
-### 6.6 Summary Table
+This matches Shiffman's Nature of Code turn time exactly.
+
+**Note:** Without a safety-net total clamp, when all three behaviors cooperate, the effective per-frame ratio can reach $(w_{\text{sep}} + w_{\text{ali}} + w_{\text{coh}}) \times 1.67\% = (1.5 + 1.0 + 1.0) \times 1.67\% = 5.83\%$, matching Shiffman's maximum cooperative steering.
+
+### 6.5 Summary Table
 
 | Model | $\Delta v$ / frame | Frames for 180$^\circ$ | Time at 60fps | Force/Speed Ratio |
 |-------|:---:|:---:|:---:|:---:|
 | **Model A** (Adams) | 0.6 px/frame | 20 | **0.33s** | No clamp (10%/frame) |
-| **Model B** (Shiffman) | 0.03 px/frame | 133 | **2.2s** | $f/v = 1.5\%$ |
-| **Ours (before)** | 0.1 px/s | 3600 | **60s** | $F/v = 3.3\%$ but $\times\Delta t$ |
-| **Ours (after)** | 3.0 px/s | 120 | **2.0s** | $F/v = 100\%$ but $\times\Delta t$ |
+| **Model B** (Shiffman, processing.org) | 0.03 px/frame | 133 | **2.2s** | $f/v = 1.5\%$ |
+| **Model B** (Shiffman, Nature of Code) | 0.05 px/frame | 120 | **2.0s** | $f/v = 1.67\%$ |
+| **Ours** (per-second Model B) | 3.0 px/s | 120 | **2.0s** | $f/v = 1.67\%$/frame |
 
-After the fix, our turn time (2.0s) is comparable to Model B (2.2s) — the closest reference model to our Reynolds-hybrid approach.
+Our per-frame steering ratio ($f_{\max} \cdot \Delta t / v_{\max} = 180/60/180 = 1.67\%$) exactly matches Shiffman's Nature of Code reference ($0.05/3 = 1.67\%$), and the turn time of 2.0s matches as well — confirming correct dimensional conversion via $F_{\max}^{\text{sec}} = F_{\max}^{\text{frame}} \cdot \text{fps}^2$.
 
 ---
 
@@ -403,5 +427,6 @@ After the fix, our turn time (2.0s) is comparable to Model B (2.2s) — the clos
 1. Reynolds, C. W. (1987). "Flocks, Herds, and Schools: A Distributed Behavioral Model." *ACM SIGGRAPH Computer Graphics*, 21(4), 25-34. https://www.red3d.com/cwr/boids/
 2. Reynolds, C. W. (1999). "Steering Behaviors For Autonomous Characters." *GDC 1999*. https://www.red3d.com/cwr/steer/gdc99/
 3. Shiffman, D. "Flocking." *Processing.org Examples*. https://processing.org/examples/flocking.html
-4. Adams, V. H. "Boids Algorithm." *Cornell University*. https://vanhunteradams.com/Pico/Animal_Movement/Boids-algorithm.html
-5. Land, B. "Boids." *Cornell ECE4760*. https://people.ece.cornell.edu/land/courses/ece4760/labs/s2021/Boids/Boids.html
+4. Shiffman, D. *The Nature of Code*, Chapter 6: Autonomous Agents. https://natureofcode.com/autonomous-agents/
+5. Adams, V. H. "Boids Algorithm." *Cornell University*. https://vanhunteradams.com/Pico/Animal_Movement/Boids-algorithm.html
+6. Land, B. "Boids." *Cornell ECE4760*. https://people.ece.cornell.edu/land/courses/ece4760/labs/s2021/Boids/Boids.html

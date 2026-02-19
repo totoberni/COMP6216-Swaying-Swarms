@@ -88,18 +88,18 @@ struct SimConfig {
     int initial_normal_count       = 200;
     int initial_doctor_count       = 10;
 
-    // --- Boid movement parameters (per-second; converted from master plan per-frame @ 60fps) ---
-    float max_speed                = 180.0f;  // 3.0 px/frame * 60fps
-    float max_force                = 180.0f;  // = max_speed for ~2s turn time
+    // --- Boid movement (Shiffman/Processing.org Model B, scaled to per-second @ 60fps) ---
+    float max_speed                = 180.0f;  // Shiffman maxspeed=3 * 60fps
+    float max_force                = 180.0f;  // Shiffman maxforce=0.05 * 60^2 (preserves per-frame steering ratio)
     float min_speed                = 54.0f;   // 30% of max_speed — prevents stalling
 
-    float separation_weight        = 1.5f;
-    float alignment_weight         = 1.0f;
-    float cohesion_weight          = 1.0f;
+    float separation_weight        = 1.5f;    // Shiffman default
+    float alignment_weight         = 1.0f;    // Shiffman default
+    float cohesion_weight          = 1.0f;    // Shiffman default
 
-    float separation_radius        = 12.0f;
-    float alignment_radius         = 50.0f;
-    float cohesion_radius          = 50.0f;
+    float separation_radius        = 25.0f;   // Shiffman desiredSeparation
+    float alignment_radius         = 50.0f;   // Shiffman neighbor distance
+    float cohesion_radius          = 50.0f;   // Shiffman neighbor distance
 
     // --- Reproduction cooldown ---
     float reproduction_cooldown    = 5.0f;  // seconds between reproductions
@@ -124,6 +124,7 @@ struct PopulationHistoryPoint {
     int normal_alive = 0;
     int doctor_alive = 0;
     int antivax_alive = 0;
+    int infected_count = 0;
 };
 
 struct SimStats {

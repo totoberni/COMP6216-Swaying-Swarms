@@ -1,18 +1,6 @@
 # Changelog — render
 <!-- AUTO-MANAGED: Last 25 entries. Older entries archived to changelog-archive.md -->
 ## 2026-02-08
-- **Population graph**: Added draw_population_graph() helper function in renderer.cpp that draws a real-time line chart showing normal_alive (green) and doctor_alive (blue) populations over last 500 frames. Graph uses manual Raylib drawing (DrawLineEx) with auto-scaling Y axis. Stats panel height increased to 680px to accommodate graph (120px tall). Graph includes legend and max population label.
-- **Pause/Reset controls**: Added Pause/Resume and Reset buttons to stats overlay in renderer.cpp. Pause button toggles SimulationState.is_paused. Reset button sets SimulationState.reset_requested (handled by main loop). Stats panel height increased to 530px to accommodate new controls. Buttons are 100px wide, placed at top of panel.
-- **Parameter sliders**: Added interactive raygui sliders for p_infect_normal, p_cure, r_interact_normal, r_interact_doctor in stats overlay. Sliders update SimConfig singleton in real-time. Added world pointer parameter to render_frame() and draw_stats_overlay(). Stats panel height increased to 450px to accommodate controls.
-
-## 2026-02-07
-
-- **21:03Z** | `src/render/render_config.h` | File written/created | session:`c24a9544`
-- **21:03Z** | `src/render/renderer.h` | File written/created | session:`c24a9544`
-- **21:04Z** | `src/render/renderer.cpp` | File written/created | session:`c24a9544`
-- **21:04Z** | `src/render/render_demo.cpp` | File written/created | session:`c24a9544`
-- **21:06Z** | `src/render/render_demo.cpp` | Edited: '#include "renderer.h" #include "render_config.h" #include <r' -> '#include "renderer.h" #include "render_config.h" #include <r' | session:`c24a9544`
-- **21:08Z** | `src/render/render_config.h` | Edited: '// =========================================================' -> '// =========================================================' | session:`c24a9544`
 - **21:08Z** | `src/render/renderer.h` | Edited: '#pragma once  #include <cstdint> #include "../../include/com' -> '#pragma once  #include <cstdint> #include "components.h" #in' | session:`c24a9544`
 - **21:08Z** | `src/render/renderer.cpp` | Edited: 'void init_renderer(int width, int height, const char* title)' -> 'void init_renderer(int width, int height, const char* title)' | session:`c24a9544`
 - **21:08Z** | `src/render/renderer.cpp` | Edited: '    Vector2 left = {         x + std::cos(angle + 2.5f) * ha' -> '    Vector2 left = {         x + std::cos(angle + RenderConf' | session:`c24a9544`
@@ -32,3 +20,14 @@
 - **00:15Z** | `src/render/renderer.cpp` | Edited: '    const float panel_height = 680.0f;  // Increased height ' -> '    const float panel_height = 755.0f;  // Increased height ' | session:`f655d95a`
 - **00:15Z** | `src/render/renderer.cpp` | Edited: '    // Find current max population     int current_max = 1; ' -> '    // Find current max population     int current_max = 1; ' | session:`f655d95a`
 - **00:15Z** | `src/render/renderer.cpp` | Edited: '    // Draw lines for Doctor population (blue)     for (int ' -> '    // Draw lines for Doctor population (blue)     for (int ' | session:`f655d95a`
+
+## 2026-02-19
+
+- **00:33Z** | `src/render/renderer.cpp` | Edited: '#include "renderer.h" #include "render_config.h" #include <r' -> '#include "renderer.h" #include "render_config.h" #include <r' | session:`4dfbd6b1`
+- **00:34Z** | `src/render/renderer.cpp` | Edited: 'static void draw_population_graph(const SimStats& stats, int' -> 'static bool export_population_csv(const SimStats& stats) {  ' | session:`4dfbd6b1`
+- **00:34Z** | `src/render/renderer.cpp` | Edited: '    // --- Population Graph ---     GuiLabel(Rectangle{stati' -> '    // --- Population Graph ---     GuiLabel(Rectangle{stati' | session:`4dfbd6b1`
+- **00:34Z** | `src/render/renderer.cpp` | Edited: '    const float panel_height = 755.0f;  // Increased height ' -> '    const float panel_height = 830.0f;  // Height for button' | session:`4dfbd6b1`
+- **01:32Z** | `src/render/render_config.h` | Edited: '    constexpr int STATS_PANEL_WIDTH = 250; ' -> '    constexpr int STATS_PANEL_WIDTH = 300; ' | session:`414c9a66`
+- **01:32Z** | `src/render/renderer.cpp` | Edited: '#include "renderer.h" #include "render_config.h" #include <r' -> '#include "renderer.h" #include "render_config.h" #include <r' | session:`414c9a66`
+- **01:34Z** | `src/render/renderer.cpp` | Edited: 'void draw_stats_overlay(const RenderState& state) {     cons' -> '// =========================================================' | session:`414c9a66`
+- **01:34Z** | `src/render/renderer.cpp` | Edited: '// =========================================================' -> '// =========================================================' | session:`414c9a66`

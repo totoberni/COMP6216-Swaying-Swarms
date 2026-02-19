@@ -66,20 +66,27 @@ cd build && ctest --output-on-failure
 @src/sim/changelog.md
 @include/changelog.md
 
+## Agent Teams Coordination
+- Team creation: `TeamCreate` at start of each phase
+- Task management: `TaskCreate/TaskUpdate/TaskList` replaces manual state tracking
+- Communication: `SendMessage` for direct messages between teammates and lead
+- Teammates load CLAUDE.md but NOT lead conversation history — task descriptions must be self-contained
+- TaskCompleted hook verifies build passes before task completion
+- Module boundaries prevent file conflicts — no two teammates edit the same file
+
 ## Agent File Ownership
 Agents and the orchestrator OWN and MANAGE these paths — read, write, update freely:
 - `.claude/` — agents, commands, hooks, skills, settings
-- `.orchestrator/` — state, task-queue, active-tasks, decisions, inbox, outbox
+- `.orchestrator/` — state, decisions, mistakes, plan (read-only for orchestrator)
 - `CLAUDE.md` files — root + all per-module child files
 - `src/*/changelog.md`, `include/changelog.md` — auto-managed by hooks
-- `ralph.sh`, `docs/current-task.md`
 - `README.md` — orchestrator updates changelog summary for collaborators
 The "leave alone" guidance in README.md targets human contributors only. It does NOT apply to agents.
 README.md itself contains an HTML comment carve-out above its "leave alone" section reinforcing this.
 
 ## DO NOT
-- Modify `.claude/settings.json`: these are for human moderation only
 - Modify CMakeLists.txt without explicit instruction
 - Add dependencies without discussion
 - Use raw pointers for ownership — use FLECS entity handles
 - Put rendering logic in simulation code or vice versa
+- Have two teammates edit the same file simultaneously

@@ -198,3 +198,14 @@ TEST_F(ConfigLoaderTest, EmptyValueThrows) {
     SimConfig config{};
     EXPECT_THROW(load_config(tmp_path_, config), std::runtime_error);
 }
+
+TEST_F(ConfigLoaderTest, InlineCommentStripped) {
+    write_file(
+        "max_speed = 120.0  ; this is a comment\n"
+        "max_force = 5.0  # hash comment\n"
+    );
+    SimConfig config{};
+    EXPECT_TRUE(load_config(tmp_path_, config));
+    EXPECT_FLOAT_EQ(config.max_speed, 120.0f);
+    EXPECT_FLOAT_EQ(config.max_force, 5.0f);
+}
