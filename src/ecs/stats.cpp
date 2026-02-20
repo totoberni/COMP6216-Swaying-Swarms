@@ -12,24 +12,17 @@ void register_stats_system(flecs::world& world) {
             // Reset per-frame counters (deaths and newborns are cumulative)
             stats.normal_alive = 0;
             stats.doctor_alive = 0;
-            stats.antivax_alive = 0;
 
             // Count alive normal boids
-            auto q_normal = w.query<const NormalBoid, const Alive>();
-            q_normal.each([&stats](const NormalBoid&, const Alive&) {
+            auto q_normal = w.query<const NormalBoid>();
+            q_normal.each([&stats](const NormalBoid&) {
                 stats.normal_alive++;
             });
 
             // Count alive doctor boids
-            auto q_doctor = w.query<const DoctorBoid, const Alive>();
-            q_doctor.each([&stats](const DoctorBoid&, const Alive&) {
+            auto q_doctor = w.query<const DoctorBoid>();
+            q_doctor.each([&stats](const DoctorBoid&) {
                 stats.doctor_alive++;
-            });
-
-            // Count alive antivax boids
-            auto q_antivax = w.query<const AntivaxBoid, const Alive>();
-            q_antivax.each([&stats](const AntivaxBoid&, const Alive&) {
-                stats.antivax_alive++;
             });
 
             // Note: dead_total, dead_normal, dead_doctor, newborns_* are cumulative
@@ -37,15 +30,14 @@ void register_stats_system(flecs::world& world) {
 
             // Count total infected across all swarms
             int infected_count = 0;
-            auto q_infected = w.query<const Alive, const Infected>();
-            q_infected.each([&infected_count](const Alive&, const Infected&) {
+            auto q_infected = w.query<const Infected>();
+            q_infected.each([&infected_count](const Infected&) {
                 infected_count++;
             });
 
             // Record population history for graph
             stats.history[stats.history_index].normal_alive = stats.normal_alive;
             stats.history[stats.history_index].doctor_alive = stats.doctor_alive;
-            stats.history[stats.history_index].antivax_alive = stats.antivax_alive;
             stats.history[stats.history_index].infected_count = infected_count;
             stats.history_index = (stats.history_index + 1) % SimStats::HISTORY_SIZE;
             if (stats.history_count < SimStats::HISTORY_SIZE) {

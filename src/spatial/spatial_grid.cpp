@@ -23,14 +23,14 @@ void SpatialGrid::clear() {
 }
 
 void SpatialGrid::insert(uint64_t entity_id, float x, float y,
-                          float vx, float vy, uint8_t swarm_type, uint8_t flags) {
+                          float vx, float vy, uint8_t swarm_type, bool infected) {
     // Clamp to grid bounds (epsilon prevents exact boundary hits causing out-of-bounds indexing)
     x = std::max(0.0f, std::min(x, world_w_ - BOUNDARY_EPSILON));
     y = std::max(0.0f, std::min(y, world_h_ - BOUNDARY_EPSILON));
 
     int idx = cell_index(x, y);
     if (idx >= 0 && idx < static_cast<int>(cells_.size())) {
-        cells_[idx].push_back({entity_id, x, y, vx, vy, swarm_type, flags});
+        cells_[idx].push_back({entity_id, x, y, vx, vy, swarm_type, infected});
     }
 }
 

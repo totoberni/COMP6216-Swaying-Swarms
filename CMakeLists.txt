@@ -69,26 +69,6 @@ target_link_libraries(boid_swarm PRIVATE
     raylib
 )
 
-# --- Render demo executable ---
-add_executable(render_demo
-    src/render/render_demo.cpp
-    src/render/renderer.cpp
-)
-
-target_include_directories(render_demo PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${flecs_SOURCE_DIR}/include
-)
-target_include_directories(render_demo SYSTEM PRIVATE
-    ${raygui_SOURCE_DIR}/src
-)
-
-target_link_libraries(render_demo PRIVATE
-    raylib
-    flecs::flecs_static
-)
-
 # --- Test executable ---
 file(GLOB_RECURSE TEST_SOURCES
     tests/*.cpp

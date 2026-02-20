@@ -326,8 +326,7 @@ TEST_F(SpatialGridTest, EnrichedEntryFields) {
     SpatialGrid grid(WORLD_W, WORLD_H, CELL_SIZE);
 
     // Insert with enriched fields
-    uint8_t flags = SpatialGrid::FLAG_ALIVE | SpatialGrid::FLAG_INFECTED;
-    grid.insert(42, 100.0f, 100.0f, 1.5f, -2.5f, 1, flags);
+    grid.insert(42, 100.0f, 100.0f, 1.5f, -2.5f, 1, false);
 
     std::vector<SpatialGrid::QueryResult> neighbors;
     grid.query_neighbors(100.0f, 100.0f, 10.0f, neighbors);
@@ -338,9 +337,7 @@ TEST_F(SpatialGridTest, EnrichedEntryFields) {
     EXPECT_FLOAT_EQ(entry->vx, 1.5f);
     EXPECT_FLOAT_EQ(entry->vy, -2.5f);
     EXPECT_EQ(entry->swarm_type, 1);
-    EXPECT_TRUE(entry->flags & SpatialGrid::FLAG_ALIVE);
-    EXPECT_TRUE(entry->flags & SpatialGrid::FLAG_INFECTED);
-    EXPECT_FALSE(entry->flags & SpatialGrid::FLAG_MALE);
+    EXPECT_TRUE(entry->infected);
 }
 
 TEST_F(SpatialGridTest, BackwardCompatInsertUsesDefaults) {
@@ -358,6 +355,5 @@ TEST_F(SpatialGridTest, BackwardCompatInsertUsesDefaults) {
     EXPECT_FLOAT_EQ(entry->vx, 0.0f);
     EXPECT_FLOAT_EQ(entry->vy, 0.0f);
     EXPECT_EQ(entry->swarm_type, 0);
-    EXPECT_TRUE(entry->flags & SpatialGrid::FLAG_ALIVE);
-    EXPECT_FALSE(entry->flags & SpatialGrid::FLAG_INFECTED);
+    EXPECT_FALSE(entry->infected);
 }

@@ -9,16 +9,10 @@ static void register_components(flecs::world& world) {
     world.component<Position>();
     world.component<Velocity>();
     world.component<Heading>();
-    world.component<Health>();
     world.component<InfectionState>();
-    world.component<ReproductionCooldown>();
     world.component<NormalBoid>();
     world.component<DoctorBoid>();
-    world.component<AntivaxBoid>();
-    world.component<Male>();
-    world.component<Female>();
     world.component<Infected>();
-    world.component<Alive>();
     world.component<SpatialGrid>();
 }
 
@@ -46,15 +40,11 @@ TEST(CureContract, DoctorCannotCureSelf) {
     // Create a single infected doctor with a long time-to-death (far from dying)
     auto doctor = world.entity()
         .add<DoctorBoid>()
-        .add<Alive>()
         .add<Infected>()
-        .add<Male>()
         .set(Position{500.0f, 500.0f})
         .set(Velocity{0.0f, 0.0f})
         .set(Heading{0.0f})
-        .set(Health{0.0f, 60.0f})
-        .set(InfectionState{0.0f, 5.0f})
-        .set(ReproductionCooldown{0.0f});
+        .set(InfectionState{0.0f, 5.0f});
 
     register_rebuild_grid_system(world);
     register_cure_system(world);
@@ -81,27 +71,19 @@ TEST(CureContract, DoctorCanCureOtherDoctor) {
     // Doctor 1 — infected, at (500, 500)
     auto doctor1 = world.entity()
         .add<DoctorBoid>()
-        .add<Alive>()
         .add<Infected>()
-        .add<Male>()
         .set(Position{500.0f, 500.0f})
         .set(Velocity{0.0f, 0.0f})
         .set(Heading{0.0f})
-        .set(Health{0.0f, 60.0f})
-        .set(InfectionState{0.0f, 5.0f})
-        .set(ReproductionCooldown{0.0f});
+        .set(InfectionState{0.0f, 5.0f});
 
     // Doctor 2 — healthy, at (510, 510) — 14 px away, within r_interact_doctor (40)
     auto doctor2 = world.entity()
         .add<DoctorBoid>()
-        .add<Alive>()
-        .add<Female>()
         .set(Position{510.0f, 510.0f})
         .set(Velocity{0.0f, 0.0f})
         .set(Heading{0.0f})
-        .set(Health{0.0f, 60.0f})
-        .set(InfectionState{0.0f, 5.0f})
-        .set(ReproductionCooldown{0.0f});
+        .set(InfectionState{0.0f, 5.0f});
 
     register_rebuild_grid_system(world);
     register_cure_system(world);

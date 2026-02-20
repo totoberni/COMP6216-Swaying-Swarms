@@ -18,18 +18,9 @@ struct Heading {
     float angle; // radians
 };
 
-struct Health {
-    float age;
-    float lifespan;
-};
-
 struct InfectionState {
     float time_infected;   // seconds since infection
     float time_to_death;   // t_death countdown
-};
-
-struct ReproductionCooldown {
-    float cooldown;
 };
 
 // ============================================================
@@ -38,11 +29,7 @@ struct ReproductionCooldown {
 
 struct NormalBoid {};
 struct DoctorBoid {};
-struct Male {};
-struct Female {};
 struct Infected {};
-struct Alive {};
-struct AntivaxBoid {};  // Primary swarm tag (mutually exclusive with NormalBoid and DoctorBoid)
 
 // ============================================================
 // SimConfig singleton — ALL tunable simulation parameters
