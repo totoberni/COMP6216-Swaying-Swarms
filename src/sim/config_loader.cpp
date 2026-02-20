@@ -44,24 +44,11 @@ bool apply_field(SimConfig& config, const std::string& key,
     else if (key == "p_initial_infect_doctor")  { config.p_initial_infect_doctor = parse_float(val, line_num); }
     else if (key == "p_infect_normal")          { config.p_infect_normal = parse_float(val, line_num); }
     else if (key == "p_infect_doctor")          { config.p_infect_doctor = parse_float(val, line_num); }
-    // Reproduction
-    else if (key == "p_offspring_normal")       { config.p_offspring_normal = parse_float(val, line_num); }
-    else if (key == "p_offspring_doctor")       { config.p_offspring_doctor = parse_float(val, line_num); }
-    else if (key == "offspring_mean_normal")    { config.offspring_mean_normal = parse_float(val, line_num); }
-    else if (key == "offspring_stddev_normal")  { config.offspring_stddev_normal = parse_float(val, line_num); }
-    else if (key == "offspring_mean_doctor")    { config.offspring_mean_doctor = parse_float(val, line_num); }
-    else if (key == "offspring_stddev_doctor")  { config.offspring_stddev_doctor = parse_float(val, line_num); }
-    else if (key == "reproduction_cooldown")    { config.reproduction_cooldown = parse_float(val, line_num); }
     // Cure & transition
     else if (key == "p_cure")                   { config.p_cure = parse_float(val, line_num); }
-    else if (key == "p_become_doctor")          { config.p_become_doctor = parse_float(val, line_num); }
-    else if (key == "p_antivax")                { config.p_antivax = parse_float(val, line_num); }
     // Interaction radii
     else if (key == "r_interact_normal")        { config.r_interact_normal = parse_float(val, line_num); }
     else if (key == "r_interact_doctor")        { config.r_interact_doctor = parse_float(val, line_num); }
-    // Time
-    else if (key == "t_death")                  { config.t_death = parse_float(val, line_num); }
-    else if (key == "t_adult")                  { config.t_adult = parse_float(val, line_num); }
     // World bounds
     else if (key == "world_width")              { config.world_width = parse_float(val, line_num); }
     else if (key == "world_height")             { config.world_height = parse_float(val, line_num); }
@@ -84,9 +71,6 @@ bool apply_field(SimConfig& config, const std::string& key,
     else if (key == "debuff_p_offspring_doctor_infected")   { config.debuff_p_offspring_doctor_infected = parse_float(val, line_num); }
     else if (key == "debuff_r_interact_normal_infected")   { config.debuff_r_interact_normal_infected = parse_float(val, line_num); }
     else if (key == "debuff_p_offspring_normal_infected")   { config.debuff_p_offspring_normal_infected = parse_float(val, line_num); }
-    // Antivax
-    else if (key == "antivax_repulsion_radius")  { config.antivax_repulsion_radius = parse_float(val, line_num); }
-    else if (key == "antivax_repulsion_weight")  { config.antivax_repulsion_weight = parse_float(val, line_num); }
     else {
         std::cerr << "config warning: unknown key '" << key << "' on line "
                   << line_num << " (ignored)\n";
