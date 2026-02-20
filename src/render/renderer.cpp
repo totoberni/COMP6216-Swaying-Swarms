@@ -343,6 +343,12 @@ void draw_stats_overlay(const RenderState& state) {
                       "Reset (R)")) {
             sim_state->reset_requested = true;
         }
+
+        if (GuiButton(Rectangle{static_cast<float>(x + button_width + 10), static_cast<float>(y),
+                                 static_cast<float>(button_width), static_cast<float>(button_height)},
+                      "Hide (H)")) {
+            sim_state->show_stats_overlay = false;
+        }
         y += button_height + 8;
     }
 
@@ -486,7 +492,9 @@ void render_frame(const RenderState& state) {
     }
 
     // Draw stats overlay with interactive controls
-    draw_stats_overlay(state);
+    if (state.sim_state && state.sim_state->show_stats_overlay) {
+        draw_stats_overlay(state);
+    }
 
     end_frame();
 }
