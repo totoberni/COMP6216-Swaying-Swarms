@@ -52,6 +52,7 @@ bool apply_field(SimConfig& config, const std::string& key,
     // World bounds
     else if (key == "world_width")              { config.world_width = parse_float(val, line_num); }
     else if (key == "world_height")             { config.world_height = parse_float(val, line_num); }
+    else if (key == "wall_bounce")              { config.wall_bounce = (val == "true" || val == "1"); }
     // Population (int)
     else if (key == "initial_normal_count")     { config.initial_normal_count = parse_int(val, line_num); }
     else if (key == "initial_doctor_count")     { config.initial_doctor_count = parse_int(val, line_num); }
