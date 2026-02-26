@@ -435,8 +435,8 @@ void draw_stats_overlay(const RenderState& state) {
     y += line_height - 4;
 
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Normal: %d  Doctor: %d  Antivax: %d",
-                        stats.normal_alive, stats.doctor_alive, stats.antivax_alive));
+             TextFormat("Normal: %d  Doctor: %d",
+                        stats.normal_alive, stats.doctor_alive));
     y += line_height - 4;
 
     /*
@@ -528,13 +528,13 @@ void draw_stats_overlay(const RenderState& state) {
     // ========================================================
     // Population graph
     // ========================================================
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+    /*GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
              "--- Population History ---");
     y += line_height + 14;
     const int graph_width = RenderConfig::STATS_PANEL_WIDTH - 20;
     const int graph_height = 150;
     draw_population_graph(stats, x, y, graph_width, graph_height);
-    y += graph_height + 8;
+    y += graph_height + 8;*/
 
     // ========================================================
     // Cohesion Graph

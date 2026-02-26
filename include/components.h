@@ -123,15 +123,15 @@ struct PopulationHistoryPoint {
 struct SimStats {
     int normal_alive    = 0;
     int doctor_alive    = 0;
-    int dead_total      = 0;
-    int dead_normal     = 0;
-    int dead_doctor     = 0;
-    int newborns_total  = 0;
-    int newborns_normal = 0;
-    int newborns_doctor = 0;
-    int antivax_alive   = 0;
-    int dead_antivax    = 0;
-    int newborns_antivax = 0;
+    // int dead_total      = 0;
+    // int dead_normal     = 0;
+    // int dead_doctor     = 0;
+    // int newborns_total  = 0;
+    // int newborns_normal = 0;
+    // int newborns_doctor = 0;
+    // int antivax_alive   = 0;
+    // int dead_antivax    = 0;
+    // int newborns_antivax = 0;
 
     // Population history for graph (circular buffer)
     static constexpr int HISTORY_SIZE = 500;
