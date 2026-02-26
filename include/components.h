@@ -2,6 +2,9 @@
 
 #include <cstdint>
 
+#include <raylib.h>
+#include <raymath.h>
+
 // ============================================================
 // Core components — attached to every boid entity
 // ============================================================
@@ -134,6 +137,9 @@ struct SimStats {
     PopulationHistoryPoint history[HISTORY_SIZE] = {};
     int history_index = 0;  // Current write position (wraps around)
     int history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
+
+    // Average Position
+    Vector2 pos_avg = Vector2Zero();
 };
 
 // ============================================================
