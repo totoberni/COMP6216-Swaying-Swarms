@@ -91,6 +91,16 @@ void draw_avg_center_of_mass(float x, float y, float radius, uint32_t color) {
     DrawCircle(static_cast<int>(round(x)), static_cast<int>(round(y)), radius, uint32_to_color(color));
 }
 
+void draw_avg_alignment_arrow(float start_x, float start_y, Vector2 vec, float length, uint32_t color) {
+    auto line_vec = Vector2Scale(Vector2Normalize(vec), length);
+    DrawLine(
+        start_x, start_y,
+        static_cast<int>(round(line_vec.x)) + start_x, static_cast<int>(round(line_vec.y)) + start_y,
+        uint32_to_color(color)
+    );
+    auto x = 5;
+}
+
 // ============================================================
 // Population graph helper
 // ============================================================
@@ -655,6 +665,11 @@ void render_frame(const RenderState& state) {
 
     // Draw Average Center of Mass
     draw_avg_center_of_mass(state.stats.pos_avg.x, state.stats.pos_avg.y, 10., RenderConfig::COLOR_MASS_CENTER);
+
+    // Draw the average velocity as an arrow in the centre of the screen.
+    int start_x = (GetScreenWidth()) / 2;
+    int start_y = (GetScreenHeight()) / 2;
+    draw_avg_alignment_arrow(start_x, start_y, state.stats.vel_avg, 25.f, RenderConfig::COLOR_ALI_ARROW);
 
     // Draw boids on top
     for (const auto& boid : state.boids) {
