@@ -46,3 +46,10 @@ We store states in **matrices**, handled as **tables** by FLECS:
 - The control pane should be collapsable to provide full view of simulation
 - The control pane has overflowing sliders to be fixed (overflow into simulation box)
 - Control pane sliders should be circle+line not square+rectangle 
+
+## Iteration #3 
+
+- [Kathir]: Implement avg cohesion , avg alignment
+- [Albe + Bry]: Implement avg separation with the centroid calculation
+- [Albe]: Vectorize all with raylib & handle vectors
+- [Albe]: Optimize runtime, clean all claude MDs and redocument
