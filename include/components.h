@@ -123,15 +123,15 @@ struct PopulationHistoryPoint {
 struct SimStats {
     int normal_alive    = 0;
     int doctor_alive    = 0;
-    int dead_total      = 0;
-    int dead_normal     = 0;
-    int dead_doctor     = 0;
-    int newborns_total  = 0;
-    int newborns_normal = 0;
-    int newborns_doctor = 0;
-    int antivax_alive   = 0;
-    int dead_antivax    = 0;
-    int newborns_antivax = 0;
+    // int dead_total      = 0;
+    // int dead_normal     = 0;
+    // int dead_doctor     = 0;
+    // int newborns_total  = 0;
+    // int newborns_normal = 0;
+    // int newborns_doctor = 0;
+    // int antivax_alive   = 0;
+    // int dead_antivax    = 0;
+    // int newborns_antivax = 0;
 
     // Population history for graph (circular buffer)
     static constexpr int HISTORY_SIZE = 500;
@@ -141,6 +141,13 @@ struct SimStats {
 
     // Average Position
     Vector2 pos_avg = Vector2Zero();
+
+    float average_cohesion = 0.;
+    // Cohesion history for graph (circular buffer)
+    // reuse HISTORY_SIZE = 500;
+    float coh_history[HISTORY_SIZE] = {};
+    int coh_history_index = 0;  // Current write position (wraps around)
+    int coh_history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
 };
 
 // ============================================================

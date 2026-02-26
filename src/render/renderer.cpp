@@ -231,6 +231,76 @@ static void draw_population_graph(const SimStats& stats, int x, int y, int width
     DrawText(TextFormat("Max: %d", max_pop), x + 3, y + 3, 8, Color{130, 130, 130, 255});
 }
 
+static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, int height) {
+    // Smoothed max for stable Y-axis scaling
+    static float smoothed_max = 1.0f;
+
+    // Draw graph background
+    DrawRectangle(x, y, width, height, Color{30, 30, 35, 255});
+    DrawRectangleLines(x, y, width, height, Color{80, 80, 80, 255});
+
+    if (stats.coh_history_count < 2) {
+        DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
+        return;
+    }
+
+    // Find current max cohesion
+    int current_max = 1.;
+    for (int i = 0; i < stats.coh_history_count; i++) {
+        float total = stats.coh_history[i];
+        if (total > current_max) current_max = total;
+    }
+
+    smoothed_max = std::fmax(smoothed_max * 0.99f, current_max);
+    float max_coh = (std::ceil(smoothed_max));
+
+    // float max_coh = 0.f;
+    // if ((smoothed_max * 0.99f) > current_max) {
+        // max_coh = smoothed_max;
+    // } else {
+        // max_coh = current_max;
+    // }
+
+    float y_scale = static_cast<float>(height - 4) / static_cast<float>(max_coh);
+    float x_scale = static_cast<float>(width - 4) / static_cast<float>(SimStats::HISTORY_SIZE - 1);
+
+    // Horizontal grid lines at 25%, 50%, 75%, 100%
+    Color grid_color = {60, 60, 65, 255};
+    for (int pct = 25; pct <= 100; pct += 25) {
+        float gy = y + height - 2 - (max_coh * pct / 100) * y_scale;
+        // Dotted line: draw short segments with gaps
+        for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+            DrawLine(gx, static_cast<int>(gy), std::min(gx + 3, x + width - 2), static_cast<int>(gy), grid_color);
+        }
+        //DrawText(TextFormat("%d%%", pct), x + 3, static_cast<int>(gy) - 9, 8, Color{90, 90, 90, 255});
+    }
+
+    // Cohesion
+    Color normal_color = {0, 230, 0, 230};
+    for (int i = 0; i < stats.coh_history_count - 1; i++) {
+        int ri = (stats.coh_history_index - stats.coh_history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
+        int ni = (ri + 1) % SimStats::HISTORY_SIZE;
+
+        float x1 = x + 2 + i * x_scale;
+        float y1 = y + height - 2 - stats.coh_history[ri] * y_scale;
+        float x2 = x + 2 + (i + 1) * x_scale;
+        float y2 = y + height - 2 - stats.coh_history[ni] * y_scale;
+
+        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, normal_color);
+    }
+
+    // Legend (top-right, vertical)
+    int lx = x + width - 68;
+    int ly = y + 5;
+    DrawRectangle(lx - 3, ly - 2, 70, 56, Color{20, 20, 25, 200});
+    DrawRectangle(lx, ly, 8, 8, normal_color);
+    DrawText("Cohesion", lx + 12, ly, 8, LIGHTGRAY);
+
+    // Max value label (top-left)
+    DrawText(TextFormat("Max: %d", max_coh), x + 3, y + 3, 8, Color{130, 130, 130, 255});
+}
+
+
 // ============================================================
 // Stats overlay with interactive controls (dropdown categories)
 // ============================================================
@@ -365,10 +435,11 @@ void draw_stats_overlay(const RenderState& state) {
     y += line_height - 4;
 
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Normal: %d  Doctor: %d  Antivax: %d",
-                        stats.normal_alive, stats.doctor_alive, stats.antivax_alive));
+             TextFormat("Normal: %d  Doctor: %d",
+                        config->initial_normal_count, config->initial_doctor_count));
     y += line_height - 4;
 
+    /*
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
              TextFormat("Dead: %d (N:%d D:%d A:%d)",
                         stats.dead_total, stats.dead_normal, stats.dead_doctor, stats.dead_antivax));
@@ -378,6 +449,7 @@ void draw_stats_overlay(const RenderState& state) {
              TextFormat("Born: %d (N:%d D:%d A:%d)",
                         stats.newborns_total, stats.newborns_normal, stats.newborns_doctor, stats.newborns_antivax));
     y += line_height + 2;
+    */
 
     // ========================================================
     // Average Metrics
@@ -389,6 +461,11 @@ void draw_stats_overlay(const RenderState& state) {
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
              TextFormat("Average Position: (%d,%d)",
                         stats.pos_avg.x, stats.pos_avg.y));
+    y += line_height - 4;
+
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+             TextFormat("Average Cohesion: %d",
+                        stats.average_cohesion));
     y += line_height - 4;
 
     // ========================================================
@@ -451,12 +528,21 @@ void draw_stats_overlay(const RenderState& state) {
     // ========================================================
     // Population graph
     // ========================================================
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             "--- Population History ---");
-    y += line_height + 14;
     const int graph_width = RenderConfig::STATS_PANEL_WIDTH - 20;
     const int graph_height = 150;
+    /*GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+             "--- Population History ---");
+    y += line_height + 14;
     draw_population_graph(stats, x, y, graph_width, graph_height);
+    y += graph_height + 8;*/
+
+    // ========================================================
+    // Cohesion Graph
+    // ========================================================
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+             "--- Cohesion History ---");
+    y += line_height + 14;
+    draw_cohesion_graph(stats, x, y, graph_width, graph_height);
     y += graph_height + 8;
 
     // ========================================================

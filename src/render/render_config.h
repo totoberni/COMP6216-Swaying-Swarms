@@ -14,7 +14,7 @@ namespace RenderConfig {
     constexpr uint32_t COLOR_ANTIVAX     = 0xFF00A5FF;  // Orange (ABGR)
     constexpr uint32_t COLOR_BACKGROUND  = 0xFF1E1E1E;  // Dark gray
 
-    constexpr uint32_t COLOR_MASS_CENTER = 0xFFBF40BF; // Purple
+    constexpr uint32_t COLOR_MASS_CENTER = 0x55BF40BF; // Purple
 
     // --- Interaction radius colors (semi-transparent) ---
     constexpr uint32_t COLOR_RADIUS_NORMAL = 0x4000FF00;  // Semi-transparent green

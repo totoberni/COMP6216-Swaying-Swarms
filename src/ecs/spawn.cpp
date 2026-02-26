@@ -93,9 +93,6 @@ void reset_simulation(flecs::world& world) {
     SimStats& stats = world.get_mut<SimStats>();
     stats.normal_alive = 0;
     stats.doctor_alive = 0;
-    stats.newborns_total = 0;
-    stats.newborns_normal = 0;
-    stats.newborns_doctor = 0;
     stats.history_index = 0;
     stats.history_count = 0;
     for (int i = 0; i < SimStats::HISTORY_SIZE; ++i) {
