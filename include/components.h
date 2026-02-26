@@ -73,6 +73,7 @@ struct SimConfig {
     // --- World bounds ---
     float world_width              = 1920.0f;
     float world_height             = 1080.0f;
+    bool wall_bounce               = true; // If true, boids bounce off walls instead of wrapping around
 
     // --- Initial population ---
     int initial_normal_count       = 200;

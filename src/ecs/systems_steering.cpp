@@ -204,12 +204,32 @@ void register_movement_system(flecs::world& world) {
                 // Apply velocity to position
                 pos.x += vel.vx * dt;
                 pos.y += vel.vy * dt;
-
-                // Wrap around world bounds
-                if (pos.x < 0.0f) pos.x += config.world_width;
-                if (pos.x >= config.world_width) pos.x -= config.world_width;
-                if (pos.y < 0.0f) pos.y += config.world_height;
-                if (pos.y >= config.world_height) pos.y -= config.world_height;
+                
+                if (config.wall_bounce) {
+                    // Bounce off walls (reflect velocity)
+                    if (pos.x < 0.0f) {
+                        pos.x = - pos.x;
+                        vel.vx = - vel.vx;
+                    }
+                    if (pos.x >= config.world_width) {
+                        pos.x = 2 * config.world_width - pos.x;
+                        vel.vx = - vel.vx;
+                    }
+                    if (pos.y < 0.0f) {
+                        pos.y = - pos.y;
+                        vel.vy = - vel.vy;
+                    }
+                    if (pos.y >= config.world_height) {
+                        pos.y = 2 * config.world_height - pos.y;
+                        vel.vy = - vel.vy;
+                    }
+                } else {
+                    // Wrap around world bounds
+                    if (pos.x < 0.0f) pos.x += config.world_width;
+                    if (pos.x >= config.world_width) pos.x -= config.world_width;
+                    if (pos.y < 0.0f) pos.y += config.world_height;
+                    if (pos.y >= config.world_height) pos.y -= config.world_height;
+                }
 
                 // Compute actual speed
                 float speed = std::sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
