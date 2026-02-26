@@ -37,16 +37,7 @@ void register_stats_system(flecs::world& world) {
                 infected_count++;
             });
 
-            // Record population history for graph
-            stats.history[stats.history_index].normal_alive = stats.normal_alive;
-            stats.history[stats.history_index].doctor_alive = stats.doctor_alive;
-            stats.history[stats.history_index].infected_count = infected_count;
-            stats.history_index = (stats.history_index + 1) % SimStats::HISTORY_SIZE;
-            if (stats.history_count < SimStats::HISTORY_SIZE) {
-                stats.history_count++;
-            }
-
-            // Average Cohesion
+            // Average Center of Mass
             auto q_positions = w.query<const Position, const NormalBoid>();
             q_positions.each([&stats](Position pos, const NormalBoid&) {
                 stats.pos_avg.x = stats.pos_avg.x + pos.x;
@@ -55,5 +46,29 @@ void register_stats_system(flecs::world& world) {
 
             stats.pos_avg.x = stats.pos_avg.x / static_cast<float>(stats.normal_alive);
             stats.pos_avg.y = stats.pos_avg.y / static_cast<float>(stats.normal_alive);
+
+            q_positions.each([
+                &stats
+            ](Position pos, const NormalBoid&) {
+                float dist_x = pos.x - stats.pos_avg.x;
+                float dist_y = pos.y - stats.pos_avg.y;
+                
+                stats.average_cohesion = sqrtf((dist_x * dist_x) + (dist_y * dist_y));
+            });
+
+            stats.coh_history[stats.coh_history_index] = stats.average_cohesion / static_cast<float>(stats.normal_alive);
+            stats.coh_history_index = (stats.coh_history_index + 1) % SimStats::HISTORY_SIZE;
+            if (stats.coh_history_count < SimStats::HISTORY_SIZE) {
+                stats.coh_history_count++;
+            }
+
+            // Record population history for graph
+            stats.history[stats.history_index].normal_alive = stats.normal_alive;
+            stats.history[stats.history_index].doctor_alive = stats.doctor_alive;
+            stats.history[stats.history_index].infected_count = infected_count;
+            stats.history_index = (stats.history_index + 1) % SimStats::HISTORY_SIZE;
+            if (stats.history_count < SimStats::HISTORY_SIZE) {
+                stats.history_count++;
+            }
         });
 }
