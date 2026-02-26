@@ -141,6 +141,13 @@ struct SimStats {
 
     // Average Position
     Vector2 pos_avg = Vector2Zero();
+
+    float average_cohesion = 0.;
+    // Cohesion history for graph (circular buffer)
+    // reuse HISTORY_SIZE = 500;
+    float coh_history[HISTORY_SIZE] = {};
+    int coh_history_index = 0;  // Current write position (wraps around)
+    int coh_history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
 };
 
 // ============================================================
