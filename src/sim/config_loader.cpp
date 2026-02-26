@@ -65,6 +65,7 @@ bool apply_field(SimConfig& config, const std::string& key,
     else if (key == "separation_radius")        { config.separation_radius = parse_float(val, line_num); }
     else if (key == "alignment_radius")         { config.alignment_radius = parse_float(val, line_num); }
     else if (key == "cohesion_radius")          { config.cohesion_radius = parse_float(val, line_num); }
+    else if (key == "fov")                      { config.fov = parse_float(val, line_num); }
     // Debuffs
     else if (key == "debuff_p_cure_infected")              { config.debuff_p_cure_infected = parse_float(val, line_num); }
     else if (key == "debuff_r_interact_doctor_infected")   { config.debuff_r_interact_doctor_infected = parse_float(val, line_num); }

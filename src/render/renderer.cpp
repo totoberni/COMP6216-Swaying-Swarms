@@ -86,6 +86,11 @@ void draw_interaction_radius(float x, float y, float radius, uint32_t color) {
     DrawCircleLines(static_cast<int>(x), static_cast<int>(y), radius, uint32_to_color(color));
 }
 
+// Renders the Average Center of Mass as a position
+void draw_avg_center_of_mass(float x, float y, float radius, uint32_t color) {
+    DrawCircle(static_cast<int>(round(x)), static_cast<int>(round(y)), radius, uint32_to_color(color));
+}
+
 // ============================================================
 // Population graph helper
 // ============================================================
@@ -375,6 +380,18 @@ void draw_stats_overlay(const RenderState& state) {
     y += line_height + 2;
 
     // ========================================================
+    // Average Metrics
+    // ========================================================
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+             "--- Average Metrics ---");
+    y += line_height - 4;
+
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+             TextFormat("Average Position: (%d,%d)",
+                        stats.pos_avg.x, stats.pos_avg.y));
+    y += line_height - 4;
+
+    // ========================================================
     // Controls section: dropdown + sliders
     // ========================================================
     if (config) {
@@ -430,7 +447,7 @@ void draw_stats_overlay(const RenderState& state) {
                  "--- Controls Disabled ---");
         y += line_height;
     }
-
+    
     // ========================================================
     // Population graph
     // ========================================================
@@ -485,6 +502,9 @@ void render_frame(const RenderState& state) {
         }
         draw_interaction_radius(boid.x, boid.y, boid.radius, radius_color);
     }
+
+    // Draw Average Center of Mass
+    draw_avg_center_of_mass(state.stats.pos_avg.x, state.stats.pos_avg.y, 10., RenderConfig::COLOR_MASS_CENTER);
 
     // Draw boids on top
     for (const auto& boid : state.boids) {

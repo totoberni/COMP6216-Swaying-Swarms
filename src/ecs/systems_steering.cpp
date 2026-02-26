@@ -54,7 +54,8 @@ void register_steering_system(flecs::world& world) {
             std::vector<SpatialGrid::QueryResult> neighbors;
             q.each([&](flecs::entity e, const Position& pos, Velocity& vel) {
                 // Query neighbors within the largest steering radius
-                grid.query_neighbors(pos.x, pos.y, query_radius, neighbors);
+                // grid.query_neighbors(pos.x, pos.y, query_radius, neighbors);
+                grid.query_neighbors_fov(pos.x, pos.y, query_radius, neighbors, config.fov, vel.vx, vel.vy);
 
                 // Cache own swarm type once (avoid re-checking per neighbor)
                 int my_swarm = e.has<NormalBoid>() ? 0 : e.has<DoctorBoid>() ? 1 : 2;
@@ -76,7 +77,6 @@ void register_steering_system(flecs::world& world) {
 
                     // Read from enriched entry instead of FLECS lookups
                     int ne_swarm = static_cast<int>(ne->swarm_type);
-                    bool is_same_swarm = (my_swarm == ne_swarm);
 
                     // Separation: repel from ALL nearby boids (cross-swarm)
                     // Model B: normalize(diff) / distance — inverse-distance weighting
@@ -89,15 +89,15 @@ void register_steering_system(flecs::world& world) {
                         sep_count++;
                     }
 
-                    // Alignment: match velocity of SAME-SWARM nearby boids only
-                    if (is_same_swarm && qr.dist_sq < ali_r_sq) {
+                    // Alignment: match velocity of nearby boids only
+                    if (qr.dist_sq < ali_r_sq) {
                         ali_vx += ne->vx;
                         ali_vy += ne->vy;
                         ali_count++;
                     }
 
-                    // Cohesion: steer toward center of mass of SAME-SWARM only
-                    if (is_same_swarm && qr.dist_sq < coh_r_sq) {
+                    // Cohesion: steer toward center of mass
+                    if (qr.dist_sq < coh_r_sq) {
                         coh_x += ne->x;
                         coh_y += ne->y;
                         coh_count++;

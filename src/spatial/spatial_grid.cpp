@@ -34,8 +34,10 @@ void SpatialGrid::insert(uint64_t entity_id, float x, float y,
     }
 }
 
-void SpatialGrid::query_neighbors(float x, float y, float radius,
-                                   std::vector<QueryResult>& results) const {
+// Finds all neighbors within a 360 degree radius of a given position.
+void SpatialGrid::query_neighbors(
+    float x, float y, float radius, std::vector<QueryResult>& results
+) const {
     results.clear();
 
     // Determine cell of query point
@@ -69,9 +71,61 @@ void SpatialGrid::query_neighbors(float x, float y, float radius,
                 float dist_sq = dx_val * dx_val + dy_val * dy_val;
 
                 if (dist_sq <= radius_sq) {
-                    results.push_back({&entry, dist_sq});
+                    results.push_back({&entry, std::sqrt(dist_sq)});
                 }
+            };
+        }
+    }
+}
+
+// Finds all neighbors within a certain radius and field-of-view angle
+void SpatialGrid::query_neighbors_fov(
+    float x, float y, float radius,
+    std::vector<QueryResult>& results,
+    float fov, float vx, float vy
+) const {
+    results.clear();
+
+    // Determine cell of query point
+    int col = static_cast<int>(x / cell_size_);
+    int row = static_cast<int>(y / cell_size_);
+
+    float radius_sq = radius * radius;
+
+    // Dynamic search window: expand beyond 3x3 when radius > cell_size
+    int cell_range = static_cast<int>(std::ceil(radius / cell_size_));
+    for (int dy = -cell_range; dy <= cell_range; ++dy) {
+        for (int dx = -cell_range; dx <= cell_range; ++dx) {
+            int check_col = col + dx;
+            int check_row = row + dy;
+
+            // Skip cells outside grid bounds
+            if (check_col < 0 || check_col >= cols_ ||
+                check_row < 0 || check_row >= rows_) {
+                continue;
             }
+
+            int idx = check_col + cols_ * check_row;
+            if (idx < 0 || idx >= static_cast<int>(cells_.size())) {
+                continue;
+            }
+
+            // Check all entries in this cell
+            for (const auto& entry : cells_[idx]) {
+                float dx_val = entry.x - x;
+                float dy_val = entry.y - y;
+                float dist_sq = dx_val * dx_val + dy_val * dy_val;
+
+                if (dist_sq <= radius_sq) {// Within Radius
+
+                    float dot_product = ((vx * dx_val) + (vy * dy_val)) / (std::sqrtf(vx*vx + vy*vy) * std::sqrtf(dx_val*dx_val + dy_val*dx_val));
+                    float angle_between = acos(dot_product);
+                    
+                    if (angle_between <= fov) {// Within FOV
+                        results.push_back({&entry, std::sqrt(dist_sq)});
+                    }
+                }
+            };
         }
     }
 }
