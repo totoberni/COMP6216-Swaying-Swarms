@@ -40,8 +40,16 @@ public:
     // Caller should reuse the vector for amortized zero-allocation queries.
     // Search window expands dynamically: ceil(radius / cell_size) cells in each direction.
     // dist_sq is squared distance — caller takes sqrt only when needed.
-    void query_neighbors(float x, float y, float radius,
-                         std::vector<QueryResult>& results) const;
+    void query_neighbors(
+        float x, float y, float radius,
+        std::vector<QueryResult>& results
+    ) const;
+
+    void query_neighbors_fov(
+        float x, float y, float radius,
+        std::vector<QueryResult>& results,
+        float fov, float vx, float vy
+    ) const;
 
     // Returns the cell size used for spatial partitioning (diagnostic use).
     float cell_size() const { return cell_size_; }

@@ -88,6 +88,8 @@ struct SimConfig {
     float alignment_radius         = 50.0f;   // Shiffman neighbor distance
     float cohesion_radius          = 50.0f;   // Shiffman neighbor distance
 
+    float fov                      = 1.05f; // 1/2 of fov angle in radians
+
     // --- Reproduction cooldown ---
     float reproduction_cooldown    = 5.0f;  // seconds between reproductions
 
