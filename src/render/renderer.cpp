@@ -297,9 +297,59 @@ static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, 
     DrawText("Cohesion", lx + 12, ly, 8, LIGHTGRAY);
 
     // Max value label (top-left)
-    DrawText(TextFormat("Max: %d", max_coh), x + 3, y + 3, 8, Color{130, 130, 130, 255});
+    DrawText(TextFormat("Max: %.2f", max_coh), x + 3, y + 3, 8, Color{130, 130, 130, 255});
 }
 
+static void draw_alignment_graph(const SimStats& stats, int x, int y, int width, int height) {
+    // Draw graph background
+    DrawRectangle(x, y, width, height, Color{30, 30, 35, 255});
+    DrawRectangleLines(x, y, width, height, Color{80, 80, 80, 255});
+
+    if (stats.ali_history_count < 2) {
+        DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
+        return;
+    }
+
+    float max_ali = 3.15;
+
+    float y_scale = static_cast<float>(height - 4) / max_ali;
+    float x_scale = static_cast<float>(width - 4) / static_cast<float>(SimStats::HISTORY_SIZE - 1);
+
+    // Horizontal grid lines at 25%, 50%, 75%, 100%
+    Color grid_color = {60, 60, 65, 255};
+    for (int pct = 25; pct <= 100; pct += 25) {
+        float gy = y + height - 2 - (max_ali * pct / 100) * y_scale;
+        // Dotted line: draw short segments with gaps
+        for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+            DrawLine(gx, static_cast<int>(gy), std::min(gx + 3, x + width - 2), static_cast<int>(gy), grid_color);
+        }
+        //DrawText(TextFormat("%d%%", pct), x + 3, static_cast<int>(gy) - 9, 8, Color{90, 90, 90, 255});
+    }
+
+    // Cohesion
+    Color normal_color = {0, 230, 0, 230};
+    for (int i = 0; i < stats.ali_history_count - 1; i++) {
+        int ri = (stats.ali_history_index - stats.ali_history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
+        int ni = (ri + 1) % SimStats::HISTORY_SIZE;
+
+        float x1 = x + 2 + i * x_scale;
+        float y1 = y + height - 2 - stats.ali_history[ri] * y_scale;
+        float x2 = x + 2 + (i + 1) * x_scale;
+        float y2 = y + height - 2 - stats.ali_history[ni] * y_scale;
+
+        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, normal_color);
+    }
+
+    // Legend (top-right, vertical)
+    int lx = x + width - 68;
+    int ly = y + 5;
+    DrawRectangle(lx - 3, ly - 2, 70, 28, Color{20, 20, 25, 200});
+    DrawRectangle(lx, ly, 8, 8, normal_color);
+    DrawText("Alignment Angle", lx + 12, ly, 8, LIGHTGRAY);
+
+    // Max value label (top-left)
+    DrawText(TextFormat("Max: %.2f", max_ali), x + 3, y + 3, 8, Color{130, 130, 130, 255});
+}
 
 // ============================================================
 // Stats overlay with interactive controls (dropdown categories)
@@ -459,13 +509,18 @@ void draw_stats_overlay(const RenderState& state) {
     y += line_height - 4;
 
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Average Position: (%d,%d)",
+             TextFormat("Average Position: (%.2f,%.2f)",
                         stats.pos_avg.x, stats.pos_avg.y));
     y += line_height - 4;
 
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Average Cohesion: %d",
+             TextFormat("Average Cohesion: %.2f",
                         stats.average_cohesion));
+    y += line_height - 4;
+
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+             TextFormat("Average Alignment Angle: %.2f",
+                        stats.average_alignment_angle));
     y += line_height - 4;
 
     // ========================================================
@@ -543,6 +598,15 @@ void draw_stats_overlay(const RenderState& state) {
              "--- Cohesion History ---");
     y += line_height + 14;
     draw_cohesion_graph(stats, x, y, graph_width, graph_height);
+    y += graph_height + 8;
+
+    // ========================================================
+    // Alignment Graph
+    // ========================================================
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+             "--- Alignment Angle History ---");
+    y += line_height + 14;
+    draw_alignment_graph(stats, x, y, graph_width, graph_height);
     y += graph_height + 8;
 
     // ========================================================

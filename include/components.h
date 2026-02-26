@@ -139,15 +139,23 @@ struct SimStats {
     int history_index = 0;  // Current write position (wraps around)
     int history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
 
-    // Average Position
+    // Average Cohesion
     Vector2 pos_avg = Vector2Zero();
-
     float average_cohesion = 0.;
     // Cohesion history for graph (circular buffer)
     // reuse HISTORY_SIZE = 500;
     float coh_history[HISTORY_SIZE] = {};
     int coh_history_index = 0;  // Current write position (wraps around)
     int coh_history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
+
+    // Average Alignment
+    Vector2 vel_avg = Vector2Zero();
+    float average_alignment_angle = 0.;
+    // Alignment history for graph (circular buffer)
+    // reuse HISTORY_SIZE = 500;
+    float ali_history[HISTORY_SIZE] = {};
+    int ali_history_index = 0;  // Current write position (wraps around)
+    int ali_history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
 };
 
 // ============================================================

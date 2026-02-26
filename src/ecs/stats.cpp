@@ -15,6 +15,9 @@ void register_stats_system(flecs::world& world) {
             // stats.normal_alive = 0;
             // stats.doctor_alive = 0;
             stats.pos_avg = Vector2Zero();
+            stats.average_cohesion = 0.;
+            stats.vel_avg = Vector2Zero();
+            stats.average_alignment_angle = 0.;
 
             /* Count alive normal boids
             auto q_normal = w.query<const NormalBoid>();
@@ -36,7 +39,7 @@ void register_stats_system(flecs::world& world) {
                 infected_count++;
             });*/
 
-            // Average Center of Mass
+            // --------- Average Cohesion -----------
             auto q_positions = w.query<const Position, const NormalBoid>();
             q_positions.each([&stats](Position pos, const NormalBoid&) {
                 stats.pos_avg.x = stats.pos_avg.x + pos.x;
@@ -46,19 +49,41 @@ void register_stats_system(flecs::world& world) {
             stats.pos_avg.x = stats.pos_avg.x / static_cast<float>(config.initial_normal_count);
             stats.pos_avg.y = stats.pos_avg.y / static_cast<float>(config.initial_normal_count);
 
-            q_positions.each([
-                &stats
-            ](Position pos, const NormalBoid&) {
+            q_positions.each([&stats](Position pos, const NormalBoid&) {
                 float dist_x = pos.x - stats.pos_avg.x;
                 float dist_y = pos.y - stats.pos_avg.y;
                 
-                stats.average_cohesion = sqrtf((dist_x * dist_x) + (dist_y * dist_y));
+                stats.average_cohesion = stats.average_cohesion + sqrtf((dist_x * dist_x) + (dist_y * dist_y));
             });
 
             stats.coh_history[stats.coh_history_index] = stats.average_cohesion / static_cast<float>(config.initial_normal_count);
             stats.coh_history_index = (stats.coh_history_index + 1) % SimStats::HISTORY_SIZE;
             if (stats.coh_history_count < SimStats::HISTORY_SIZE) {
                 stats.coh_history_count++;
+            }
+
+            // --------- Average Alignment----------
+            auto q_velocities = w.query<const Velocity, const NormalBoid>();
+            q_velocities.each([&stats](Velocity vel, const NormalBoid&) {
+                stats.vel_avg.x = stats.vel_avg.x + vel.vx;
+                stats.vel_avg.y = stats.vel_avg.y + vel.vy;
+            });
+
+            stats.vel_avg.x = stats.vel_avg.x / static_cast<float>(config.initial_normal_count);
+            stats.vel_avg.y = stats.vel_avg.y / static_cast<float>(config.initial_normal_count);
+
+            q_velocities.each([&stats](Velocity vel, const NormalBoid&) {
+                // find the angle between boid and true alignment
+
+                float theta = Vector2Angle(stats.vel_avg, Vector2{vel.vx, vel.vy});
+                
+                stats.average_alignment_angle = stats.average_alignment_angle + theta;
+            });
+
+            stats.ali_history[stats.ali_history_index] = stats.average_alignment_angle / static_cast<float>(config.initial_normal_count);
+            stats.ali_history_index = (stats.ali_history_index + 1) % SimStats::HISTORY_SIZE;
+            if (stats.ali_history_count < SimStats::HISTORY_SIZE) {
+                stats.ali_history_count++;
             }
 
             // Record population history for graph
