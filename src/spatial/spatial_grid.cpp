@@ -92,6 +92,14 @@ void SpatialGrid::query_neighbors_fov(
 
     float radius_sq = radius * radius;
 
+    // Precompute FOV threshold using squared dot-product comparison
+    // eliminates per-neighbor sqrt entirely
+    float cos_fov = std::cos(fov);
+    float vel_mag_sq = vx * vx + vy * vy;
+    float cos_fov_sq = cos_fov * cos_fov;
+    float fov_threshold = cos_fov_sq * vel_mag_sq;
+    bool wide_fov = (cos_fov < 0.0f);  // true when half-angle > pi/2
+
     // Dynamic search window: expand beyond 3x3 when radius > cell_size
     int cell_range = static_cast<int>(std::ceil(radius / cell_size_));
     for (int dy = -cell_range; dy <= cell_range; ++dy) {
@@ -112,17 +120,23 @@ void SpatialGrid::query_neighbors_fov(
 
             // Check all entries in this cell
             for (const auto& entry : cells_[idx]) {
-                Vector2 diff = Vector2Subtract({entry.x, entry.y}, {x, y});
-                float dist_sq = Vector2LengthSqr(diff);
+                float diff_x = entry.x - x;
+                float diff_y = entry.y - y;
+                float dist_sq = diff_x * diff_x + diff_y * diff_y;
 
-                if (dist_sq <= radius_sq) {// Within Radius
-                    Vector2 vel_dir = {vx, vy};
-                    float denom = Vector2Length(vel_dir) * Vector2Length(diff);
-                    if (denom > 0.0001f) {
-                        float cos_angle = Vector2DotProduct(vel_dir, diff) / denom;
-                        cos_angle = std::max(-1.0f, std::min(1.0f, cos_angle));
-                        float angle_between = acosf(cos_angle);
-                        if (angle_between <= fov) {// Within FOV
+                if (dist_sq <= radius_sq) { // Within Radius
+                    if (vel_mag_sq < 0.00000001f) {
+                        // Near-zero velocity: no heading, accept all within radius
+                        results.push_back({&entry, dist_sq});
+                    } else {
+                        float dot = vx * diff_x + vy * diff_y;
+                        float dot_sq = dot * dot;
+                        float thresh = fov_threshold * dist_sq;
+                        // cos_angle >= cos_fov via squared comparison (no sqrt)
+                        bool in_fov = wide_fov
+                            ? (dot >= 0.0f || dot_sq <= thresh)
+                            : (dot >= 0.0f && dot_sq >= thresh);
+                        if (in_fov) {
                             results.push_back({&entry, dist_sq});
                         }
                     }

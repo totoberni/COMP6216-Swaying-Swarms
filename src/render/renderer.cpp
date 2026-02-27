@@ -57,10 +57,14 @@ void end_frame() {
 // ============================================================
 
 void draw_boid(float x, float y, float angle, uint32_t color, float radius) {
+    // Precompute wing offset trig once (constant across all boids)
+    static const float cos_wing = std::cos(RenderConfig::BOID_WING_ANGLE_OFFSET);
+    static const float sin_wing = std::sin(RenderConfig::BOID_WING_ANGLE_OFFSET);
+
     const float length = RenderConfig::BOID_TRIANGLE_LENGTH;
     const float half_width = radius;
 
-    // Calculate triangle points (pointing along the angle)
+    // Only 2 trig calls per boid instead of 6
     float cos_a = std::cos(angle);
     float sin_a = std::sin(angle);
 
@@ -69,14 +73,22 @@ void draw_boid(float x, float y, float angle, uint32_t color, float radius) {
         y + sin_a * length
     };
 
+    // Angle addition: cos(a+b) = cos_a*cos_b - sin_a*sin_b
+    //                 sin(a+b) = sin_a*cos_b + cos_a*sin_b
+    float cos_left = cos_a * cos_wing - sin_a * sin_wing;
+    float sin_left = sin_a * cos_wing + cos_a * sin_wing;
     Vector2 left = {
-        x + std::cos(angle + RenderConfig::BOID_WING_ANGLE_OFFSET) * half_width,
-        y + std::sin(angle + RenderConfig::BOID_WING_ANGLE_OFFSET) * half_width
+        x + cos_left * half_width,
+        y + sin_left * half_width
     };
 
+    // cos(a-b) = cos_a*cos_b + sin_a*sin_b
+    // sin(a-b) = sin_a*cos_b - cos_a*sin_b
+    float cos_right = cos_a * cos_wing + sin_a * sin_wing;
+    float sin_right = sin_a * cos_wing - cos_a * sin_wing;
     Vector2 right = {
-        x + std::cos(angle - RenderConfig::BOID_WING_ANGLE_OFFSET) * half_width,
-        y + std::sin(angle - RenderConfig::BOID_WING_ANGLE_OFFSET) * half_width
+        x + cos_right * half_width,
+        y + sin_right * half_width
     };
 
     DrawTriangle(tip, right, left, uint32_to_color(color));
@@ -86,19 +98,16 @@ void draw_interaction_radius(float x, float y, float radius, uint32_t color) {
     DrawCircleLines(static_cast<int>(x), static_cast<int>(y), radius, uint32_to_color(color));
 }
 
-// Renders the Average Center of Mass as a position
-void draw_avg_center_of_mass(float x, float y, float radius, uint32_t color) {
-    DrawCircle(static_cast<int>(round(x)), static_cast<int>(round(y)), radius, uint32_to_color(color));
-}
-
-void draw_avg_alignment_arrow(float start_x, float start_y, Vector2 vec, float length, uint32_t color) {
-    auto line_vec = Vector2Scale(Vector2Normalize(vec), length);
+// Renders the average boid indicator: centroid circle + alignment arrow from same position
+void draw_avg_boid_indicator(float x, float y, float radius, Vector2 vel_avg,
+                             float arrow_length, uint32_t circle_color, uint32_t arrow_color) {
+    DrawCircle(static_cast<int>(round(x)), static_cast<int>(round(y)), radius, uint32_to_color(circle_color));
+    auto line_vec = Vector2Scale(Vector2Normalize(vel_avg), arrow_length);
     DrawLine(
-        start_x, start_y,
-        static_cast<int>(round(line_vec.x)) + start_x, static_cast<int>(round(line_vec.y)) + start_y,
-        uint32_to_color(color)
+        static_cast<int>(round(x)), static_cast<int>(round(y)),
+        static_cast<int>(round(x + line_vec.x)), static_cast<int>(round(y + line_vec.y)),
+        uint32_to_color(arrow_color)
     );
-    auto x = 5;
 }
 
 // ============================================================
@@ -255,7 +264,7 @@ static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, 
     }
 
     // Find current max cohesion
-    int current_max = 1.;
+    int current_max = 1;
     for (int i = 0; i < stats.coh_history_count; i++) {
         float total = stats.coh_history[i];
         if (total > current_max) current_max = total;
@@ -263,13 +272,6 @@ static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, 
 
     smoothed_max = std::fmax(smoothed_max * 0.99f, current_max);
     float max_coh = (std::ceil(smoothed_max));
-
-    // float max_coh = 0.f;
-    // if ((smoothed_max * 0.99f) > current_max) {
-        // max_coh = smoothed_max;
-    // } else {
-        // max_coh = current_max;
-    // }
 
     float y_scale = static_cast<float>(height - 4) / static_cast<float>(max_coh);
     float x_scale = static_cast<float>(width - 4) / static_cast<float>(SimStats::HISTORY_SIZE - 1);
@@ -299,15 +301,15 @@ static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, 
         DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, normal_color);
     }
 
-    // Legend (top-right, vertical)
-    int lx = x + width - 68;
+    // Legend (top-right)
+    int lx = x + width - 60;
     int ly = y + 5;
-    DrawRectangle(lx - 3, ly - 2, 70, 56, Color{20, 20, 25, 200});
+    DrawRectangle(lx - 3, ly - 2, 62, 16, Color{20, 20, 25, 200});
     DrawRectangle(lx, ly, 8, 8, normal_color);
     DrawText("Cohesion", lx + 12, ly, 8, LIGHTGRAY);
 
-    // Max value label (top-left)
-    DrawText(TextFormat("Max: %.2f", max_coh), x + 3, y + 3, 8, Color{130, 130, 130, 255});
+    // Max value label (above graph box, right-aligned)
+    DrawText(TextFormat("Max: %.2f", max_coh), x + width - 60, y - 12, 8, Color{130, 130, 130, 255});
 }
 
 static void draw_alignment_graph(const SimStats& stats, int x, int y, int width, int height) {
@@ -320,45 +322,57 @@ static void draw_alignment_graph(const SimStats& stats, int x, int y, int width,
         return;
     }
 
-    float max_ali = 3.15;
-
-    float y_scale = static_cast<float>(height - 4) / max_ali;
+    // Symmetric range [-pi, +pi] centered on the graph
+    float half_range = 3.15f;
+    float y_scale = static_cast<float>(height - 4) / (2.0f * half_range);
     float x_scale = static_cast<float>(width - 4) / static_cast<float>(SimStats::HISTORY_SIZE - 1);
+    float center_y = y + height / 2.0f;
 
-    // Horizontal grid lines at 25%, 50%, 75%, 100%
-    Color grid_color = {60, 60, 65, 255};
-    for (int pct = 25; pct <= 100; pct += 25) {
-        float gy = y + height - 2 - (max_ali * pct / 100) * y_scale;
-        // Dotted line: draw short segments with gaps
-        for (int gx = x + 2; gx < x + width - 2; gx += 6) {
-            DrawLine(gx, static_cast<int>(gy), std::min(gx + 3, x + width - 2), static_cast<int>(gy), grid_color);
-        }
-        //DrawText(TextFormat("%d%%", pct), x + 3, static_cast<int>(gy) - 9, 8, Color{90, 90, 90, 255});
+    // Dotted horizontal center-line at zero
+    Color zero_color = {100, 100, 105, 255};
+    for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+        DrawLine(gx, static_cast<int>(center_y), std::min(gx + 3, x + width - 2), static_cast<int>(center_y), zero_color);
     }
 
-    // Cohesion
+    // Grid lines at 25/50/75/100% above and below center
+    Color grid_color = {60, 60, 65, 255};
+    for (int pct = 25; pct <= 100; pct += 25) {
+        float offset = (half_range * pct / 100.0f) * y_scale;
+        // Above center (positive values)
+        float gy_pos = center_y - offset;
+        for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+            DrawLine(gx, static_cast<int>(gy_pos), std::min(gx + 3, x + width - 2), static_cast<int>(gy_pos), grid_color);
+        }
+        // Below center (negative values)
+        float gy_neg = center_y + offset;
+        for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+            DrawLine(gx, static_cast<int>(gy_neg), std::min(gx + 3, x + width - 2), static_cast<int>(gy_neg), grid_color);
+        }
+    }
+
+    // Alignment line
     Color normal_color = {0, 230, 0, 230};
     for (int i = 0; i < stats.ali_history_count - 1; i++) {
         int ri = (stats.ali_history_index - stats.ali_history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
         int ni = (ri + 1) % SimStats::HISTORY_SIZE;
 
         float x1 = x + 2 + i * x_scale;
-        float y1 = y + height - 2 - stats.ali_history[ri] * y_scale;
+        float y1 = center_y - stats.ali_history[ri] * y_scale;
         float x2 = x + 2 + (i + 1) * x_scale;
-        float y2 = y + height - 2 - stats.ali_history[ni] * y_scale;
+        float y2 = center_y - stats.ali_history[ni] * y_scale;
 
         DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, normal_color);
     }
 
-    // Legend (top-right, vertical)
-    int lx = x + width - 68;
+    // Legend (top-right)
+    int lx = x + width - 60;
     int ly = y + 5;
-    DrawRectangle(lx - 3, ly - 2, 70, 28, Color{20, 20, 25, 200});
+    DrawRectangle(lx - 3, ly - 2, 62, 16, Color{20, 20, 25, 200});
     DrawRectangle(lx, ly, 8, 8, normal_color);
-    DrawText("Alignment Angle", lx + 12, ly, 8, LIGHTGRAY);
+    DrawText("Ali. Angle", lx + 12, ly, 8, LIGHTGRAY);
 
-    // Max value label (top-left)
-    DrawText(TextFormat("Max: %.2f", max_ali), x + 3, y + 3, 8, Color{130, 130, 130, 255});
+    // Max value label (above graph box, right-aligned)
+    DrawText(TextFormat("Max: %.2f", half_range), x + width - 60, y - 12, 8, Color{130, 130, 130, 255});
 }
 
 static void draw_separation_graph(const SimStats& stats, int x, int y, int width, int height) {
@@ -410,14 +424,14 @@ static void draw_separation_graph(const SimStats& stats, int x, int y, int width
     }
 
     // Legend (top-right)
-    int lx = x + width - 68;
+    int lx = x + width - 60;
     int ly = y + 5;
-    DrawRectangle(lx - 3, ly - 2, 70, 28, Color{20, 20, 25, 200});
+    DrawRectangle(lx - 3, ly - 2, 62, 16, Color{20, 20, 25, 200});
     DrawRectangle(lx, ly, 8, 8, sep_color);
     DrawText("Separation", lx + 12, ly, 8, LIGHTGRAY);
 
-    // Max value label (top-left)
-    DrawText(TextFormat("Max: %.2f", max_sep), x + 3, y + 3, 8, Color{130, 130, 130, 255});
+    // Max value label (above graph box, right-aligned)
+    DrawText(TextFormat("Max: %.2f", max_sep), x + width - 60, y - 12, 8, Color{130, 130, 130, 255});
 }
 
 // ============================================================
@@ -571,70 +585,68 @@ void draw_stats_overlay(const RenderState& state) {
     */
 
     // ========================================================
-    // Average Metrics
+    // Average Metrics (bright values for readability)
     // ========================================================
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
              "--- Average Metrics ---");
     y += line_height - 4;
 
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Average Position: (%.2f,%.2f)",
-                        stats.pos_avg.x, stats.pos_avg.y));
-    y += line_height - 4;
+    {
+        Color label_col = {180, 180, 180, 255};
+        Color value_col = {255, 255, 255, 255};
+        int fs = 10;
 
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Average Cohesion: %.2f",
-                        stats.average_cohesion));
-    y += line_height - 4;
+        DrawText("Avg Position:", x, y + 2, fs, label_col);
+        DrawText(TextFormat("(%.1f, %.1f)", stats.pos_avg.x, stats.pos_avg.y),
+                 x + 90, y + 2, fs, value_col);
+        y += line_height - 4;
 
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Average Alignment Angle: %.2f",
-                        stats.average_alignment_angle));
-    y += line_height - 4;
+        DrawText("Avg Cohesion:", x, y + 2, fs, label_col);
+        DrawText(TextFormat("%.2f", stats.average_cohesion),
+                 x + 90, y + 2, fs, value_col);
+        y += line_height - 4;
 
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Average Separation (RMS): %.2f",
-                        stats.average_separation));
-    y += line_height - 4;
+        DrawText("Avg Ali. Angle:", x, y + 2, fs, label_col);
+        DrawText(TextFormat("%.2f", stats.average_alignment_angle),
+                 x + 100, y + 2, fs, value_col);
+        y += line_height - 4;
+
+        DrawText("Avg Sep (RMS):", x, y + 2, fs, label_col);
+        DrawText(TextFormat("%.2f", stats.average_separation),
+                 x + 100, y + 2, fs, value_col);
+        y += line_height - 4;
+    }
 
     // ========================================================
     // Controls section: dropdown + sliders
     // ========================================================
+    // Dropdown is drawn DEFERRED (after graphs) so expanded items render on top.
+    int dropdown_y = 0;  // saved for deferred drawing
     if (config) {
         GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
                  "--- Controls ---");
         y += line_height - 2;
 
-        // Category dropdown
-        const char* categories = "Infection;Cure;Reproduction;Transition;Interaction;Movement;Debuffs;Antivax;Time";
-        Rectangle dropdown_rect = {static_cast<float>(x), static_cast<float>(y),
-                                    static_cast<float>(RenderConfig::STATS_PANEL_WIDTH - 20), 24};
+        // Save position for deferred dropdown drawing
+        dropdown_y = y;
+        y += 28;  // always advance past dropdown rect
 
-        // When dropdown is open, skip sliders to avoid z-overlap
-        if (s_dropdown_edit_mode) {
-            // Draw dropdown on top (edit mode = open)
-            if (GuiDropdownBox(dropdown_rect, categories, &s_active_category, true)) {
-                s_dropdown_edit_mode = false;
-            }
-        } else {
-            // Draw dropdown (closed)
-            if (GuiDropdownBox(dropdown_rect, categories, &s_active_category, false)) {
-                s_dropdown_edit_mode = true;
-            }
-            y += 28;
-
-            // Draw sliders for the active category
+        // Draw sliders (only when dropdown is closed)
+        if (!s_dropdown_edit_mode) {
             for (std::size_t i = 0; i < s_slider_specs.size(); ++i) {
                 const SliderSpec& spec = s_slider_specs[i];
                 if (spec.category != s_active_category) continue;
 
                 GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y),
-                                    static_cast<float>(label_width), 20},
+                                    static_cast<float>(label_width - 40), 16},
                          spec.label);
-                GuiSlider(
+                // Draw value text right-aligned within the label area
+                DrawText(TextFormat("%.2f", *spec.value),
+                         x + label_width - 35, y + 2, 10, Color{180, 180, 180, 255});
+                GuiSliderBar(
                     Rectangle{static_cast<float>(x + label_width + 5), static_cast<float>(y),
-                              static_cast<float>(slider_width), 20},
-                    "", TextFormat("%.2f", *spec.value),
+                              static_cast<float>(slider_width), 16},
+                    "", "",
                     spec.value, spec.min_val, spec.max_val);
                 y += line_height;
             }
@@ -714,6 +726,24 @@ void draw_stats_overlay(const RenderState& state) {
         unsigned char alpha = static_cast<unsigned char>(255 * std::min(1.0f, export_feedback_timer));
         DrawText(export_feedback_text, x, y + button_height + 4, 10, Color{200, 255, 200, alpha});
     }
+
+    // ========================================================
+    // Deferred dropdown rendering (drawn LAST so items appear on top)
+    // ========================================================
+    if (config && dropdown_y > 0) {
+        const char* categories = "Infection;Cure;Reproduction;Transition;Interaction;Movement;Debuffs;Antivax;Time";
+        Rectangle dropdown_rect = {static_cast<float>(x), static_cast<float>(dropdown_y),
+                                    static_cast<float>(RenderConfig::STATS_PANEL_WIDTH - 20), 24};
+        if (s_dropdown_edit_mode) {
+            if (GuiDropdownBox(dropdown_rect, categories, &s_active_category, true)) {
+                s_dropdown_edit_mode = false;
+            }
+        } else {
+            if (GuiDropdownBox(dropdown_rect, categories, &s_active_category, false)) {
+                s_dropdown_edit_mode = true;
+            }
+        }
+    }
 }
 
 // ============================================================
@@ -723,26 +753,25 @@ void draw_stats_overlay(const RenderState& state) {
 void render_frame(const RenderState& state) {
     begin_frame();
 
-    // Draw interaction radii first (background layer)
-    for (const auto& boid : state.boids) {
-        uint32_t radius_color;
-        if (boid.swarm_type == 1) {
-            radius_color = RenderConfig::COLOR_RADIUS_DOCTOR;
-        } else if (boid.swarm_type == 2) {
-            radius_color = RenderConfig::COLOR_RADIUS_ANTIVAX;
-        } else {
-            radius_color = RenderConfig::COLOR_RADIUS_NORMAL;
+    // Draw interaction radii (background layer) — toggled with V key, off by default
+    if (state.sim_state && state.sim_state->show_radii) {
+        for (const auto& boid : state.boids) {
+            uint32_t radius_color;
+            if (boid.swarm_type == 1) {
+                radius_color = RenderConfig::COLOR_RADIUS_DOCTOR;
+            } else if (boid.swarm_type == 2) {
+                radius_color = RenderConfig::COLOR_RADIUS_ANTIVAX;
+            } else {
+                radius_color = RenderConfig::COLOR_RADIUS_NORMAL;
+            }
+            draw_interaction_radius(boid.x, boid.y, boid.radius, radius_color);
         }
-        draw_interaction_radius(boid.x, boid.y, boid.radius, radius_color);
     }
 
-    // Draw Average Center of Mass
-    draw_avg_center_of_mass(state.stats.pos_avg.x, state.stats.pos_avg.y, 10., RenderConfig::COLOR_MASS_CENTER);
-
-    // Draw the average velocity as an arrow in the centre of the screen.
-    int start_x = (GetScreenWidth()) / 2;
-    int start_y = (GetScreenHeight()) / 2;
-    draw_avg_alignment_arrow(start_x, start_y, state.stats.vel_avg, 25.f, RenderConfig::COLOR_ALI_ARROW);
+    // Draw unified average boid indicator (centroid + alignment arrow)
+    draw_avg_boid_indicator(state.stats.pos_avg.x, state.stats.pos_avg.y, 10.f,
+                            state.stats.vel_avg, 25.f,
+                            RenderConfig::COLOR_MASS_CENTER, RenderConfig::COLOR_ALI_ARROW);
 
     // Draw boids on top
     for (const auto& boid : state.boids) {

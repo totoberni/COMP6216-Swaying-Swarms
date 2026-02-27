@@ -5,6 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Default to Release build for optimization (-O2/-O3)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
 # --- CPM.cmake ---
 # Use a short cache path to avoid Windows MAX_PATH issues with long project paths
 if(WIN32 AND NOT DEFINED ENV{CPM_SOURCE_CACHE})
@@ -68,6 +73,13 @@ target_link_libraries(boid_swarm PRIVATE
     flecs::flecs_static
     raylib
 )
+
+# Optimization flags (compatible with GCC, Clang, MSVC)
+if(MSVC)
+    target_compile_options(boid_swarm PRIVATE $<$<CONFIG:Release>:/O2>)
+else()
+    target_compile_options(boid_swarm PRIVATE $<$<CONFIG:Release>:-O2>)
+endif()
 
 # --- Test executable ---
 file(GLOB_RECURSE TEST_SOURCES

@@ -173,4 +173,5 @@ struct SimulationState {
     bool is_paused = false;
     bool reset_requested = false;  // Set by UI, cleared by main loop after reset
     bool show_stats_overlay = false; // Toggle for stats overlay
+    bool show_radii = true; // Toggle for interaction radius circles (V key)
 };

@@ -19,9 +19,10 @@ void register_render_sync_system(flecs::world& world) {
             // Copy current stats
             rs.stats = w.get<SimStats>();
 
-            // Clear previous frame data and reserve capacity to avoid reallocations
+            // Clear previous frame data; use previous frame count as reserve hint
+            size_t prev_count = rs.boids.size();
             rs.boids.clear();
-            rs.boids.reserve(rs.stats.normal_alive + rs.stats.doctor_alive);
+            rs.boids.reserve(prev_count);
 
             // Populate config and sim_state pointers for renderer
             rs.config = &w.get_mut<SimConfig>();

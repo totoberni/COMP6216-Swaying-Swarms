@@ -66,6 +66,7 @@ void register_steering_system(flecs::world& world) {
             float coh_r_sq = config.cohesion_radius * config.cohesion_radius;
 
             std::vector<SpatialGrid::QueryResult> neighbors;
+            neighbors.reserve(64);  // Pre-allocate for typical neighbor count
             q.each([&](flecs::entity e, const Position& pos, Velocity& vel) {
                 // Query neighbors within the largest steering radius
                 grid.query_neighbors_fov(pos.x, pos.y, query_radius, neighbors, config.fov, vel.vx, vel.vy);
@@ -94,11 +95,10 @@ void register_steering_system(flecs::world& world) {
                     int ne_swarm = static_cast<int>(ne->swarm_type);
 
                     // Separation: repel from ALL nearby boids (cross-swarm)
-                    // Model B: normalize(diff) / distance — inverse-distance weighting
+                    // Model B Section 2.2: f_j = diff / d_ij^2 (inverse-distance weighted)
                     if (qr.dist_sq < sep_r_sq) {
-                        float dist = std::sqrt(qr.dist_sq);
                         Vector2 diff = Vector2Subtract(my_pos, {ne->x, ne->y});
-                        sep = Vector2Add(sep, Vector2Scale(diff, 1.0f / (dist * dist)));
+                        sep = Vector2Add(sep, Vector2Scale(diff, 1.0f / qr.dist_sq));
                         sep_count++;
                     }
 

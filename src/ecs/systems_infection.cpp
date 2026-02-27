@@ -53,11 +53,17 @@ void register_infection_system(flecs::world& world) {
                     const auto* ne_entry = qr.entry;
                     if (ne_entry->entity_id == e.id()) continue;
 
-                    // Use enriched entry: skip non-alive, skip already infected
+                    // Use enriched entry: skip already infected
                     if (ne_entry->infected) continue;
 
-                    // Any boid type (0=normal, 1=doctor, 2=antivax) can be infected
-                    // swarm_type is always 0, 1, or 2 — no filter needed
+                    // Cross-swarm infection rules (context.md interaction matrix):
+                    // - Doctors can only infect other Doctors
+                    // - Normal/Antivax can only infect Normal/Antivax (same epi population)
+                    if (is_doctor) {
+                        if (ne_entry->swarm_type != 1) continue;
+                    } else {
+                        if (ne_entry->swarm_type == 1) continue;
+                    }
 
                     // Try to infect
                     if (try_infect(p_infect, rng)) {
