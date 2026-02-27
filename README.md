@@ -147,6 +147,7 @@ All core simulation features from `context.md` are implemented. The project is i
 |---|---|
 | Flocking (Reynolds steering, vectorized with raymath) | ✅ |
 | Infection, death, cure, reproduction, aging, promotion | ✅ |
+| SIRS disease model (death/recovery, time-decaying immunity, cross-swarm infection) | ✅ |
 | Three swarms (Normal, Doctor, Antivax with doctor avoidance) | ✅ |
 | Infected debuffs, sex system | ✅ |
 | Interactive sliders, pause/reset, population graph | ✅ |

@@ -31,6 +31,12 @@ void spawn_normal_boids(flecs::world& world, int count) {
             .set(Velocity{speed * std::cos(angle), speed * std::sin(angle)})
             .set(Heading{angle});
 
+        // Roll for antivax: swap NormalBoid → AntivaxBoid
+        if (dist_infect(rng) < config.p_antivax) {
+            boid.remove<NormalBoid>();
+            boid.add<AntivaxBoid>();
+        }
+
         // Initial infection
         if (dist_infect(rng) < config.p_initial_infect_normal) {
             boid.add<Infected>();
@@ -89,30 +95,15 @@ void reset_simulation(flecs::world& world) {
 
     world.defer_end();
 
-    // Reset statistics and population history
+    // Reset statistics: zero all per-swarm metrics and population history
     SimStats& stats = world.get_mut<SimStats>();
-    stats.normal_alive = 0;
-    stats.doctor_alive = 0;
+    for (int s = 0; s < 3; ++s) {
+        stats.swarm[s] = SwarmMetrics{};
+    }
     stats.history_index = 0;
     stats.history_count = 0;
     for (int i = 0; i < SimStats::HISTORY_SIZE; ++i) {
         stats.history[i] = {};
-    }
-
-    // Reset cohesion history
-    stats.coh_history_index = 0;
-    stats.coh_history_count = 0;
-    // Reset alignment history
-    stats.ali_history_index = 0;
-    stats.ali_history_count = 0;
-    // Reset separation history
-    stats.average_separation = 0.0f;
-    stats.sep_history_index = 0;
-    stats.sep_history_count = 0;
-    for (int i = 0; i < SimStats::HISTORY_SIZE; ++i) {
-        stats.coh_history[i] = 0.0f;
-        stats.ali_history[i] = 0.0f;
-        stats.sep_history[i] = 0.0f;
     }
 
     // Rebuild spatial grid with current config (sliders may have changed radii).

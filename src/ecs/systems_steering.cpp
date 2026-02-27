@@ -102,14 +102,14 @@ void register_steering_system(flecs::world& world) {
                         sep_count++;
                     }
 
-                    // Alignment: match velocity of nearby boids only
-                    if (qr.dist_sq < ali_r_sq) {
+                    // Alignment: same swarm only (independent flocking)
+                    if (qr.dist_sq < ali_r_sq && ne_swarm == my_swarm) {
                         ali = Vector2Add(ali, {ne->vx, ne->vy});
                         ali_count++;
                     }
 
-                    // Cohesion: steer toward center of mass
-                    if (qr.dist_sq < coh_r_sq) {
+                    // Cohesion: same swarm only (independent flocking)
+                    if (qr.dist_sq < coh_r_sq && ne_swarm == my_swarm) {
                         coh = Vector2Add(coh, {ne->x, ne->y});
                         coh_count++;
                     }
@@ -138,6 +138,28 @@ void register_steering_system(flecs::world& world) {
                     Vector2 toward_center = Vector2Subtract(coh, my_pos);
                     Vector2 steer = steer_toward(toward_center, config.max_speed, my_vel, config.max_force);
                     force = Vector2Add(force, Vector2Scale(steer, config.cohesion_weight));
+                }
+
+                // Antivax doctor-avoidance: repel from doctor boids
+                if (my_swarm == 2) {
+                    std::vector<SpatialGrid::QueryResult> av_neighbors;
+                    grid.query_neighbors(pos.x, pos.y, config.antivax_repulsion_radius, av_neighbors);
+                    Vector2 av_repel = Vector2Zero();
+                    int av_count = 0;
+                    for (const auto& aqr : av_neighbors) {
+                        const auto* ane = aqr.entry;
+                        if (ane->entity_id == e.id()) continue;
+                        if (ane->swarm_type != 1) continue; // only flee from doctors
+                        if (aqr.dist_sq < 0.000001f) continue;
+                        Vector2 diff = Vector2Subtract(my_pos, {ane->x, ane->y});
+                        av_repel = Vector2Add(av_repel, Vector2Scale(diff, 1.0f / aqr.dist_sq));
+                        av_count++;
+                    }
+                    if (av_count > 0) {
+                        av_repel = Vector2Scale(av_repel, 1.0f / av_count);
+                        Vector2 steer = steer_toward(av_repel, config.max_speed, my_vel, config.max_force);
+                        force = Vector2Add(force, Vector2Scale(steer, config.antivax_repulsion_weight));
+                    }
                 }
 
                 // Apply force to velocity

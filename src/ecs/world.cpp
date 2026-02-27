@@ -13,10 +13,12 @@ void init_world(flecs::world& world, const std::string& config_path) {
     world.component<Velocity>();
     world.component<Heading>();
     world.component<InfectionState>();
+    world.component<ImmunityState>();
 
     // Register tag components
     world.component<NormalBoid>();
     world.component<DoctorBoid>();
+    world.component<AntivaxBoid>();
     world.component<Infected>();
 
     // Register SpatialGrid as a component (required before using as singleton)

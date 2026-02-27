@@ -6,6 +6,8 @@
 #include "sim/rng.h"
 #include <flecs.h>
 #include <vector>
+#include <algorithm>
+#include <random>
 
 // ============================================================
 // PostUpdate Phase: Collisions and Behavior
@@ -56,20 +58,20 @@ void register_infection_system(flecs::world& world) {
                     // Use enriched entry: skip already infected
                     if (ne_entry->infected) continue;
 
-                    // Cross-swarm infection rules (context.md interaction matrix):
-                    // - Doctors can only infect other Doctors
-                    // - Normal/Antivax can only infect Normal/Antivax (same epi population)
-                    if (is_doctor) {
-                        if (ne_entry->swarm_type != 1) continue;
-                    } else {
-                        if (ne_entry->swarm_type == 1) continue;
+                    // Free cross-swarm infection: any infected boid can infect any susceptible boid
+                    // Apply immunity reduction to infection probability
+                    float effective_p = p_infect;
+                    flecs::entity ne = w.entity(ne_entry->entity_id);
+                    bool has_immunity = ne.has<ImmunityState>();
+                    if (has_immunity) {
+                        const ImmunityState& imm = ne.get<ImmunityState>();
+                        effective_p *= (1.0f - imm.immunity_level);
                     }
 
-                    // Try to infect
-                    if (try_infect(p_infect, rng)) {
-                        flecs::entity ne = w.entity(ne_entry->entity_id);
+                    if (try_infect(effective_p, rng)) {
                         ne.add<Infected>();
                         ne.set(InfectionState{0.0f, config.t_death});
+                        if (has_immunity) ne.remove<ImmunityState>();
                     }
                 }
             });
@@ -120,18 +122,61 @@ void register_cure_system(flecs::world& world) {
                     }
 
                     // Try to cure (doctors cure ANY infected boid, including other doctors)
+                    // Cure grants partial immunity to prevent immediate re-infection
                     if (try_cure(effective_p_cure, rng)) {
                         flecs::entity ne = w.entity(ne_entry->entity_id);
                         ne.remove<Infected>();
-                        // Reset infection timer
-                        if (ne.has<InfectionState>()) {
-                            InfectionState& inf = ne.get_mut<InfectionState>();
-                            inf.time_infected = 0.0f;
-                        }
+                        ne.remove<InfectionState>();
+                        ne.set(ImmunityState{config.cure_immunity_level, 0.0f});
                     }
                 }
             });
 
             w.defer_end();
+        });
+}
+
+void register_death_recovery_system(flecs::world& world) {
+    world.system<InfectionState>("DeathRecoverySystem")
+        .with<Infected>()
+        .kind(flecs::PostUpdate)
+        .each([](flecs::entity e, InfectionState& inf) {
+            flecs::world w = e.world();
+            const SimConfig& config = w.get<SimConfig>();
+            float dt = w.delta_time();
+
+            inf.time_infected += dt;
+
+            if (inf.time_infected >= inf.time_to_death) {
+                std::mt19937& rng = sim_rng();
+                std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+                if (dist(rng) < config.p_death_infected) {
+                    // Death
+                    e.destruct();
+                } else {
+                    // Survived — gain full immunity
+                    e.remove<Infected>();
+                    e.remove<InfectionState>();
+                    e.set(ImmunityState{1.0f, 0.0f});
+                }
+            }
+        });
+}
+
+void register_immunity_decay_system(flecs::world& world) {
+    world.system<ImmunityState>("ImmunityDecaySystem")
+        .without<Infected>()
+        .kind(flecs::PostUpdate)
+        .each([](flecs::entity e, ImmunityState& imm) {
+            flecs::world w = e.world();
+            const SimConfig& config = w.get<SimConfig>();
+            float dt = w.delta_time();
+
+            imm.time_since_recovery += dt;
+            imm.immunity_level = std::max(0.0f, 1.0f - imm.time_since_recovery / config.t_immunity);
+
+            if (imm.immunity_level <= 0.0f) {
+                e.remove<ImmunityState>();
+            }
         });
 }

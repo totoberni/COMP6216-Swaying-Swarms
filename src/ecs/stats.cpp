@@ -4,6 +4,58 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <cmath>
+#include <vector>
+
+// Helper: compute per-swarm metrics from a list of (pos, vel) pairs
+static void compute_swarm_metrics(SwarmMetrics& m,
+                                  const std::vector<Vector2>& positions,
+                                  const std::vector<Vector2>& velocities) {
+    int count = static_cast<int>(positions.size());
+    m.alive = count;
+    m.pos_avg = Vector2Zero();
+    m.vel_avg = Vector2Zero();
+    m.average_cohesion = 0.0f;
+    m.average_alignment_angle = 0.0f;
+    m.average_separation = 0.0f;
+
+    if (count == 0) return;
+
+    // First pass: accumulate sums
+    for (int i = 0; i < count; ++i) {
+        m.pos_avg = Vector2Add(m.pos_avg, positions[i]);
+        m.vel_avg = Vector2Add(m.vel_avg, velocities[i]);
+    }
+    m.pos_avg = Vector2Scale(m.pos_avg, 1.0f / count);
+    m.vel_avg = Vector2Scale(m.vel_avg, 1.0f / count);
+
+    // Second pass: compute deviations
+    float sum_sq_dist = 0.0f;
+    for (int i = 0; i < count; ++i) {
+        Vector2 pos_diff = Vector2Subtract(positions[i], m.pos_avg);
+        m.average_cohesion += Vector2Length(pos_diff);
+        sum_sq_dist += Vector2LengthSqr(pos_diff);
+
+        float theta = Vector2Angle(m.vel_avg, velocities[i]);
+        m.average_alignment_angle += theta;
+    }
+
+    // Write to history buffers
+    m.coh_history[m.coh_history_index] = m.average_cohesion / count;
+    m.coh_history_index = (m.coh_history_index + 1) % SwarmMetrics::HISTORY_SIZE;
+    if (m.coh_history_count < SwarmMetrics::HISTORY_SIZE) m.coh_history_count++;
+
+    // RMS separation via Huygens-Steiner theorem
+    if (count > 1) {
+        m.average_separation = std::sqrt(2.0f * sum_sq_dist / (count - 1));
+    }
+    m.sep_history[m.sep_history_index] = m.average_separation;
+    m.sep_history_index = (m.sep_history_index + 1) % SwarmMetrics::HISTORY_SIZE;
+    if (m.sep_history_count < SwarmMetrics::HISTORY_SIZE) m.sep_history_count++;
+
+    m.ali_history[m.ali_history_index] = m.average_alignment_angle / count;
+    m.ali_history_index = (m.ali_history_index + 1) % SwarmMetrics::HISTORY_SIZE;
+    if (m.ali_history_count < SwarmMetrics::HISTORY_SIZE) m.ali_history_count++;
+}
 
 void register_stats_system(flecs::world& world) {
     world.system("UpdateStatsSystem")
@@ -11,69 +63,41 @@ void register_stats_system(flecs::world& world) {
         .run([](flecs::iter& it) {
             flecs::world w = it.world();
             SimStats& stats = w.get_mut<SimStats>();
-            const SimConfig& config = w.get<SimConfig>();
 
-            // Reset per-frame counters
-            stats.pos_avg = Vector2Zero();
-            stats.average_cohesion = 0.0f;
-            stats.vel_avg = Vector2Zero();
-            stats.average_alignment_angle = 0.0f;
-            stats.average_separation = 0.0f;
+            // Temporary storage for per-swarm pos/vel
+            std::vector<Vector2> positions;
+            std::vector<Vector2> velocities;
+            positions.reserve(256);
+            velocities.reserve(256);
 
-            // --------- Single pass: accumulate position + velocity sums -----------
-            int live_normal_count = 0;
-            auto q = w.query<const Position, const Velocity, const NormalBoid>();
-            q.each([&](Position pos, Velocity vel, const NormalBoid&) {
-                stats.pos_avg = Vector2Add(stats.pos_avg, {pos.x, pos.y});
-                stats.vel_avg = Vector2Add(stats.vel_avg, {vel.vx, vel.vy});
-                live_normal_count++;
+            // --- Swarm 0: NormalBoid ---
+            positions.clear();
+            velocities.clear();
+            auto q0 = w.query<const Position, const Velocity, const NormalBoid>();
+            q0.each([&](const Position& pos, const Velocity& vel, const NormalBoid&) {
+                positions.push_back({pos.x, pos.y});
+                velocities.push_back({vel.vx, vel.vy});
             });
-            stats.normal_alive = live_normal_count;
+            compute_swarm_metrics(stats.swarm[0], positions, velocities);
 
-            // Count doctor boids
-            int live_doctor_count = 0;
-            w.query<const DoctorBoid>().each([&](const DoctorBoid&) {
-                live_doctor_count++;
+            // --- Swarm 1: DoctorBoid ---
+            positions.clear();
+            velocities.clear();
+            auto q1 = w.query<const Position, const Velocity, const DoctorBoid>();
+            q1.each([&](const Position& pos, const Velocity& vel, const DoctorBoid&) {
+                positions.push_back({pos.x, pos.y});
+                velocities.push_back({vel.vx, vel.vy});
             });
-            stats.doctor_alive = live_doctor_count;
+            compute_swarm_metrics(stats.swarm[1], positions, velocities);
 
-            if (live_normal_count > 0) {
-                stats.pos_avg = Vector2Scale(stats.pos_avg, 1.0f / live_normal_count);
-                stats.vel_avg = Vector2Scale(stats.vel_avg, 1.0f / live_normal_count);
-
-                // Second pass: compute deviations from averages
-                float sum_sq_dist = 0.0f;
-                q.each([&](Position pos, Velocity vel, const NormalBoid&) {
-                    Vector2 pos_diff = Vector2Subtract({pos.x, pos.y}, stats.pos_avg);
-                    stats.average_cohesion += Vector2Length(pos_diff);
-                    sum_sq_dist += Vector2LengthSqr(pos_diff);
-
-                    float theta = Vector2Angle(stats.vel_avg, Vector2{vel.vx, vel.vy});
-                    stats.average_alignment_angle += theta;
-                });
-
-                stats.coh_history[stats.coh_history_index] = stats.average_cohesion / live_normal_count;
-                stats.coh_history_index = (stats.coh_history_index + 1) % SimStats::HISTORY_SIZE;
-                if (stats.coh_history_count < SimStats::HISTORY_SIZE) {
-                    stats.coh_history_count++;
-                }
-
-                // RMS separation via Huygens-Steiner theorem
-                if (live_normal_count > 1) {
-                    stats.average_separation = std::sqrt(2.0f * sum_sq_dist / (live_normal_count - 1));
-                }
-
-                stats.sep_history[stats.sep_history_index] = stats.average_separation;
-                stats.sep_history_index = (stats.sep_history_index + 1) % SimStats::HISTORY_SIZE;
-                if (stats.sep_history_count < SimStats::HISTORY_SIZE) {
-                    stats.sep_history_count++;
-                }
-
-                stats.ali_history[stats.ali_history_index] = stats.average_alignment_angle / live_normal_count;
-                stats.ali_history_index = (stats.ali_history_index + 1) % SimStats::HISTORY_SIZE;
-                if (stats.ali_history_count < SimStats::HISTORY_SIZE) {
-                    stats.ali_history_count++;
-                }
-            }
+            // --- Swarm 2: AntivaxBoid ---
+            positions.clear();
+            velocities.clear();
+            auto q2 = w.query<const Position, const Velocity, const AntivaxBoid>();
+            q2.each([&](const Position& pos, const Velocity& vel, const AntivaxBoid&) {
+                positions.push_back({pos.x, pos.y});
+                velocities.push_back({vel.vx, vel.vy});
+            });
+            compute_swarm_metrics(stats.swarm[2], positions, velocities);
         });
 }

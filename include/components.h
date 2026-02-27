@@ -26,12 +26,18 @@ struct InfectionState {
     float time_to_death;   // t_death countdown
 };
 
+struct ImmunityState {
+    float immunity_level;       // 1.0 = fully immune, decays to 0.0
+    float time_since_recovery;  // seconds since recovery
+};
+
 // ============================================================
 // Tag components — zero-size markers for queries
 // ============================================================
 
 struct NormalBoid {};
 struct DoctorBoid {};
+struct AntivaxBoid {};
 struct Infected {};
 
 // ============================================================
@@ -104,9 +110,16 @@ struct SimConfig {
     float debuff_r_interact_normal_infected = 0.8f;  // Normal interaction radius multiplier when infected
     float debuff_p_offspring_normal_infected = 0.5f;  // Normal reproduction probability multiplier when infected
 
+    // --- SIRS disease model ---
+    float p_death_infected             = 0.3f;    // Probability of death when infection timer expires
+    float t_immunity                   = 10.0f;   // Seconds for immunity to decay from 1.0 to 0.0
+
     // --- Antivax parameters ---
     float antivax_repulsion_radius     = 100.0f;  // Visual range for detecting doctors
     float antivax_repulsion_weight     = 3.0f;    // Strength of repulsion force (additive to flocking)
+
+    // --- Cure immunity ---
+    float cure_immunity_level          = 0.5f;    // Immunity granted by doctor cure (0.0-1.0)
 };
 
 // ============================================================
@@ -120,48 +133,31 @@ struct PopulationHistoryPoint {
     int infected_count = 0;
 };
 
+struct SwarmMetrics {
+    int alive = 0;
+    Vector2 pos_avg = Vector2Zero();
+    Vector2 vel_avg = Vector2Zero();
+    float average_cohesion = 0.0f;
+    float average_alignment_angle = 0.0f;
+    float average_separation = 0.0f;
+
+    static constexpr int HISTORY_SIZE = 500;
+    float coh_history[HISTORY_SIZE] = {};
+    int coh_history_index = 0, coh_history_count = 0;
+    float ali_history[HISTORY_SIZE] = {};
+    int ali_history_index = 0, ali_history_count = 0;
+    float sep_history[HISTORY_SIZE] = {};
+    int sep_history_index = 0, sep_history_count = 0;
+};
+
 struct SimStats {
-    int normal_alive    = 0;
-    int doctor_alive    = 0;
-    // int dead_total      = 0;
-    // int dead_normal     = 0;
-    // int dead_doctor     = 0;
-    // int newborns_total  = 0;
-    // int newborns_normal = 0;
-    // int newborns_doctor = 0;
-    // int antivax_alive   = 0;
-    // int dead_antivax    = 0;
-    // int newborns_antivax = 0;
+    SwarmMetrics swarm[3];  // [0]=normal, [1]=doctor, [2]=antivax
 
     // Population history for graph (circular buffer)
     static constexpr int HISTORY_SIZE = 500;
     PopulationHistoryPoint history[HISTORY_SIZE] = {};
     int history_index = 0;  // Current write position (wraps around)
     int history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
-
-    // Average Cohesion
-    Vector2 pos_avg = Vector2Zero();
-    float average_cohesion = 0.;
-    // Cohesion history for graph (circular buffer)
-    // reuse HISTORY_SIZE = 500;
-    float coh_history[HISTORY_SIZE] = {};
-    int coh_history_index = 0;  // Current write position (wraps around)
-    int coh_history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
-
-    // Average Alignment
-    Vector2 vel_avg = Vector2Zero();
-    float average_alignment_angle = 0.;
-    // Alignment history for graph (circular buffer)
-    // reuse HISTORY_SIZE = 500;
-    float ali_history[HISTORY_SIZE] = {};
-    int ali_history_index = 0;  // Current write position (wraps around)
-    int ali_history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
-
-    // Average Separation (RMS pairwise distance via Huygens-Steiner)
-    float average_separation = 0.0f;
-    float sep_history[HISTORY_SIZE] = {};
-    int sep_history_index = 0;
-    int sep_history_count = 0;
 };
 
 // ============================================================

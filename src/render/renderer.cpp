@@ -250,187 +250,197 @@ static void draw_population_graph(const SimStats& stats, int x, int y, int width
     DrawText(TextFormat("Max: %d", max_pop), x + 3, y + 3, 8, Color{130, 130, 130, 255});
 }
 
+// Per-swarm line colors
+static const Color SWARM_COLORS[3] = {
+    {0, 230, 0, 230},    // Normal (green)
+    {0, 120, 255, 230},  // Doctor (blue)
+    {255, 165, 0, 230},  // Antivax (orange)
+};
+static const char* SWARM_NAMES[3] = {"Normal", "Doctor", "Antivax"};
+
 static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, int height) {
-    // Smoothed max for stable Y-axis scaling
     static float smoothed_max = 1.0f;
 
-    // Draw graph background
     DrawRectangle(x, y, width, height, Color{30, 30, 35, 255});
     DrawRectangleLines(x, y, width, height, Color{80, 80, 80, 255});
 
-    if (stats.coh_history_count < 2) {
+    // Check if any swarm has data
+    int max_count = 0;
+    for (int s = 0; s < 3; ++s)
+        if (stats.swarm[s].coh_history_count > max_count) max_count = stats.swarm[s].coh_history_count;
+    if (max_count < 2) {
         DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
         return;
     }
 
-    // Find current max cohesion
-    int current_max = 1;
-    for (int i = 0; i < stats.coh_history_count; i++) {
-        float total = stats.coh_history[i];
-        if (total > current_max) current_max = total;
-    }
+    // Find current max across all swarms
+    float current_max = 1.0f;
+    for (int s = 0; s < 3; ++s)
+        for (int i = 0; i < stats.swarm[s].coh_history_count; i++)
+            if (stats.swarm[s].coh_history[i] > current_max) current_max = stats.swarm[s].coh_history[i];
 
     smoothed_max = std::fmax(smoothed_max * 0.99f, current_max);
-    float max_coh = (std::ceil(smoothed_max));
+    float max_coh = std::ceil(smoothed_max);
 
-    float y_scale = static_cast<float>(height - 4) / static_cast<float>(max_coh);
-    float x_scale = static_cast<float>(width - 4) / static_cast<float>(SimStats::HISTORY_SIZE - 1);
+    float y_scale = static_cast<float>(height - 4) / max_coh;
+    float x_scale = static_cast<float>(width - 4) / static_cast<float>(SwarmMetrics::HISTORY_SIZE - 1);
 
-    // Horizontal grid lines at 25%, 50%, 75%, 100%
+    // Grid lines
     Color grid_color = {60, 60, 65, 255};
     for (int pct = 25; pct <= 100; pct += 25) {
         float gy = y + height - 2 - (max_coh * pct / 100) * y_scale;
-        // Dotted line: draw short segments with gaps
-        for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+        for (int gx = x + 2; gx < x + width - 2; gx += 6)
             DrawLine(gx, static_cast<int>(gy), std::min(gx + 3, x + width - 2), static_cast<int>(gy), grid_color);
+    }
+
+    // Draw 3 swarm lines
+    for (int s = 0; s < 3; ++s) {
+        const auto& sm = stats.swarm[s];
+        if (sm.coh_history_count < 2) continue;
+        for (int i = 0; i < sm.coh_history_count - 1; i++) {
+            int ri = (sm.coh_history_index - sm.coh_history_count + i + SwarmMetrics::HISTORY_SIZE) % SwarmMetrics::HISTORY_SIZE;
+            int ni = (ri + 1) % SwarmMetrics::HISTORY_SIZE;
+            float x1 = x + 2 + i * x_scale;
+            float y1 = y + height - 2 - sm.coh_history[ri] * y_scale;
+            float x2 = x + 2 + (i + 1) * x_scale;
+            float y2 = y + height - 2 - sm.coh_history[ni] * y_scale;
+            DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 1.5f, SWARM_COLORS[s]);
         }
-        //DrawText(TextFormat("%d%%", pct), x + 3, static_cast<int>(gy) - 9, 8, Color{90, 90, 90, 255});
     }
 
-    // Cohesion
-    Color normal_color = {0, 230, 0, 230};
-    for (int i = 0; i < stats.coh_history_count - 1; i++) {
-        int ri = (stats.coh_history_index - stats.coh_history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
-        int ni = (ri + 1) % SimStats::HISTORY_SIZE;
-
-        float x1 = x + 2 + i * x_scale;
-        float y1 = y + height - 2 - stats.coh_history[ri] * y_scale;
-        float x2 = x + 2 + (i + 1) * x_scale;
-        float y2 = y + height - 2 - stats.coh_history[ni] * y_scale;
-
-        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, normal_color);
-    }
-
-    // Legend (top-right)
+    // Legend (top-right, vertical)
     int lx = x + width - 60;
     int ly = y + 5;
-    DrawRectangle(lx - 3, ly - 2, 62, 16, Color{20, 20, 25, 200});
-    DrawRectangle(lx, ly, 8, 8, normal_color);
-    DrawText("Cohesion", lx + 12, ly, 8, LIGHTGRAY);
+    DrawRectangle(lx - 3, ly - 2, 62, 42, Color{20, 20, 25, 200});
+    for (int s = 0; s < 3; ++s) {
+        DrawRectangle(lx, ly, 8, 8, SWARM_COLORS[s]);
+        DrawText(SWARM_NAMES[s], lx + 12, ly, 8, LIGHTGRAY);
+        ly += 12;
+    }
 
-    // Max value label (above graph box, right-aligned)
     DrawText(TextFormat("Max: %.2f", max_coh), x + width - 60, y - 12, 8, Color{130, 130, 130, 255});
 }
 
 static void draw_alignment_graph(const SimStats& stats, int x, int y, int width, int height) {
-    // Draw graph background
     DrawRectangle(x, y, width, height, Color{30, 30, 35, 255});
     DrawRectangleLines(x, y, width, height, Color{80, 80, 80, 255});
 
-    if (stats.ali_history_count < 2) {
+    int max_count = 0;
+    for (int s = 0; s < 3; ++s)
+        if (stats.swarm[s].ali_history_count > max_count) max_count = stats.swarm[s].ali_history_count;
+    if (max_count < 2) {
         DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
         return;
     }
 
-    // Symmetric range [-pi, +pi] centered on the graph
     float half_range = 3.15f;
     float y_scale = static_cast<float>(height - 4) / (2.0f * half_range);
-    float x_scale = static_cast<float>(width - 4) / static_cast<float>(SimStats::HISTORY_SIZE - 1);
+    float x_scale = static_cast<float>(width - 4) / static_cast<float>(SwarmMetrics::HISTORY_SIZE - 1);
     float center_y = y + height / 2.0f;
 
-    // Dotted horizontal center-line at zero
+    // Center-line at zero
     Color zero_color = {100, 100, 105, 255};
-    for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+    for (int gx = x + 2; gx < x + width - 2; gx += 6)
         DrawLine(gx, static_cast<int>(center_y), std::min(gx + 3, x + width - 2), static_cast<int>(center_y), zero_color);
-    }
 
-    // Grid lines at 25/50/75/100% above and below center
+    // Grid lines
     Color grid_color = {60, 60, 65, 255};
     for (int pct = 25; pct <= 100; pct += 25) {
         float offset = (half_range * pct / 100.0f) * y_scale;
-        // Above center (positive values)
         float gy_pos = center_y - offset;
-        for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+        for (int gx = x + 2; gx < x + width - 2; gx += 6)
             DrawLine(gx, static_cast<int>(gy_pos), std::min(gx + 3, x + width - 2), static_cast<int>(gy_pos), grid_color);
-        }
-        // Below center (negative values)
         float gy_neg = center_y + offset;
-        for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+        for (int gx = x + 2; gx < x + width - 2; gx += 6)
             DrawLine(gx, static_cast<int>(gy_neg), std::min(gx + 3, x + width - 2), static_cast<int>(gy_neg), grid_color);
+    }
+
+    // Draw 3 swarm lines
+    for (int s = 0; s < 3; ++s) {
+        const auto& sm = stats.swarm[s];
+        if (sm.ali_history_count < 2) continue;
+        for (int i = 0; i < sm.ali_history_count - 1; i++) {
+            int ri = (sm.ali_history_index - sm.ali_history_count + i + SwarmMetrics::HISTORY_SIZE) % SwarmMetrics::HISTORY_SIZE;
+            int ni = (ri + 1) % SwarmMetrics::HISTORY_SIZE;
+            float x1 = x + 2 + i * x_scale;
+            float y1 = center_y - sm.ali_history[ri] * y_scale;
+            float x2 = x + 2 + (i + 1) * x_scale;
+            float y2 = center_y - sm.ali_history[ni] * y_scale;
+            DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 1.5f, SWARM_COLORS[s]);
         }
     }
 
-    // Alignment line
-    Color normal_color = {0, 230, 0, 230};
-    for (int i = 0; i < stats.ali_history_count - 1; i++) {
-        int ri = (stats.ali_history_index - stats.ali_history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
-        int ni = (ri + 1) % SimStats::HISTORY_SIZE;
-
-        float x1 = x + 2 + i * x_scale;
-        float y1 = center_y - stats.ali_history[ri] * y_scale;
-        float x2 = x + 2 + (i + 1) * x_scale;
-        float y2 = center_y - stats.ali_history[ni] * y_scale;
-
-        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, normal_color);
-    }
-
-    // Legend (top-right)
+    // Legend (top-right, vertical)
     int lx = x + width - 60;
     int ly = y + 5;
-    DrawRectangle(lx - 3, ly - 2, 62, 16, Color{20, 20, 25, 200});
-    DrawRectangle(lx, ly, 8, 8, normal_color);
-    DrawText("Ali. Angle", lx + 12, ly, 8, LIGHTGRAY);
+    DrawRectangle(lx - 3, ly - 2, 62, 42, Color{20, 20, 25, 200});
+    for (int s = 0; s < 3; ++s) {
+        DrawRectangle(lx, ly, 8, 8, SWARM_COLORS[s]);
+        DrawText(SWARM_NAMES[s], lx + 12, ly, 8, LIGHTGRAY);
+        ly += 12;
+    }
 
-    // Max value label (above graph box, right-aligned)
     DrawText(TextFormat("Max: %.2f", half_range), x + width - 60, y - 12, 8, Color{130, 130, 130, 255});
 }
 
 static void draw_separation_graph(const SimStats& stats, int x, int y, int width, int height) {
     static float smoothed_max = 1.0f;
 
-    // Draw graph background
     DrawRectangle(x, y, width, height, Color{30, 30, 35, 255});
     DrawRectangleLines(x, y, width, height, Color{80, 80, 80, 255});
 
-    if (stats.sep_history_count < 2) {
+    int max_count = 0;
+    for (int s = 0; s < 3; ++s)
+        if (stats.swarm[s].sep_history_count > max_count) max_count = stats.swarm[s].sep_history_count;
+    if (max_count < 2) {
         smoothed_max = 1.0f;
         DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
         return;
     }
 
-    // Find current max separation
     float current_max = 1.0f;
-    for (int i = 0; i < stats.sep_history_count; i++) {
-        if (stats.sep_history[i] > current_max) current_max = stats.sep_history[i];
-    }
+    for (int s = 0; s < 3; ++s)
+        for (int i = 0; i < stats.swarm[s].sep_history_count; i++)
+            if (stats.swarm[s].sep_history[i] > current_max) current_max = stats.swarm[s].sep_history[i];
 
     smoothed_max = std::fmax(smoothed_max * 0.99f, current_max);
     float max_sep = std::ceil(smoothed_max);
 
     float y_scale = static_cast<float>(height - 4) / max_sep;
-    float x_scale = static_cast<float>(width - 4) / static_cast<float>(SimStats::HISTORY_SIZE - 1);
+    float x_scale = static_cast<float>(width - 4) / static_cast<float>(SwarmMetrics::HISTORY_SIZE - 1);
 
-    // Horizontal grid lines at 25%, 50%, 75%, 100%
     Color grid_color = {60, 60, 65, 255};
     for (int pct = 25; pct <= 100; pct += 25) {
         float gy = y + height - 2 - (max_sep * pct / 100) * y_scale;
-        for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+        for (int gx = x + 2; gx < x + width - 2; gx += 6)
             DrawLine(gx, static_cast<int>(gy), std::min(gx + 3, x + width - 2), static_cast<int>(gy), grid_color);
+    }
+
+    // Draw 3 swarm lines
+    for (int s = 0; s < 3; ++s) {
+        const auto& sm = stats.swarm[s];
+        if (sm.sep_history_count < 2) continue;
+        for (int i = 0; i < sm.sep_history_count - 1; i++) {
+            int ri = (sm.sep_history_index - sm.sep_history_count + i + SwarmMetrics::HISTORY_SIZE) % SwarmMetrics::HISTORY_SIZE;
+            int ni = (ri + 1) % SwarmMetrics::HISTORY_SIZE;
+            float x1 = x + 2 + i * x_scale;
+            float y1 = y + height - 2 - sm.sep_history[ri] * y_scale;
+            float x2 = x + 2 + (i + 1) * x_scale;
+            float y2 = y + height - 2 - sm.sep_history[ni] * y_scale;
+            DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 1.5f, SWARM_COLORS[s]);
         }
     }
 
-    // Separation line (cyan)
-    Color sep_color = {0, 200, 200, 230};
-    for (int i = 0; i < stats.sep_history_count - 1; i++) {
-        int ri = (stats.sep_history_index - stats.sep_history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
-        int ni = (ri + 1) % SimStats::HISTORY_SIZE;
-
-        float x1 = x + 2 + i * x_scale;
-        float y1 = y + height - 2 - stats.sep_history[ri] * y_scale;
-        float x2 = x + 2 + (i + 1) * x_scale;
-        float y2 = y + height - 2 - stats.sep_history[ni] * y_scale;
-
-        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, sep_color);
-    }
-
-    // Legend (top-right)
+    // Legend (top-right, vertical)
     int lx = x + width - 60;
     int ly = y + 5;
-    DrawRectangle(lx - 3, ly - 2, 62, 16, Color{20, 20, 25, 200});
-    DrawRectangle(lx, ly, 8, 8, sep_color);
-    DrawText("Separation", lx + 12, ly, 8, LIGHTGRAY);
+    DrawRectangle(lx - 3, ly - 2, 62, 42, Color{20, 20, 25, 200});
+    for (int s = 0; s < 3; ++s) {
+        DrawRectangle(lx, ly, 8, 8, SWARM_COLORS[s]);
+        DrawText(SWARM_NAMES[s], lx + 12, ly, 8, LIGHTGRAY);
+        ly += 12;
+    }
 
-    // Max value label (above graph box, right-aligned)
     DrawText(TextFormat("Max: %.2f", max_sep), x + width - 60, y - 12, 8, Color{130, 130, 130, 255});
 }
 
@@ -463,6 +473,7 @@ static void build_slider_specs(SimConfig* config) {
 
     // Category 1: Cure
     s_slider_specs.push_back({"p_cure",          &config->p_cure,                   0.0f,   1.0f, 1});
+    s_slider_specs.push_back({"cure_immunity",   &config->cure_immunity_level,      0.0f,   1.0f, 1});
 
     // Category 2: Reproduction
     s_slider_specs.push_back({"p_offspr_nrm",   &config->p_offspring_normal,       0.0f,   1.0f, 2});
@@ -568,8 +579,8 @@ void draw_stats_overlay(const RenderState& state) {
     y += line_height - 4;
 
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Normal: %d  Doctor: %d",
-                        config->initial_normal_count, config->initial_doctor_count));
+             TextFormat("N:%d  D:%d  A:%d",
+                        stats.swarm[0].alive, stats.swarm[1].alive, stats.swarm[2].alive));
     y += line_height - 4;
 
     /*
@@ -596,24 +607,28 @@ void draw_stats_overlay(const RenderState& state) {
         Color value_col = {255, 255, 255, 255};
         int fs = 10;
 
-        DrawText("Avg Position:", x, y + 2, fs, label_col);
-        DrawText(TextFormat("(%.1f, %.1f)", stats.pos_avg.x, stats.pos_avg.y),
-                 x + 90, y + 2, fs, value_col);
-        y += line_height - 4;
-
         DrawText("Avg Cohesion:", x, y + 2, fs, label_col);
-        DrawText(TextFormat("%.2f", stats.average_cohesion),
+        DrawText(TextFormat("N:%.1f  D:%.1f  A:%.1f",
+                 stats.swarm[0].average_cohesion,
+                 stats.swarm[1].average_cohesion,
+                 stats.swarm[2].average_cohesion),
                  x + 90, y + 2, fs, value_col);
         y += line_height - 4;
 
-        DrawText("Avg Ali. Angle:", x, y + 2, fs, label_col);
-        DrawText(TextFormat("%.2f", stats.average_alignment_angle),
-                 x + 100, y + 2, fs, value_col);
+        DrawText("Avg Alignment:", x, y + 2, fs, label_col);
+        DrawText(TextFormat("N:%.2f  D:%.2f  A:%.2f",
+                 stats.swarm[0].average_alignment_angle,
+                 stats.swarm[1].average_alignment_angle,
+                 stats.swarm[2].average_alignment_angle),
+                 x + 95, y + 2, fs, value_col);
         y += line_height - 4;
 
         DrawText("Avg Sep (RMS):", x, y + 2, fs, label_col);
-        DrawText(TextFormat("%.2f", stats.average_separation),
-                 x + 100, y + 2, fs, value_col);
+        DrawText(TextFormat("N:%.1f  D:%.1f  A:%.1f",
+                 stats.swarm[0].average_separation,
+                 stats.swarm[1].average_separation,
+                 stats.swarm[2].average_separation),
+                 x + 95, y + 2, fs, value_col);
         y += line_height - 4;
     }
 
@@ -768,10 +783,27 @@ void render_frame(const RenderState& state) {
         }
     }
 
-    // Draw unified average boid indicator (centroid + alignment arrow)
-    draw_avg_boid_indicator(state.stats.pos_avg.x, state.stats.pos_avg.y, 10.f,
-                            state.stats.vel_avg, 25.f,
-                            RenderConfig::COLOR_MASS_CENTER, RenderConfig::COLOR_ALI_ARROW);
+    // Draw per-swarm centroid indicators (circle + alignment arrow)
+    {
+        static const uint32_t centroid_colors[3] = {
+            0x5500FF00,  // Normal: semi-transparent green
+            0x5578B4FF,  // Doctor: semi-transparent blue
+            0x5500A5FF,  // Antivax: semi-transparent orange
+        };
+        static const uint32_t arrow_colors[3] = {
+            0xFF00FF00,  // Normal: green
+            0xFFFF7800,  // Doctor: blue
+            0xFF00A5FF,  // Antivax: orange
+        };
+        for (int s = 0; s < 3; ++s) {
+            const auto& sm = state.stats.swarm[s];
+            if (sm.alive > 0) {
+                draw_avg_boid_indicator(sm.pos_avg.x, sm.pos_avg.y, 8.f,
+                                        sm.vel_avg, 20.f,
+                                        centroid_colors[s], arrow_colors[s]);
+            }
+        }
+    }
 
     // Draw boids on top
     for (const auto& boid : state.boids) {

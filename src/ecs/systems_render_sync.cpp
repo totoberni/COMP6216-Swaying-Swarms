@@ -39,6 +39,8 @@ void register_render_sync_system(flecs::world& world) {
                 // Determine swarm type
                 if (e.has<DoctorBoid>()) {
                     brd.swarm_type = 1;
+                } else if (e.has<AntivaxBoid>()) {
+                    brd.swarm_type = 2;
                 } else {
                     brd.swarm_type = 0;
                 }
@@ -48,6 +50,8 @@ void register_render_sync_system(flecs::world& world) {
                     brd.color = RenderConfig::COLOR_INFECTED;
                 } else if (brd.swarm_type == 1) {
                     brd.color = RenderConfig::COLOR_DOCTOR;
+                } else if (brd.swarm_type == 2) {
+                    brd.color = RenderConfig::COLOR_ANTIVAX;
                 } else {
                     brd.color = RenderConfig::COLOR_NORMAL;
                 }

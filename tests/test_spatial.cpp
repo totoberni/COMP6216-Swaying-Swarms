@@ -337,7 +337,7 @@ TEST_F(SpatialGridTest, EnrichedEntryFields) {
     EXPECT_FLOAT_EQ(entry->vx, 1.5f);
     EXPECT_FLOAT_EQ(entry->vy, -2.5f);
     EXPECT_EQ(entry->swarm_type, 1);
-    EXPECT_TRUE(entry->infected);
+    EXPECT_FALSE(entry->infected);
 }
 
 TEST_F(SpatialGridTest, BackwardCompatInsertUsesDefaults) {

@@ -23,6 +23,8 @@ void register_all_systems(flecs::world& world) {
     register_collision_system(world);
     register_infection_system(world);
     register_cure_system(world);
+    register_death_recovery_system(world);
+    register_immunity_decay_system(world);
 
     // OnStore
     register_render_sync_system(world);
