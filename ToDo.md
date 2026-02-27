@@ -27,14 +27,14 @@ We store states in **matrices**, handled as **tables** by FLECS:
 
 ### Extensions
 - Modify simulation to follow specific country / world map + emulate covid / pandemic evolution with statistical data against pop graphs
-- [Kathir]: Implement a FOV for boids (120 deg.) instead of checking alignment cohesion and separation in circle radius
+- ~~[Kathir]: Implement a FOV for boids (120 deg.) instead of checking alignment cohesion and separation in circle radius~~ DONE — configurable FOV via `config.fov`, fixed dot-product bug
 - Model boid behaviors, updated as a function of population (boids should become more "shy" when more of them are sick)
    Behavior ideas:
    * Sick boids seek out doctors (exclude antivax, they should always escape doctors)
    * Antivax actively seek out infected boids to grow natural immunity
    * Boids become more "shy" (higher sep weight, lower cohesion) the more boids are sick
    * Normal boids exclude/avoid sick boids
-- [Alberto]: Use raylib for vector management! Currently handled by codebase alone with no libs. Also update cone radius tests after merge.
+- ~~[Alberto]: Use raylib for vector management! Currently handled by codebase alone with no libs. Also update cone radius tests after merge.~~ DONE — spatial_grid, steering, stats, movement all use raymath Vector2 ops
 - [David]: Find some linear decay of the force and velocity updates (helps with smooth update rules)
 - Implement hospitals areas of some kind.
 

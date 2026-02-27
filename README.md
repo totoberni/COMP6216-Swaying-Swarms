@@ -81,7 +81,10 @@ The simulation reads an optional INI config file. A fully documented default is 
 | **Reset** button | Destroys all boids, re-spawns initial population |
 | **Sliders** | p_infect_normal, p_cure, r_interact_normal, r_interact_doctor |
 | **Population graph** | Real-time line chart (green=normal, blue=doctor, orange=antivax, 500-frame window) |
-| **Stats panel** | Normal/doctor/antivax alive, dead, and newborns |
+| **Cohesion graph** | Average distance to centroid over time |
+| **Alignment graph** | Average alignment angle over time |
+| **Separation graph** | RMS pairwise separation over time (cyan) |
+| **Stats panel** | Average position, cohesion, alignment angle, RMS separation |
 
 ---
 
@@ -104,7 +107,7 @@ config.ini         Default simulation parameters
 |---|---|
 | `src/ecs/` | Owns FLECS system registration and pipeline phases |
 | `src/sim/` | Pure logic — no rendering, no direct FLECS iteration |
-| `src/spatial/` | Pure C++ — no FLECS or Raylib includes |
+| `src/spatial/` | Pure C++ — uses raymath for vector ops, no FLECS |
 | `src/render/` | No simulation logic — reads `RenderState` only |
 
 ---
@@ -142,15 +145,17 @@ All core simulation features from `context.md` are implemented. The project is i
 
 | Feature | Status |
 |---|---|
-| Flocking (Reynolds steering, swarm-specific alignment/cohesion) | ✅ |
+| Flocking (Reynolds steering, vectorized with raymath) | ✅ |
 | Infection, death, cure, reproduction, aging, promotion | ✅ |
 | Three swarms (Normal, Doctor, Antivax with doctor avoidance) | ✅ |
 | Infected debuffs, sex system | ✅ |
 | Interactive sliders, pause/reset, population graph | ✅ |
+| Stats overlay (cohesion, alignment, RMS separation graphs) | ✅ |
+| FOV-based neighbor detection with configurable angle | ✅ |
 | INI config file loader | ✅ |
 | Obstacles (future extension) | Planned |
 
-**Runtime:** 60 FPS, 40 tests passing.
+**Runtime:** 60 FPS, 27/30 tests passing (3 pre-existing config loader / test-data failures).
 
 ---
 
