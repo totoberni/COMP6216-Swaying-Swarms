@@ -361,6 +361,65 @@ static void draw_alignment_graph(const SimStats& stats, int x, int y, int width,
     DrawText(TextFormat("Max: %.2f", max_ali), x + 3, y + 3, 8, Color{130, 130, 130, 255});
 }
 
+static void draw_separation_graph(const SimStats& stats, int x, int y, int width, int height) {
+    static float smoothed_max = 1.0f;
+
+    // Draw graph background
+    DrawRectangle(x, y, width, height, Color{30, 30, 35, 255});
+    DrawRectangleLines(x, y, width, height, Color{80, 80, 80, 255});
+
+    if (stats.sep_history_count < 2) {
+        smoothed_max = 1.0f;
+        DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
+        return;
+    }
+
+    // Find current max separation
+    float current_max = 1.0f;
+    for (int i = 0; i < stats.sep_history_count; i++) {
+        if (stats.sep_history[i] > current_max) current_max = stats.sep_history[i];
+    }
+
+    smoothed_max = std::fmax(smoothed_max * 0.99f, current_max);
+    float max_sep = std::ceil(smoothed_max);
+
+    float y_scale = static_cast<float>(height - 4) / max_sep;
+    float x_scale = static_cast<float>(width - 4) / static_cast<float>(SimStats::HISTORY_SIZE - 1);
+
+    // Horizontal grid lines at 25%, 50%, 75%, 100%
+    Color grid_color = {60, 60, 65, 255};
+    for (int pct = 25; pct <= 100; pct += 25) {
+        float gy = y + height - 2 - (max_sep * pct / 100) * y_scale;
+        for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+            DrawLine(gx, static_cast<int>(gy), std::min(gx + 3, x + width - 2), static_cast<int>(gy), grid_color);
+        }
+    }
+
+    // Separation line (cyan)
+    Color sep_color = {0, 200, 200, 230};
+    for (int i = 0; i < stats.sep_history_count - 1; i++) {
+        int ri = (stats.sep_history_index - stats.sep_history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
+        int ni = (ri + 1) % SimStats::HISTORY_SIZE;
+
+        float x1 = x + 2 + i * x_scale;
+        float y1 = y + height - 2 - stats.sep_history[ri] * y_scale;
+        float x2 = x + 2 + (i + 1) * x_scale;
+        float y2 = y + height - 2 - stats.sep_history[ni] * y_scale;
+
+        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, sep_color);
+    }
+
+    // Legend (top-right)
+    int lx = x + width - 68;
+    int ly = y + 5;
+    DrawRectangle(lx - 3, ly - 2, 70, 28, Color{20, 20, 25, 200});
+    DrawRectangle(lx, ly, 8, 8, sep_color);
+    DrawText("Separation", lx + 12, ly, 8, LIGHTGRAY);
+
+    // Max value label (top-left)
+    DrawText(TextFormat("Max: %.2f", max_sep), x + 3, y + 3, 8, Color{130, 130, 130, 255});
+}
+
 // ============================================================
 // Stats overlay with interactive controls (dropdown categories)
 // ============================================================
@@ -446,7 +505,7 @@ void draw_stats_overlay(const RenderState& state) {
     }
 
     // Draw panel background
-    const float panel_height = 850.0f;
+    const float panel_height = 1070.0f;
     GuiPanel(Rectangle{
         static_cast<float>(RenderConfig::STATS_PANEL_X),
         static_cast<float>(RenderConfig::STATS_PANEL_Y),
@@ -533,6 +592,11 @@ void draw_stats_overlay(const RenderState& state) {
                         stats.average_alignment_angle));
     y += line_height - 4;
 
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+             TextFormat("Average Separation (RMS): %.2f",
+                        stats.average_separation));
+    y += line_height - 4;
+
     // ========================================================
     // Controls section: dropdown + sliders
     // ========================================================
@@ -617,6 +681,15 @@ void draw_stats_overlay(const RenderState& state) {
              "--- Alignment Angle History ---");
     y += line_height + 14;
     draw_alignment_graph(stats, x, y, graph_width, graph_height);
+    y += graph_height + 8;
+
+    // ========================================================
+    // Separation Graph
+    // ========================================================
+    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+             "--- Separation History ---");
+    y += line_height + 14;
+    draw_separation_graph(stats, x, y, graph_width, graph_height);
     y += graph_height + 8;
 
     // ========================================================

@@ -156,6 +156,12 @@ struct SimStats {
     float ali_history[HISTORY_SIZE] = {};
     int ali_history_index = 0;  // Current write position (wraps around)
     int ali_history_count = 0;  // Number of valid entries (0 to HISTORY_SIZE)
+
+    // Average Separation (RMS pairwise distance via Huygens-Steiner)
+    float average_separation = 0.0f;
+    float sep_history[HISTORY_SIZE] = {};
+    int sep_history_index = 0;
+    int sep_history_count = 0;
 };
 
 // ============================================================

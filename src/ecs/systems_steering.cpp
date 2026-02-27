@@ -3,8 +3,22 @@
 #include "spatial_grid.h"
 #include <flecs.h>
 #include <cmath>
+#include <raymath.h>
 #include <algorithm>
 #include <vector>
+
+// Helper: compute Reynolds steering force (normalize→scale→subtract→clamp pattern)
+static Vector2 steer_toward(Vector2 desired_dir, float max_speed, Vector2 current_vel, float max_force) {
+    float mag = Vector2Length(desired_dir);
+    if (mag < 0.001f) return Vector2Zero();
+    Vector2 desired = Vector2Scale(desired_dir, max_speed / mag);
+    Vector2 steer = Vector2Subtract(desired, current_vel);
+    float steer_mag = Vector2Length(steer);
+    if (steer_mag > max_force) {
+        steer = Vector2Scale(steer, max_force / steer_mag);
+    }
+    return steer;
+}
 
 // ============================================================
 // PreUpdate Phase: Spatial Grid Rebuild (enriched entries)
@@ -54,20 +68,21 @@ void register_steering_system(flecs::world& world) {
             std::vector<SpatialGrid::QueryResult> neighbors;
             q.each([&](flecs::entity e, const Position& pos, Velocity& vel) {
                 // Query neighbors within the largest steering radius
-                // grid.query_neighbors(pos.x, pos.y, query_radius, neighbors);
                 grid.query_neighbors_fov(pos.x, pos.y, query_radius, neighbors, config.fov, vel.vx, vel.vy);
 
                 // Cache own swarm type once (avoid re-checking per neighbor)
                 int my_swarm = e.has<NormalBoid>() ? 0 : e.has<DoctorBoid>() ? 1 : 2;
+                Vector2 my_pos = {pos.x, pos.y};
+                Vector2 my_vel = {vel.vx, vel.vy};
 
                 // Separation accumulators (inverse-distance weighted, Model B)
-                float sep_x = 0.0f, sep_y = 0.0f;
+                Vector2 sep = Vector2Zero();
                 int sep_count = 0;
                 // Alignment accumulators
-                float ali_vx = 0.0f, ali_vy = 0.0f;
+                Vector2 ali = Vector2Zero();
                 int ali_count = 0;
                 // Cohesion accumulators
-                float coh_x = 0.0f, coh_y = 0.0f;
+                Vector2 coh = Vector2Zero();
                 int coh_count = 0;
 
                 for (const auto& qr : neighbors) {
@@ -82,110 +97,60 @@ void register_steering_system(flecs::world& world) {
                     // Model B: normalize(diff) / distance — inverse-distance weighting
                     if (qr.dist_sq < sep_r_sq) {
                         float dist = std::sqrt(qr.dist_sq);
-                        float dx = pos.x - ne->x;
-                        float dy = pos.y - ne->y;
-                        sep_x += (dx / dist) / dist;
-                        sep_y += (dy / dist) / dist;
+                        Vector2 diff = Vector2Subtract(my_pos, {ne->x, ne->y});
+                        sep = Vector2Add(sep, Vector2Scale(diff, 1.0f / (dist * dist)));
                         sep_count++;
                     }
 
                     // Alignment: match velocity of nearby boids only
                     if (qr.dist_sq < ali_r_sq) {
-                        ali_vx += ne->vx;
-                        ali_vy += ne->vy;
+                        ali = Vector2Add(ali, {ne->vx, ne->vy});
                         ali_count++;
                     }
 
                     // Cohesion: steer toward center of mass
                     if (qr.dist_sq < coh_r_sq) {
-                        coh_x += ne->x;
-                        coh_y += ne->y;
+                        coh = Vector2Add(coh, {ne->x, ne->y});
                         coh_count++;
                     }
                 }
 
-                float force_x = 0.0f, force_y = 0.0f;
+                Vector2 force = Vector2Zero();
 
                 // --- Separation: Model B (Shiffman) ---
                 // Average, compute desired velocity, truncate per-behavior
                 if (sep_count > 0) {
-                    sep_x /= static_cast<float>(sep_count);
-                    sep_y /= static_cast<float>(sep_count);
-                    float sep_mag = std::sqrt(sep_x * sep_x + sep_y * sep_y);
-                    if (sep_mag > 0.001f) {
-                        // desired = normalize(steer) * max_speed
-                        float desired_vx = (sep_x / sep_mag) * config.max_speed;
-                        float desired_vy = (sep_y / sep_mag) * config.max_speed;
-                        float steer_x = desired_vx - vel.vx;
-                        float steer_y = desired_vy - vel.vy;
-                        // Per-behavior truncation to max_force
-                        float steer_mag = std::sqrt(steer_x * steer_x + steer_y * steer_y);
-                        if (steer_mag > config.max_force) {
-                            float scale = config.max_force / steer_mag;
-                            steer_x *= scale;
-                            steer_y *= scale;
-                        }
-                        force_x += steer_x * config.separation_weight;
-                        force_y += steer_y * config.separation_weight;
-                    }
+                    sep = Vector2Scale(sep, 1.0f / sep_count);
+                    Vector2 steer = steer_toward(sep, config.max_speed, my_vel, config.max_force);
+                    force = Vector2Add(force, Vector2Scale(steer, config.separation_weight));
                 }
 
                 // --- Alignment: Model B (Shiffman) with per-behavior truncation ---
                 if (ali_count > 0) {
-                    ali_vx /= static_cast<float>(ali_count);
-                    ali_vy /= static_cast<float>(ali_count);
-                    float ali_mag = std::sqrt(ali_vx * ali_vx + ali_vy * ali_vy);
-                    if (ali_mag > 0.001f) {
-                        float desired_vx = (ali_vx / ali_mag) * config.max_speed;
-                        float desired_vy = (ali_vy / ali_mag) * config.max_speed;
-                        float steer_x = desired_vx - vel.vx;
-                        float steer_y = desired_vy - vel.vy;
-                        // Per-behavior truncation to max_force
-                        float steer_mag = std::sqrt(steer_x * steer_x + steer_y * steer_y);
-                        if (steer_mag > config.max_force) {
-                            float scale = config.max_force / steer_mag;
-                            steer_x *= scale;
-                            steer_y *= scale;
-                        }
-                        force_x += steer_x * config.alignment_weight;
-                        force_y += steer_y * config.alignment_weight;
-                    }
+                    ali = Vector2Scale(ali, 1.0f / ali_count);
+                    Vector2 steer = steer_toward(ali, config.max_speed, my_vel, config.max_force);
+                    force = Vector2Add(force, Vector2Scale(steer, config.alignment_weight));
                 }
 
                 // --- Cohesion: Model B (Shiffman) with per-behavior truncation ---
                 if (coh_count > 0) {
-                    coh_x /= static_cast<float>(coh_count);
-                    coh_y /= static_cast<float>(coh_count);
-                    float dx = coh_x - pos.x;
-                    float dy = coh_y - pos.y;
-                    float mag = std::sqrt(dx * dx + dy * dy);
-                    if (mag > 0.001f) {
-                        float desired_vx = (dx / mag) * config.max_speed;
-                        float desired_vy = (dy / mag) * config.max_speed;
-                        float steer_x = desired_vx - vel.vx;
-                        float steer_y = desired_vy - vel.vy;
-                        // Per-behavior truncation to max_force
-                        float steer_mag = std::sqrt(steer_x * steer_x + steer_y * steer_y);
-                        if (steer_mag > config.max_force) {
-                            float scale = config.max_force / steer_mag;
-                            steer_x *= scale;
-                            steer_y *= scale;
-                        }
-                        force_x += steer_x * config.cohesion_weight;
-                        force_y += steer_y * config.cohesion_weight;
-                    }
+                    coh = Vector2Scale(coh, 1.0f / coh_count);
+                    Vector2 toward_center = Vector2Subtract(coh, my_pos);
+                    Vector2 steer = steer_toward(toward_center, config.max_speed, my_vel, config.max_force);
+                    force = Vector2Add(force, Vector2Scale(steer, config.cohesion_weight));
                 }
 
                 // Apply force to velocity
-                vel.vx += force_x * dt;
-                vel.vy += force_y * dt;
+                vel.vx += force.x * dt;
+                vel.vy += force.y * dt;
 
                 // Clamp velocity to max_speed
-                float speed = std::sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+                Vector2 v = {vel.vx, vel.vy};
+                float speed = Vector2Length(v);
                 if (speed > config.max_speed) {
-                    float scale = config.max_speed / speed;
-                    vel.vx *= scale;
-                    vel.vy *= scale;
+                    v = Vector2Scale(v, config.max_speed / speed);
+                    vel.vx = v.x;
+                    vel.vy = v.y;
                 }
             });
         });
@@ -204,7 +169,7 @@ void register_movement_system(flecs::world& world) {
                 // Apply velocity to position
                 pos.x += vel.vx * dt;
                 pos.y += vel.vy * dt;
-                
+
                 if (config.wall_bounce) {
                     // Bounce off walls (reflect velocity)
                     if (pos.x < 0.0f) {
@@ -232,14 +197,15 @@ void register_movement_system(flecs::world& world) {
                 }
 
                 // Compute actual speed
-                float speed = std::sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+                Vector2 v = {vel.vx, vel.vy};
+                float speed = Vector2Length(v);
 
                 // Enforce minimum speed — prevents boids from stalling
                 // Guard: only enforce if min_speed < max_speed (slider edge case)
                 if (speed > 0.001f && speed < config.min_speed && config.min_speed <= config.max_speed) {
-                    float scale = config.min_speed / speed;
-                    vel.vx *= scale;
-                    vel.vy *= scale;
+                    v = Vector2Scale(v, config.min_speed / speed);
+                    vel.vx = v.x;
+                    vel.vy = v.y;
                 }
 
                 // Update heading based on velocity

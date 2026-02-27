@@ -1,5 +1,6 @@
 #include "spatial_grid.h"
 #include <cmath>
+#include <raymath.h>
 
 namespace {
     // Small epsilon to prevent entities from landing exactly on upper boundary
@@ -66,12 +67,11 @@ void SpatialGrid::query_neighbors(
 
             // Check all entries in this cell
             for (const auto& entry : cells_[idx]) {
-                float dx_val = entry.x - x;
-                float dy_val = entry.y - y;
-                float dist_sq = dx_val * dx_val + dy_val * dy_val;
+                Vector2 diff = Vector2Subtract({entry.x, entry.y}, {x, y});
+                float dist_sq = Vector2LengthSqr(diff);
 
                 if (dist_sq <= radius_sq) {
-                    results.push_back({&entry, std::sqrt(dist_sq)});
+                    results.push_back({&entry, dist_sq});
                 }
             };
         }
@@ -112,17 +112,19 @@ void SpatialGrid::query_neighbors_fov(
 
             // Check all entries in this cell
             for (const auto& entry : cells_[idx]) {
-                float dx_val = entry.x - x;
-                float dy_val = entry.y - y;
-                float dist_sq = dx_val * dx_val + dy_val * dy_val;
+                Vector2 diff = Vector2Subtract({entry.x, entry.y}, {x, y});
+                float dist_sq = Vector2LengthSqr(diff);
 
                 if (dist_sq <= radius_sq) {// Within Radius
-
-                    float dot_product = ((vx * dx_val) + (vy * dy_val)) / (std::sqrt(vx*vx + vy*vy) * std::sqrt(dx_val*dx_val + dy_val*dx_val));
-                    float angle_between = acos(dot_product);
-                    
-                    if (angle_between <= fov) {// Within FOV
-                        results.push_back({&entry, std::sqrt(dist_sq)});
+                    Vector2 vel_dir = {vx, vy};
+                    float denom = Vector2Length(vel_dir) * Vector2Length(diff);
+                    if (denom > 0.0001f) {
+                        float cos_angle = Vector2DotProduct(vel_dir, diff) / denom;
+                        cos_angle = std::max(-1.0f, std::min(1.0f, cos_angle));
+                        float angle_between = acosf(cos_angle);
+                        if (angle_between <= fov) {// Within FOV
+                            results.push_back({&entry, dist_sq});
+                        }
                     }
                 }
             };

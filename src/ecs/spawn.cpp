@@ -99,6 +99,22 @@ void reset_simulation(flecs::world& world) {
         stats.history[i] = {};
     }
 
+    // Reset cohesion history
+    stats.coh_history_index = 0;
+    stats.coh_history_count = 0;
+    // Reset alignment history
+    stats.ali_history_index = 0;
+    stats.ali_history_count = 0;
+    // Reset separation history
+    stats.average_separation = 0.0f;
+    stats.sep_history_index = 0;
+    stats.sep_history_count = 0;
+    for (int i = 0; i < SimStats::HISTORY_SIZE; ++i) {
+        stats.coh_history[i] = 0.0f;
+        stats.ali_history[i] = 0.0f;
+        stats.sep_history[i] = 0.0f;
+    }
+
     // Rebuild spatial grid with current config (sliders may have changed radii).
     // Cell size = largest infection radius; steering uses dynamic search window expansion.
     const SimConfig& config = world.get<SimConfig>();
