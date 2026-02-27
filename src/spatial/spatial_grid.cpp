@@ -118,7 +118,7 @@ void SpatialGrid::query_neighbors_fov(
 
                 if (dist_sq <= radius_sq) {// Within Radius
 
-                    float dot_product = ((vx * dx_val) + (vy * dy_val)) / (std::sqrtf(vx*vx + vy*vy) * std::sqrtf(dx_val*dx_val + dy_val*dx_val));
+                    float dot_product = ((vx * dx_val) + (vy * dy_val)) / (std::sqrt(vx*vx + vy*vy) * std::sqrt(dx_val*dx_val + dy_val*dx_val));
                     float angle_between = acos(dot_product);
                     
                     if (angle_between <= fov) {// Within FOV

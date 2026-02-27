@@ -87,6 +87,12 @@ cmake-build-*/
 .orchestrator/outbox/*.tmp
 .orchestrator/status/*.tmp
 
+# CLAUDE Stuff
+.claude/*
+*CLAUDE*.md
+*.md
+!README.md
+
 # Logs and Debug
 # ==============
 *.log
