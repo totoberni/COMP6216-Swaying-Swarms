@@ -77,20 +77,14 @@ cmake-build-*/
 *~
 .directory
 
-# Agent and Orchestrator Runtime
-# ===============================
-# Agent working directories (if using git worktrees)
+# Claude Code Agent Infrastructure (local only)
+# ==============================================
+# All agent/orchestrator files are local tooling — never committed
+.claude/
+.orchestrator/
 .worktrees/
-
-# Orchestrator temporary files
-.orchestrator/inbox/*.tmp
-.orchestrator/outbox/*.tmp
-.orchestrator/status/*.tmp
-
-# CLAUDE Stuff
-.claude/*
 *CLAUDE*.md
-*.md
+*changelog.md
 !README.md
 
 # Logs and Debug
