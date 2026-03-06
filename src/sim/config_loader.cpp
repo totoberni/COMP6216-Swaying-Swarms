@@ -71,6 +71,7 @@ bool apply_field(SimConfig& config, const std::string& key,
     // Population (int)
     else if (key == "initial_normal_count")     { config.initial_normal_count = parse_int(val, line_num); }
     else if (key == "initial_doctor_count")     { config.initial_doctor_count = parse_int(val, line_num); }
+    else if (key == "initial_antivax_count")    { config.initial_antivax_count = parse_int(val, line_num); }
     // Movement
     else if (key == "max_speed")                { config.max_speed = parse_float(val, line_num); }
     else if (key == "max_force")                { config.max_force = parse_float(val, line_num); }

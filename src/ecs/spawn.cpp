@@ -73,11 +73,41 @@ void spawn_doctor_boids(flecs::world& world, int count) {
     }
 }
 
+
+void spawn_antivax_boids(flecs::world& world, int count) {
+    const SimConfig& config = world.get<SimConfig>();
+
+    std::uniform_real_distribution<float> dist_x(0.0f, config.world_width);
+    std::uniform_real_distribution<float> dist_y(0.0f, config.world_height);
+    std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
+    std::uniform_real_distribution<float> dist_infect(0.0f, 1.0f);
+
+    for (int i = 0; i < count; ++i) {
+        float x = dist_x(rng);
+        float y = dist_y(rng);
+        float angle = dist_angle(rng);
+        float speed = config.max_speed;
+
+        auto boid = world.entity()
+            .add<AntivaxBoid>()
+            .set(Position{x, y})
+            .set(Velocity{speed * std::cos(angle), speed * std::sin(angle)})
+            .set(Heading{angle});
+
+        // Initial infection (same rate as normal boids)
+        if (dist_infect(rng) < config.p_initial_infect_normal) {
+            boid.add<Infected>();
+            boid.set(InfectionState{0.0f, config.t_death});
+        }
+    }
+}
+
 void spawn_initial_population(flecs::world& world) {
     const SimConfig& config = world.get<SimConfig>();
 
     spawn_normal_boids(world, config.initial_normal_count);
     spawn_doctor_boids(world, config.initial_doctor_count);
+    spawn_antivax_boids(world, config.initial_antivax_count);
 }
 
 void reset_simulation(flecs::world& world) {

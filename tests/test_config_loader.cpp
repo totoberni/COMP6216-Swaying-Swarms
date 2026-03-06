@@ -146,11 +146,13 @@ TEST_F(ConfigLoaderTest, ParsesIntFields) {
     write_file(
         "initial_normal_count = 500\n"
         "initial_doctor_count = 25\n"
+        "initial_antivax_count = 15\n"
     );
     SimConfig config{};
     EXPECT_TRUE(load_config(tmp_path_, config));
     EXPECT_EQ(config.initial_normal_count, 500);
     EXPECT_EQ(config.initial_doctor_count, 25);
+    EXPECT_EQ(config.initial_antivax_count, 15);
 }
 
 TEST_F(ConfigLoaderTest, PartialConfigKeepsDefaults) {

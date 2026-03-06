@@ -84,6 +84,7 @@ struct SimConfig {
     // --- Initial population ---
     int initial_normal_count       = 200;
     int initial_doctor_count       = 10;
+    int initial_antivax_count       = 0;
 
     // --- Boid movement (Shiffman/Processing.org Model B, scaled to per-second @ 60fps) ---
     float max_speed                = 180.0f;  // Shiffman maxspeed=3 * 60fps
