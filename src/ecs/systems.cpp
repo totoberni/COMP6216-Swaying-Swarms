@@ -1,4 +1,5 @@
 #include "systems.h"
+#include "systems_doctor.h"
 #include <flecs.h>
 
 // ============================================================
@@ -21,6 +22,7 @@ void register_all_systems(flecs::world& world) {
     register_collision_system(world);
     register_infection_system(world);
     register_cure_system(world);
+    register_doctor_systems(world);
 
     // OnStore
     register_render_sync_system(world);

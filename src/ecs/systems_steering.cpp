@@ -1,11 +1,13 @@
 #include "systems.h"
 #include "components.h"
 #include "spatial_grid.h"
+#include "../sim/rng.h"
 #include <flecs.h>
 #include <cmath>
 #include <raymath.h>
 #include <algorithm>
 #include <vector>
+#include <random>
 
 // Helper: compute Reynolds steering force (normalize→scale→subtract→clamp pattern)
 static Vector2 steer_toward(Vector2 desired_dir, float max_speed, Vector2 current_vel, float max_force) {
@@ -137,6 +139,14 @@ void register_steering_system(flecs::world& world) {
                     Vector2 toward_center = Vector2Subtract(coh, my_pos);
                     Vector2 steer = steer_toward(toward_center, config.max_speed, my_vel, config.max_force);
                     force = Vector2Add(force, Vector2Scale(steer, config.cohesion_weight));
+                }
+
+                // B3 chaotic noise injection (only when noise_factor > 0)
+                if (config.noise_factor > 0.0f) {
+                    static std::uniform_real_distribution<float> angle_dist(0.0f, 2.0f * PI);
+                    float angle = angle_dist(sim_rng());
+                    force.x += cosf(angle) * config.noise_factor;
+                    force.y += sinf(angle) * config.noise_factor;
                 }
 
                 // Apply force to velocity
