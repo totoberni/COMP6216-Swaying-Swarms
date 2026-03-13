@@ -23,7 +23,7 @@ public:
     };
 
     SpatialGrid() = default;
-    SpatialGrid(float world_w, float world_h, float cell_size);
+    SpatialGrid(float world_w, float world_h, float cell_size, bool toroidal = false);
 
     void clear();
 
@@ -60,6 +60,7 @@ private:
     float cell_size_ = 1.0f;
     int cols_ = 0;
     int rows_ = 0;
+    bool toroidal_ = false;
 
     std::vector<std::vector<Entry>> cells_;
 

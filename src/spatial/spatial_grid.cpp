@@ -1,4 +1,5 @@
 #include "spatial_grid.h"
+#include "toroidal.h"
 #include <cmath>
 #include <raymath.h>
 
@@ -7,12 +8,13 @@ namespace {
     constexpr float BOUNDARY_EPSILON = 0.001f;
 }
 
-SpatialGrid::SpatialGrid(float world_w, float world_h, float cell_size)
+SpatialGrid::SpatialGrid(float world_w, float world_h, float cell_size, bool toroidal)
     : world_w_(world_w)
     , world_h_(world_h)
     , cell_size_(cell_size)
     , cols_(static_cast<int>(std::ceil(world_w / cell_size)))
     , rows_(static_cast<int>(std::ceil(world_h / cell_size)))
+    , toroidal_(toroidal)
 {
     cells_.resize(cols_ * rows_);
 }
@@ -54,10 +56,14 @@ void SpatialGrid::query_neighbors(
             int check_col = col + dx;
             int check_row = row + dy;
 
-            // Skip cells outside grid bounds
-            if (check_col < 0 || check_col >= cols_ ||
-                check_row < 0 || check_row >= rows_) {
-                continue;
+            if (toroidal_) {
+                check_col = ((check_col) % cols_ + cols_) % cols_;
+                check_row = ((check_row) % rows_ + rows_) % rows_;
+            } else {
+                if (check_col < 0 || check_col >= cols_ ||
+                    check_row < 0 || check_row >= rows_) {
+                    continue;
+                }
             }
 
             int idx = check_col + cols_ * check_row;
@@ -67,8 +73,13 @@ void SpatialGrid::query_neighbors(
 
             // Check all entries in this cell
             for (const auto& entry : cells_[idx]) {
-                Vector2 diff = Vector2Subtract({entry.x, entry.y}, {x, y});
-                float dist_sq = Vector2LengthSqr(diff);
+                float dist_sq;
+                if (toroidal_) {
+                    dist_sq = torus_dist_sq(entry.x, entry.y, x, y, world_w_, world_h_);
+                } else {
+                    Vector2 diff = Vector2Subtract({entry.x, entry.y}, {x, y});
+                    dist_sq = Vector2LengthSqr(diff);
+                }
 
                 if (dist_sq <= radius_sq) {
                     results.push_back({&entry, dist_sq});
@@ -107,10 +118,14 @@ void SpatialGrid::query_neighbors_fov(
             int check_col = col + dx;
             int check_row = row + dy;
 
-            // Skip cells outside grid bounds
-            if (check_col < 0 || check_col >= cols_ ||
-                check_row < 0 || check_row >= rows_) {
-                continue;
+            if (toroidal_) {
+                check_col = ((check_col) % cols_ + cols_) % cols_;
+                check_row = ((check_row) % rows_ + rows_) % rows_;
+            } else {
+                if (check_col < 0 || check_col >= cols_ ||
+                    check_row < 0 || check_row >= rows_) {
+                    continue;
+                }
             }
 
             int idx = check_col + cols_ * check_row;
@@ -120,8 +135,14 @@ void SpatialGrid::query_neighbors_fov(
 
             // Check all entries in this cell
             for (const auto& entry : cells_[idx]) {
-                float diff_x = entry.x - x;
-                float diff_y = entry.y - y;
+                float diff_x, diff_y;
+                if (toroidal_) {
+                    diff_x = torus_diff(x, entry.x, world_w_);
+                    diff_y = torus_diff(y, entry.y, world_h_);
+                } else {
+                    diff_x = entry.x - x;
+                    diff_y = entry.y - y;
+                }
                 float dist_sq = diff_x * diff_x + diff_y * diff_y;
 
                 if (dist_sq <= radius_sq) { // Within Radius

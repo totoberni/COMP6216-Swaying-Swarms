@@ -43,6 +43,6 @@ void init_world(flecs::world& world, const std::string& config_path) {
     // Steering queries (alignment/cohesion) use larger radii but the grid's dynamic search
     // window (ceil(radius/cell_size) cells) handles those automatically.
     float cell_size = std::max(config.r_interact_normal, config.r_interact_doctor);
-    SpatialGrid grid(config.world_width, config.world_height, cell_size);
+    SpatialGrid grid(config.world_width, config.world_height, cell_size, !config.wall_bounce);
     world.set<SpatialGrid>(std::move(grid));
 }
