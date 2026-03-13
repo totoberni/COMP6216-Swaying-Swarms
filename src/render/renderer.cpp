@@ -1,10 +1,12 @@
 #include "renderer.h"
 #include "render_config.h"
+#include "sim/output.h"
 #include <raylib.h>
 #include <cmath>
 #include <fstream>
 #include <vector>
 #include <cstddef>
+#include <algorithm>
 
 #define RAYGUI_IMPLEMENTATION
 #include <raygui.h>
@@ -114,19 +116,55 @@ void draw_avg_boid_indicator(float x, float y, float radius, Vector2 vel_avg,
 // Population graph helper
 // ============================================================
 
-static bool export_population_csv(const SimStats& stats) {
-    std::ofstream file("population_data.csv");
+// Enhanced GUI CSV export: writes to sim-out/outN/metrics.csv with sickness + swarm data
+static char s_export_path[256] = {};
+
+static bool export_gui_csv(const SimStats& stats, const SimConfig& config) {
+    std::string dir = create_output_dir(config.output_dir);
+
+    std::string path = dir + "/metrics.csv";
+    std::ofstream file(path);
     if (!file.is_open()) return false;
 
-    file << "frame,normal,doctor,infected\n";
+    file << "frame,normal_alive,doctor_alive,"
+         << "infected,recovered,pct_infected,growth_rate,"
+         << "normal_cohesion,normal_alignment,normal_separation,"
+         << "doctor_cohesion,doctor_alignment,doctor_separation\n";
 
-    for (int i = 0; i < stats.history_count; i++) {
-        int read_index = (stats.history_index - stats.history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
-        const auto& pt = stats.history[read_index];
-        file << (i + 1) << "," << pt.normal_alive << "," << pt.doctor_alive
-             << "," << pt.infected_count << "\n";
+    // Use minimum count across all buffers for aligned rows
+    int count = stats.history_count;
+    for (int s = 0; s < 2; ++s) {
+        count = std::min(count, stats.swarm[s].coh_history_count);
+        count = std::min(count, stats.swarm[s].ali_history_count);
+        count = std::min(count, stats.swarm[s].sep_history_count);
     }
 
+    for (int i = 0; i < count; i++) {
+        int gi = (stats.history_index - count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
+        const auto& pt = stats.history[gi];
+
+        int s0c = (stats.swarm[0].coh_history_index - count + i + SwarmMetrics::HISTORY_SIZE) % SwarmMetrics::HISTORY_SIZE;
+        int s0a = (stats.swarm[0].ali_history_index - count + i + SwarmMetrics::HISTORY_SIZE) % SwarmMetrics::HISTORY_SIZE;
+        int s0s = (stats.swarm[0].sep_history_index - count + i + SwarmMetrics::HISTORY_SIZE) % SwarmMetrics::HISTORY_SIZE;
+        int s1c = (stats.swarm[1].coh_history_index - count + i + SwarmMetrics::HISTORY_SIZE) % SwarmMetrics::HISTORY_SIZE;
+        int s1a = (stats.swarm[1].ali_history_index - count + i + SwarmMetrics::HISTORY_SIZE) % SwarmMetrics::HISTORY_SIZE;
+        int s1s = (stats.swarm[1].sep_history_index - count + i + SwarmMetrics::HISTORY_SIZE) % SwarmMetrics::HISTORY_SIZE;
+
+        file << (i + 1) << ","
+             << pt.normal_alive << "," << pt.doctor_alive << ","
+             << static_cast<int>(stats.infected_count_history[gi]) << ","
+             << static_cast<int>(stats.recovered_count_history[gi]) << ","
+             << stats.pct_infected_history[gi] << ","
+             << stats.growth_rate_history[gi] << ","
+             << stats.swarm[0].coh_history[s0c] << ","
+             << stats.swarm[0].ali_history[s0a] << ","
+             << stats.swarm[0].sep_history[s0s] << ","
+             << stats.swarm[1].coh_history[s1c] << ","
+             << stats.swarm[1].ali_history[s1a] << ","
+             << stats.swarm[1].sep_history[s1s] << "\n";
+    }
+
+    std::snprintf(s_export_path, sizeof(s_export_path), "%s", dir.c_str());
     return file.good();
 }
 
@@ -785,8 +823,8 @@ void draw_stats_overlay(const RenderState& state) {
         if (GuiButton(Rectangle{static_cast<float>(x), static_cast<float>(y),
                                  static_cast<float>(button_width), static_cast<float>(button_height)},
                       "Export CSV")) {
-            if (export_population_csv(stats)) {
-                export_feedback_text = "Exported to population_data.csv!";
+            if (config && export_gui_csv(stats, *config)) {
+                export_feedback_text = TextFormat("Exported to %s/", s_export_path);
             } else {
                 export_feedback_text = "Export failed!";
             }
