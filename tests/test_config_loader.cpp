@@ -51,17 +51,18 @@ TEST_F(ConfigLoaderTest, CommentsAndBlankLinesIgnored) {
     EXPECT_FLOAT_EQ(config.p_cure, 0.8f);
 }
 
-TEST_F(ConfigLoaderTest, SectionHeadersIgnored) {
+TEST_F(ConfigLoaderTest, SectionHeadersRouteCorrectly) {
     write_file(
-        "[some_section]\n"
+        "[cure]\n"
         "p_cure = 0.3\n"
-        "[another]\n"
+        "[normal_swarm]\n"
+        "[normal_swarm]\n"
         "max_speed = 200.0\n"
     );
     SimConfig config{};
     EXPECT_TRUE(load_config(tmp_path_, config));
     EXPECT_FLOAT_EQ(config.p_cure, 0.3f);
-    EXPECT_FLOAT_EQ(config.max_speed, 200.0f);
+    EXPECT_FLOAT_EQ(config.normal.max_speed, 200.0f);
 }
 
 TEST_F(ConfigLoaderTest, ParsesAllFloatFields) {
@@ -75,6 +76,7 @@ TEST_F(ConfigLoaderTest, ParsesAllFloatFields) {
         "r_interact_doctor = 45.0\n"
         "world_width = 1280.0\n"
         "world_height = 720.0\n"
+        "[normal_swarm]\n"
         "max_speed = 200.0\n"
         "max_force = 8.0\n"
         "separation_weight = 2.0\n"
@@ -100,14 +102,14 @@ TEST_F(ConfigLoaderTest, ParsesAllFloatFields) {
     EXPECT_FLOAT_EQ(config.r_interact_doctor, 45.0f);
     EXPECT_FLOAT_EQ(config.world_width, 1280.0f);
     EXPECT_FLOAT_EQ(config.world_height, 720.0f);
-    EXPECT_FLOAT_EQ(config.max_speed, 200.0f);
-    EXPECT_FLOAT_EQ(config.max_force, 8.0f);
-    EXPECT_FLOAT_EQ(config.separation_weight, 2.0f);
-    EXPECT_FLOAT_EQ(config.alignment_weight, 1.5f);
-    EXPECT_FLOAT_EQ(config.cohesion_weight, 0.8f);
-    EXPECT_FLOAT_EQ(config.separation_radius, 30.0f);
-    EXPECT_FLOAT_EQ(config.alignment_radius, 60.0f);
-    EXPECT_FLOAT_EQ(config.cohesion_radius, 55.0f);
+    EXPECT_FLOAT_EQ(config.normal.max_speed, 200.0f);
+    EXPECT_FLOAT_EQ(config.normal.max_force, 8.0f);
+    EXPECT_FLOAT_EQ(config.normal.separation_weight, 2.0f);
+    EXPECT_FLOAT_EQ(config.normal.alignment_weight, 1.5f);
+    EXPECT_FLOAT_EQ(config.normal.cohesion_weight, 0.8f);
+    EXPECT_FLOAT_EQ(config.normal.separation_radius, 30.0f);
+    EXPECT_FLOAT_EQ(config.normal.alignment_radius, 60.0f);
+    EXPECT_FLOAT_EQ(config.normal.cohesion_radius, 55.0f);
     EXPECT_FLOAT_EQ(config.debuff_p_cure_infected, 0.4f);
     EXPECT_FLOAT_EQ(config.debuff_r_interact_doctor_infected, 0.6f);
     EXPECT_FLOAT_EQ(config.debuff_r_interact_normal_infected, 0.7f);
@@ -133,7 +135,7 @@ TEST_F(ConfigLoaderTest, PartialConfigKeepsDefaults) {
     // Everything else stays default
     EXPECT_FLOAT_EQ(config.p_infect_normal, 0.5f);
     EXPECT_EQ(config.initial_normal_count, 200);
-    EXPECT_FLOAT_EQ(config.max_speed, 180.0f);
+    EXPECT_FLOAT_EQ(config.normal.max_speed, 180.0f);
 }
 
 TEST_F(ConfigLoaderTest, WhitespaceAroundKeyAndValue) {
@@ -173,11 +175,12 @@ TEST_F(ConfigLoaderTest, EmptyValueThrows) {
 
 TEST_F(ConfigLoaderTest, InlineCommentStripped) {
     write_file(
+        "[normal_swarm]\n"
         "max_speed = 120.0  ; this is a comment\n"
         "max_force = 5.0  # hash comment\n"
     );
     SimConfig config{};
     EXPECT_TRUE(load_config(tmp_path_, config));
-    EXPECT_FLOAT_EQ(config.max_speed, 120.0f);
-    EXPECT_FLOAT_EQ(config.max_force, 5.0f);
+    EXPECT_FLOAT_EQ(config.normal.max_speed, 120.0f);
+    EXPECT_FLOAT_EQ(config.normal.max_force, 5.0f);
 }
