@@ -26,8 +26,8 @@ static CliArgs parse_args(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "-nogui") == 0) {
             args.nogui = true;
-        } else if (std::strcmp(argv[i], "-config") == 0 && i + 1 < argc) {
-            args.config_path = argv[++i];
+        } else {
+            args.config_path = argv[i];
         }
     }
     return args;
