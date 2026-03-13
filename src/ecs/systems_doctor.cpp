@@ -1,6 +1,7 @@
 #include "systems_doctor.h"
 #include "components.h"
 #include "spatial_grid.h"
+#include "toroidal.h"
 #include <flecs.h>
 #include <raymath.h>
 #include <cmath>
@@ -44,12 +45,15 @@ void register_doctor_systems(flecs::world& world) {
 
                 if (!nearest) return;
 
-                // Reynolds seek: desired = normalize(target - pos) * max_speed
-                Vector2 toward = {nearest->x - pos.x, nearest->y - pos.y};
+                // Reynolds seek with toroidal displacement
+                float tdx, tdy;
+                displacement(pos.x, pos.y, nearest->x, nearest->y,
+                             !config.wall_bounce, config.world_width, config.world_height, tdx, tdy);
+                Vector2 toward = {tdx, tdy};
                 float mag = Vector2Length(toward);
                 if (mag < 0.001f) return;
 
-                Vector2 desired = Vector2Scale(toward, config.max_speed / mag);
+                Vector2 desired = Vector2Scale(toward, config.doctor.max_speed / mag);
                 Vector2 current = {vel.vx, vel.vy};
                 Vector2 seek = Vector2Subtract(desired, current);
                 seek = Vector2Scale(seek, config.doctor_seek_weight);
@@ -57,11 +61,11 @@ void register_doctor_systems(flecs::world& world) {
                 vel.vx += seek.x * dt;
                 vel.vy += seek.y * dt;
 
-                // Re-clamp to max_speed
+                // Re-clamp to per-swarm max_speed
                 Vector2 v = {vel.vx, vel.vy};
                 float speed = Vector2Length(v);
-                if (speed > config.max_speed) {
-                    v = Vector2Scale(v, config.max_speed / speed);
+                if (speed > config.doctor.max_speed) {
+                    v = Vector2Scale(v, config.doctor.max_speed / speed);
                     vel.vx = v.x;
                     vel.vy = v.y;
                 }
@@ -88,11 +92,14 @@ void register_doctor_systems(flecs::world& world) {
 
             auto q = w.query<const Position, Velocity, const DoctorBoid>();
             q.each([&](const Position& pos, Velocity& vel, const DoctorBoid&) {
-                Vector2 toward = {cx - pos.x, cy - pos.y};
+                float tdx, tdy;
+                displacement(pos.x, pos.y, cx, cy,
+                             !config.wall_bounce, config.world_width, config.world_height, tdx, tdy);
+                Vector2 toward = {tdx, tdy};
                 float mag = Vector2Length(toward);
                 if (mag < 0.001f) return;
 
-                Vector2 desired = Vector2Scale(toward, config.max_speed / mag);
+                Vector2 desired = Vector2Scale(toward, config.doctor.max_speed / mag);
                 Vector2 current = {vel.vx, vel.vy};
                 Vector2 seek = Vector2Subtract(desired, current);
                 seek = Vector2Scale(seek, config.doctor_seek_weight);
@@ -100,11 +107,11 @@ void register_doctor_systems(flecs::world& world) {
                 vel.vx += seek.x * dt;
                 vel.vy += seek.y * dt;
 
-                // Re-clamp to max_speed
+                // Re-clamp to per-swarm max_speed
                 Vector2 v = {vel.vx, vel.vy};
                 float speed = Vector2Length(v);
-                if (speed > config.max_speed) {
-                    v = Vector2Scale(v, config.max_speed / speed);
+                if (speed > config.doctor.max_speed) {
+                    v = Vector2Scale(v, config.doctor.max_speed / speed);
                     vel.vx = v.x;
                     vel.vy = v.y;
                 }
