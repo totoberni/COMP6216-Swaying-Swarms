@@ -104,7 +104,7 @@ void reset_simulation(flecs::world& world) {
     // Cell size = largest infection radius; steering uses dynamic search window expansion.
     const SimConfig& config = world.get<SimConfig>();
     float cell_size = std::max(config.r_interact_normal, config.r_interact_doctor);
-    SpatialGrid new_grid(config.world_width, config.world_height, cell_size);
+    SpatialGrid new_grid(config.world_width, config.world_height, cell_size, !config.wall_bounce);
     world.set<SpatialGrid>(std::move(new_grid));
 
     // Re-spawn initial population
