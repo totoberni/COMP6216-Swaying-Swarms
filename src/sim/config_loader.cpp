@@ -151,14 +151,6 @@ bool load_config(const std::string& path, SimConfig& config) {
         // Route based on current section
         if (current_section == "normal_swarm") {
             if (apply_swarm_field(config.normal, key, val, line_num)) continue;
-            if (key == "behavior") {
-                if (val == "normal" || val == "line" || val == "oval")
-                    config.normal_behavior = SwarmBehavior::Normal;
-                else if (val == "chaotic")
-                    config.normal_behavior = SwarmBehavior::Chaotic;
-                else std::cerr << "config warning: unknown normal behavior '" << val << "'\n";
-                continue;
-            }
         } else if (current_section == "doctor_swarm") {
             if (apply_swarm_field(config.doctor, key, val, line_num)) continue;
             if (key == "behavior") {

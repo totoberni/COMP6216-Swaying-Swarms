@@ -663,60 +663,69 @@ void draw_stats_overlay(const RenderState& state) {
     }
 
     // ========================================================
-    // Compressed population stats (2 dense lines)
+    // Live population stats (healthy / infected / recovered)
     // ========================================================
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             "--- Population ---");
-    y += line_height - 4;
+    {
+        Color pop_col = {180, 180, 180, 255};
+        int pop_fs = 11;
+        GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
+                 "--- Population ---");
+        y += line_height - 4;
 
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("N:%d  D:%d",
-                        stats.swarm[0].alive, stats.swarm[1].alive));
-    y += line_height - 4;
+        int total_pop = stats.swarm[0].alive + stats.swarm[1].alive;
+        int healthy = total_pop - stats.total_infected - stats.total_recovered;
+        const char* healthy_text = TextFormat("Healthy: %d", healthy);
+        DrawText(healthy_text, x, y + 2, pop_fs, pop_col);
+        DrawText(healthy_text, x + 1, y + 2, pop_fs, pop_col);
+        y += line_height - 4;
 
-    /*
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Dead: %d (N:%d D:%d A:%d)",
-                        stats.dead_total, stats.dead_normal, stats.dead_doctor, stats.dead_antivax));
-    y += line_height - 4;
+        const char* infected_text = TextFormat("Infected: %d", stats.total_infected);
+        DrawText(infected_text, x, y + 2, pop_fs, pop_col);
+        DrawText(infected_text, x + 1, y + 2, pop_fs, pop_col);
+        y += line_height - 4;
 
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("Born: %d (N:%d D:%d A:%d)",
-                        stats.newborns_total, stats.newborns_normal, stats.newborns_doctor, stats.newborns_antivax));
-    y += line_height + 2;
-    */
+        const char* recovered_text = TextFormat("Recovered: %d", stats.total_recovered);
+        DrawText(recovered_text, x, y + 2, pop_fs, pop_col);
+        DrawText(recovered_text, x + 1, y + 2, pop_fs, pop_col);
+        y += line_height - 4;
+    }
 
     // ========================================================
-    // Average Metrics (bright values for readability)
+    // Average Metrics (gray text, bold via double-render)
     // ========================================================
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
              "--- Average Metrics ---");
     y += line_height - 4;
 
     {
-        Color label_col = {180, 180, 180, 255};
-        Color value_col = {255, 255, 255, 255};
-        int fs = 10;
+        Color metric_col = {180, 180, 180, 255};
+        int fs = 11;
 
-        DrawText("Avg Cohesion:", x, y + 2, fs, label_col);
-        DrawText(TextFormat("N:%.1f  D:%.1f",
+        const char* coh_text = TextFormat("Avg Cohesion:  N:%.1f  D:%.1f",
                  stats.swarm[0].average_cohesion,
-                 stats.swarm[1].average_cohesion),
-                 x + 90, y + 2, fs, value_col);
+                 stats.swarm[1].average_cohesion);
+        DrawText(coh_text, x, y + 2, fs, metric_col);
+        DrawText(coh_text, x + 1, y + 2, fs, metric_col);
         y += line_height - 4;
 
-        DrawText("Avg Alignment:", x, y + 2, fs, label_col);
-        DrawText(TextFormat("N:%.2f  D:%.2f",
+        const char* ali_text = TextFormat("Avg Alignment: N:%.2f  D:%.2f",
                  stats.swarm[0].average_alignment_angle,
-                 stats.swarm[1].average_alignment_angle),
-                 x + 95, y + 2, fs, value_col);
+                 stats.swarm[1].average_alignment_angle);
+        DrawText(ali_text, x, y + 2, fs, metric_col);
+        DrawText(ali_text, x + 1, y + 2, fs, metric_col);
         y += line_height - 4;
 
-        DrawText("Avg Sep (RMS):", x, y + 2, fs, label_col);
-        DrawText(TextFormat("N:%.1f  D:%.1f",
+        const char* sep_text = TextFormat("Avg Sep (RMS): N:%.1f  D:%.1f",
                  stats.swarm[0].average_separation,
-                 stats.swarm[1].average_separation),
-                 x + 95, y + 2, fs, value_col);
+                 stats.swarm[1].average_separation);
+        DrawText(sep_text, x, y + 2, fs, metric_col);
+        DrawText(sep_text, x + 1, y + 2, fs, metric_col);
+        y += line_height - 4;
+
+        const char* sick_text = TextFormat("Avg Sick Align: %.2f",
+                 stats.sick_avg_alignment);
+        DrawText(sick_text, x, y + 2, fs, metric_col);
+        DrawText(sick_text, x + 1, y + 2, fs, metric_col);
         y += line_height - 4;
     }
 
@@ -899,8 +908,8 @@ void render_frame(const RenderState& state) {
     // Draw per-swarm centroid indicators (circle + alignment arrow)
     {
         static const uint32_t centroid_colors[2] = {
-            0x5500FF00,  // Normal: semi-transparent green
-            0x5578B4FF,  // Doctor: semi-transparent blue
+            0x668B00B3,  // Normal: semi-transparent purple
+            0x668B00B3,  // Doctor: semi-transparent purple
         };
         static const uint32_t arrow_colors[2] = {
             0xFF00FF00,  // Normal: green
