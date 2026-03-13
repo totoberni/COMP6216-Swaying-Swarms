@@ -8,6 +8,7 @@
 #include "render_state.h"
 #include <flecs.h>
 #include <raylib.h>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -39,19 +40,24 @@ static CliArgs parse_args(int argc, char* argv[]) {
 
 static void run_headless(flecs::world& world, const SimConfig& config,
                          const std::string& config_path) {
-    const float dt = 1.0f / 60.0f;
+    const float dt = (config.headless_dt > 0.0f) ? config.headless_dt : (1.0f / 60.0f);
     const float duration = config.nogui_duration;
 
     // Create output directory
     std::string out_dir = create_output_dir(config.output_dir);
-    std::printf("Headless mode: %.0fs, output -> %s\n", duration, out_dir.c_str());
+    std::printf("Headless mode: %.0fs (dt=%.4f), output -> %s\n", duration, dt, out_dir.c_str());
 
     // Open CSV for incremental writes
     FILE* csv = open_csv(out_dir);
 
+    // CSV sampling: interval <= 0 means write every frame (backward compat)
+    const float csv_interval = config.csv_sample_interval;
+    float next_csv_write = 0.0f;
+
     float elapsed = 0.0f;
     int frame = 0;
-    float next_progress = 0.0f;  // next time to print progress
+    const float progress_step = std::max(10.0f, duration / 30.0f);
+    float next_progress = 0.0f;
 
     // Peak tracking (not stored in SimStats — tracked here)
     int peak_infected = 0;
@@ -62,8 +68,12 @@ static void run_headless(flecs::world& world, const SimConfig& config,
 
         const SimStats& stats = world.get<SimStats>();
 
-        // Write CSV row every frame
-        write_csv_row(csv, frame, elapsed, stats);
+        // Write CSV row at configured interval (or every frame if interval <= 0)
+        bool write_csv = (csv_interval <= 0.0f) || (elapsed >= next_csv_write);
+        if (write_csv) {
+            write_csv_row(csv, frame, elapsed, stats);
+            if (csv_interval > 0.0f) next_csv_write += csv_interval;
+        }
 
         // Track peaks
         if (stats.total_infected > peak_infected) {
@@ -73,7 +83,7 @@ static void run_headless(flecs::world& world, const SimConfig& config,
             peak_pct = stats.pct_infected;
         }
 
-        // Progress output every 10s
+        // Progress output
         if (elapsed >= next_progress) {
             int total_pop = stats.swarm[0].alive + stats.swarm[1].alive;
             std::printf("[%.1fs / %.1fs] infected: %d/%d (%.1f%%), recovered: %d\n",
@@ -81,7 +91,7 @@ static void run_headless(flecs::world& world, const SimConfig& config,
                         stats.total_infected, total_pop,
                         stats.pct_infected * 100.0f,
                         stats.total_recovered);
-            next_progress += 10.0f;
+            next_progress += progress_step;
         }
 
         frame++;

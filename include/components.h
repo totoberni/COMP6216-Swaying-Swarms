@@ -117,6 +117,8 @@ struct SimConfig {
     // --- Headless mode ---
     bool nogui                         = false;
     float nogui_duration               = 300.0f;
+    float csv_sample_interval          = 0.0f;  // seconds between CSV writes (0 = every frame)
+    float headless_dt                  = 0.0f;  // override dt for headless (0 = use default 1/60)
 
     // --- Output ---
     char output_dir[256]               = "sim-out";

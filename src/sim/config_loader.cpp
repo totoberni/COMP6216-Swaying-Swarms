@@ -87,6 +87,8 @@ bool apply_global_field(SimConfig& config, const std::string& key,
     // Headless mode
     else if (key == "nogui")               { config.nogui = (val == "true" || val == "1"); }
     else if (key == "nogui_duration")      { config.nogui_duration = parse_float(val, line_num); }
+    else if (key == "csv_sample_interval") { config.csv_sample_interval = parse_float(val, line_num); }
+    else if (key == "headless_dt")         { config.headless_dt = parse_float(val, line_num); }
     // Output
     else if (key == "output_dir") {
         std::strncpy(config.output_dir, val.c_str(), sizeof(config.output_dir) - 1);
