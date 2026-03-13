@@ -426,6 +426,96 @@ static void draw_separation_graph(const SimStats& stats, int x, int y, int width
     DrawText(TextFormat("Max: %.2f", max_sep), x + width - 60, y - 12, 8, Color{130, 130, 130, 255});
 }
 
+// Generic single-line graph for circular float buffers (sickness metrics)
+static void draw_single_line_graph(
+    const float* buffer, int history_index, int history_count, int history_size,
+    float& smoothed_max,
+    int x, int y, int width, int height,
+    const char* label, Color line_color, bool centered, float scale_factor) {
+
+    DrawRectangle(x, y, width, height, Color{30, 30, 35, 255});
+    DrawRectangleLines(x, y, width, height, Color{80, 80, 80, 255});
+
+    if (history_count < 2) {
+        DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
+        return;
+    }
+
+    float x_scale = static_cast<float>(width - 4) / static_cast<float>(history_size - 1);
+
+    if (centered) {
+        float abs_max = 0.001f;
+        for (int i = 0; i < history_count; i++) {
+            float val = std::fabs(buffer[i]) * scale_factor;
+            if (val > abs_max) abs_max = val;
+        }
+        smoothed_max = std::fmax(smoothed_max * 0.99f, abs_max);
+        float half_range = std::ceil(smoothed_max);
+        float y_scale = static_cast<float>(height - 4) / (2.0f * half_range);
+        float center_y = y + height / 2.0f;
+
+        Color zero_color = {100, 100, 105, 255};
+        for (int gx = x + 2; gx < x + width - 2; gx += 6)
+            DrawLine(gx, static_cast<int>(center_y), std::min(gx + 3, x + width - 2), static_cast<int>(center_y), zero_color);
+
+        Color grid_color = {60, 60, 65, 255};
+        for (int pct = 25; pct <= 100; pct += 25) {
+            float offset = (half_range * pct / 100.0f) * y_scale;
+            for (int gx = x + 2; gx < x + width - 2; gx += 6) {
+                DrawLine(gx, static_cast<int>(center_y - offset), std::min(gx + 3, x + width - 2), static_cast<int>(center_y - offset), grid_color);
+                DrawLine(gx, static_cast<int>(center_y + offset), std::min(gx + 3, x + width - 2), static_cast<int>(center_y + offset), grid_color);
+            }
+        }
+
+        for (int i = 0; i < history_count - 1; i++) {
+            int ri = (history_index - history_count + i + history_size) % history_size;
+            int ni = (ri + 1) % history_size;
+            float x1 = x + 2 + i * x_scale;
+            float y1 = center_y - buffer[ri] * scale_factor * y_scale;
+            float x2 = x + 2 + (i + 1) * x_scale;
+            float y2 = center_y - buffer[ni] * scale_factor * y_scale;
+            DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 1.5f, line_color);
+        }
+
+        DrawText(TextFormat("+/-%.1f", half_range), x + width - 50, y - 12, 8, Color{130, 130, 130, 255});
+    } else {
+        float current_max = 0.001f;
+        for (int i = 0; i < history_count; i++) {
+            float val = buffer[i] * scale_factor;
+            if (val > current_max) current_max = val;
+        }
+        smoothed_max = std::fmax(smoothed_max * 0.99f, current_max);
+        float max_val = std::ceil(smoothed_max);
+        float y_scale = static_cast<float>(height - 4) / max_val;
+
+        Color grid_color = {60, 60, 65, 255};
+        for (int pct = 25; pct <= 100; pct += 25) {
+            float gy = y + height - 2 - (max_val * pct / 100) * y_scale;
+            for (int gx = x + 2; gx < x + width - 2; gx += 6)
+                DrawLine(gx, static_cast<int>(gy), std::min(gx + 3, x + width - 2), static_cast<int>(gy), grid_color);
+        }
+
+        for (int i = 0; i < history_count - 1; i++) {
+            int ri = (history_index - history_count + i + history_size) % history_size;
+            int ni = (ri + 1) % history_size;
+            float x1 = x + 2 + i * x_scale;
+            float y1 = y + height - 2 - buffer[ri] * scale_factor * y_scale;
+            float x2 = x + 2 + (i + 1) * x_scale;
+            float y2 = y + height - 2 - buffer[ni] * scale_factor * y_scale;
+            DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 1.5f, line_color);
+        }
+
+        DrawText(TextFormat("Max: %.1f", max_val), x + width - 60, y - 12, 8, Color{130, 130, 130, 255});
+    }
+
+    // Single-item legend
+    int lx = x + width - 68;
+    int ly = y + 5;
+    DrawRectangle(lx - 3, ly - 2, 70, 16, Color{20, 20, 25, 200});
+    DrawRectangle(lx, ly, 8, 8, line_color);
+    DrawText(label, lx + 12, ly, 8, LIGHTGRAY);
+}
+
 // ============================================================
 // Stats overlay with interactive controls (dropdown categories)
 // ============================================================
@@ -442,6 +532,8 @@ static std::vector<SliderSpec> s_slider_specs;
 static SimConfig* s_last_config = nullptr;
 static int s_active_category = 0;
 static bool s_dropdown_edit_mode = false;
+static int s_active_graph = 0;  // 0=None,1=Pop,2=Cohesion,3=Alignment,4=Separation,5=Infected,6=%Infected,7=GrowthRate,8=Recovered
+static bool s_graph_dropdown_edit = false;
 
 static void build_slider_specs(SimConfig* config) {
     s_slider_specs.clear();
@@ -638,33 +730,53 @@ void draw_stats_overlay(const RenderState& state) {
     }
     
     // ========================================================
-    // Population graph
+    // Graph selector (single graph slot with dropdown)
     // ========================================================
     const int graph_width = RenderConfig::STATS_PANEL_WIDTH - 20;
     const int graph_height = 150;
-    /*GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             "--- Population History ---");
-    y += line_height + 14;
-    draw_population_graph(stats, x, y, graph_width, graph_height);
-    y += graph_height + 8;*/
 
-    // ========================================================
-    // Cohesion Graph
-    // ========================================================
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             "--- Cohesion History ---");
-    y += line_height + 14;
-    draw_cohesion_graph(stats, x, y, graph_width, graph_height);
-    y += graph_height + 8;
+             "--- Graph ---");
+    y += line_height - 2;
 
-    // ========================================================
-    // Alignment Graph
-    // ========================================================
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             "--- Alignment Angle History ---");
-    y += line_height + 14;
-    draw_alignment_graph(stats, x, y, graph_width, graph_height);
-    y += graph_height + 8;
+    int graph_dropdown_y = y;
+    y += 28;
+
+    // Draw selected graph (only when graph dropdown is closed)
+    if (!s_graph_dropdown_edit && s_active_graph > 0) {
+        y += 4;
+        switch (s_active_graph) {
+            case 1: draw_population_graph(stats, x, y, graph_width, graph_height); break;
+            case 2: draw_cohesion_graph(stats, x, y, graph_width, graph_height); break;
+            case 3: draw_alignment_graph(stats, x, y, graph_width, graph_height); break;
+            case 4: draw_separation_graph(stats, x, y, graph_width, graph_height); break;
+            case 5: {
+                static float sm = 1.0f;
+                draw_single_line_graph(stats.infected_count_history, stats.history_index, stats.history_count,
+                    SimStats::HISTORY_SIZE, sm, x, y, graph_width, graph_height,
+                    "Infected", {255, 60, 60, 230}, false, 1.0f);
+            } break;
+            case 6: {
+                static float sm = 1.0f;
+                draw_single_line_graph(stats.pct_infected_history, stats.history_index, stats.history_count,
+                    SimStats::HISTORY_SIZE, sm, x, y, graph_width, graph_height,
+                    "% Infected", {255, 140, 0, 230}, false, 100.0f);
+            } break;
+            case 7: {
+                static float sm = 1.0f;
+                draw_single_line_graph(stats.growth_rate_history, stats.history_index, stats.history_count,
+                    SimStats::HISTORY_SIZE, sm, x, y, graph_width, graph_height,
+                    "Growth Rate", {255, 165, 0, 230}, true, 1.0f);
+            } break;
+            case 8: {
+                static float sm = 1.0f;
+                draw_single_line_graph(stats.recovered_count_history, stats.history_index, stats.history_count,
+                    SimStats::HISTORY_SIZE, sm, x, y, graph_width, graph_height,
+                    "Recovered", {0, 200, 100, 230}, false, 1.0f);
+            } break;
+        }
+        y += graph_height + 8;
+    }
 
     // ========================================================
     // CSV Export (only when paused)
@@ -692,6 +804,23 @@ void draw_stats_overlay(const RenderState& state) {
     // ========================================================
     // Deferred dropdown rendering (drawn LAST so items appear on top)
     // ========================================================
+    // Graph dropdown (drawn before controls dropdown so controls dropdown renders on top of both)
+    if (graph_dropdown_y > 0) {
+        const char* graph_options = "None;Population;Cohesion;Alignment;Separation;Infected;% Infected;Growth Rate;Recovered";
+        Rectangle graph_dd_rect = {static_cast<float>(x), static_cast<float>(graph_dropdown_y),
+                                    static_cast<float>(RenderConfig::STATS_PANEL_WIDTH - 20), 24};
+        if (s_graph_dropdown_edit) {
+            if (GuiDropdownBox(graph_dd_rect, graph_options, &s_active_graph, true)) {
+                s_graph_dropdown_edit = false;
+            }
+        } else {
+            if (GuiDropdownBox(graph_dd_rect, graph_options, &s_active_graph, false)) {
+                s_graph_dropdown_edit = true;
+            }
+        }
+    }
+
+    // Controls dropdown
     if (config && dropdown_y > 0) {
         const char* categories = "Infection;Cure;Interaction;Movement;Debuffs";
         Rectangle dropdown_rect = {static_cast<float>(x), static_cast<float>(dropdown_y),
