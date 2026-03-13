@@ -87,6 +87,9 @@ struct SimConfig {
     float p_infect_normal           = 0.5f;
     float p_infect_doctor           = 0.5f;
 
+    // --- Spontaneous infection (environmental, per-second) ---
+    float p_spontaneous_infect      = 0.0f;
+
     // --- Cure probability ---
     float p_cure                    = 0.8f;
 

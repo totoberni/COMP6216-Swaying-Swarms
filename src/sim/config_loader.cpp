@@ -62,6 +62,7 @@ bool apply_global_field(SimConfig& config, const std::string& key,
     else if (key == "p_initial_infect_doctor")  { config.p_initial_infect_doctor = parse_float(val, line_num); }
     else if (key == "p_infect_normal")          { config.p_infect_normal = parse_float(val, line_num); }
     else if (key == "p_infect_doctor")          { config.p_infect_doctor = parse_float(val, line_num); }
+    else if (key == "p_spontaneous_infect")    { config.p_spontaneous_infect = parse_float(val, line_num); }
     // Cure
     else if (key == "p_cure")                   { config.p_cure = parse_float(val, line_num); }
     // Interaction radii

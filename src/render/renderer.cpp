@@ -583,6 +583,7 @@ static void build_slider_specs(SimConfig* config) {
     s_slider_specs.push_back({"p_init_inf_doc", &config->p_initial_infect_doctor,  0.0f,   1.0f, 0});
     s_slider_specs.push_back({"p_infect_nrm",   &config->p_infect_normal,          0.0f,   1.0f, 0});
     s_slider_specs.push_back({"p_infect_doc",   &config->p_infect_doctor,          0.0f,   1.0f, 0});
+    s_slider_specs.push_back({"p_spont_inf",   &config->p_spontaneous_infect,     0.0f,  0.05f, 0});
 
     // Category 1: Cure
     s_slider_specs.push_back({"p_cure",          &config->p_cure,                   0.0f,   1.0f, 1});

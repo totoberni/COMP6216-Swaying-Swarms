@@ -78,6 +78,39 @@ void register_infection_system(flecs::world& world) {
         });
 }
 
+void register_spontaneous_infection_system(flecs::world& world) {
+    world.system("SpontaneousInfectionSystem")
+        .kind(flecs::PostUpdate)
+        .run([](flecs::iter& it) {
+            flecs::world w = it.world();
+            const SimConfig& config = w.get<SimConfig>();
+            float dt = it.delta_time();
+            float p = config.p_spontaneous_infect;
+            if (p <= 0.0f) return;
+
+            std::mt19937& rng = sim_rng();
+            std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+            float p_per_frame = p * dt;
+
+            w.defer_begin();
+
+            auto q = w.query<const Position>();
+            q.each([&](flecs::entity e, const Position&) {
+                if (e.has<Infected>()) return;
+
+                if (dist(rng) < p_per_frame) {
+                    e.add<Infected>();
+                    e.set(InfectionState{0.0f});
+                    if (e.has<ImmunityState>()) {
+                        e.remove<ImmunityState>();
+                    }
+                }
+            });
+
+            w.defer_end();
+        });
+}
+
 void register_cure_system(flecs::world& world) {
     world.system("CureSystem")
         .kind(flecs::PostUpdate)

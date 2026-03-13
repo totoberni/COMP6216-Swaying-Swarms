@@ -21,6 +21,7 @@ void register_all_systems(flecs::world& world) {
     // PostUpdate
     register_collision_system(world);
     register_infection_system(world);
+    register_spontaneous_infection_system(world);
     register_cure_system(world);
     register_doctor_systems(world);
 
