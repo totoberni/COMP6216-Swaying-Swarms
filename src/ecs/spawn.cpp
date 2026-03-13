@@ -17,9 +17,7 @@ void spawn_normal_boids(flecs::world& world, int count) {
     std::uniform_real_distribution<float> dist_x(0.0f, config.world_width);
     std::uniform_real_distribution<float> dist_y(0.0f, config.world_height);
     std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
-    std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
     std::uniform_real_distribution<float> dist_infect(0.0f, 1.0f);
-    std::uniform_real_distribution<float> dist_antivax(0.0f, 1.0f);
 
     for (int i = 0; i < count; ++i) {
         float x = dist_x(rng);
@@ -28,31 +26,15 @@ void spawn_normal_boids(flecs::world& world, int count) {
         float speed = config.max_speed * 1.0f; // Start with moderate speed
 
         auto boid = world.entity()
-            .add<Alive>()
+            .add<NormalBoid>()
             .set(Position{x, y})
             .set(Velocity{speed * std::cos(angle), speed * std::sin(angle)})
-            .set(Heading{angle})
-            .set(Health{0.0f, 60.0f}) // age=0, lifespan=60s
-            .set(ReproductionCooldown{0.0f});
-
-        // Assign sex
-        if (dist_sex(rng) < 0.5f) {
-            boid.add<Male>();
-        } else {
-            boid.add<Female>();
-        }
-
-        // Assign swarm tag — mutually exclusive
-        if (dist_antivax(rng) < config.p_antivax) {
-            boid.add<AntivaxBoid>();
-        } else {
-            boid.add<NormalBoid>();
-        }
+            .set(Heading{angle});
 
         // Initial infection
         if (dist_infect(rng) < config.p_initial_infect_normal) {
             boid.add<Infected>();
-            boid.set(InfectionState{0.0f, config.t_death});
+            boid.set(InfectionState{0.0f});
         }
     }
 }
@@ -63,7 +45,6 @@ void spawn_doctor_boids(flecs::world& world, int count) {
     std::uniform_real_distribution<float> dist_x(0.0f, config.world_width);
     std::uniform_real_distribution<float> dist_y(0.0f, config.world_height);
     std::uniform_real_distribution<float> dist_angle(0.0f, 2.0f * 3.14159265f);
-    std::uniform_real_distribution<float> dist_sex(0.0f, 1.0f);
     std::uniform_real_distribution<float> dist_infect(0.0f, 1.0f);
 
     for (int i = 0; i < count; ++i) {
@@ -74,24 +55,14 @@ void spawn_doctor_boids(flecs::world& world, int count) {
 
         auto boid = world.entity()
             .add<DoctorBoid>()
-            .add<Alive>()
             .set(Position{x, y})
             .set(Velocity{speed * std::cos(angle), speed * std::sin(angle)})
-            .set(Heading{angle})
-            .set(Health{0.0f, 60.0f}) // age=0, lifespan=60s
-            .set(ReproductionCooldown{0.0f});
-
-        // Assign sex
-        if (dist_sex(rng) < 0.5f) {
-            boid.add<Male>();
-        } else {
-            boid.add<Female>();
-        }
+            .set(Heading{angle});
 
         // Initial infection
         if (dist_infect(rng) < config.p_initial_infect_doctor) {
             boid.add<Infected>();
-            boid.set(InfectionState{0.0f, config.t_death});
+            boid.set(InfectionState{0.0f});
         }
     }
 }
@@ -118,19 +89,11 @@ void reset_simulation(flecs::world& world) {
 
     world.defer_end();
 
-    // Reset statistics and population history
+    // Reset statistics: zero all per-swarm metrics and population history
     SimStats& stats = world.get_mut<SimStats>();
-    stats.normal_alive = 0;
-    stats.doctor_alive = 0;
-    stats.dead_total = 0;
-    stats.dead_normal = 0;
-    stats.dead_doctor = 0;
-    stats.newborns_total = 0;
-    stats.newborns_normal = 0;
-    stats.newborns_doctor = 0;
-    stats.antivax_alive = 0;
-    stats.dead_antivax = 0;
-    stats.newborns_antivax = 0;
+    for (int s = 0; s < 2; ++s) {
+        stats.swarm[s] = SwarmMetrics{};
+    }
     stats.history_index = 0;
     stats.history_count = 0;
     for (int i = 0; i < SimStats::HISTORY_SIZE; ++i) {

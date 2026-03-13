@@ -7,6 +7,10 @@
 # Exclude the./scripts directory - only needed for Claude Code management (local)
 #./scripts Need to clone elsewhere!
 
+# Simulation Output
+# =================
+sim-out/
+
 # C++ Build Artifacts
 # ===================
 # Build directories
@@ -77,15 +81,16 @@ cmake-build-*/
 *~
 .directory
 
-# Agent and Orchestrator Runtime
-# ===============================
-# Agent working directories (if using git worktrees)
+# Claude Code Agent Infrastructure (local only)
+# ==============================================
+# All agent/orchestrator files are local tooling — never committed
+.claude/
+.orchestrator/
 .worktrees/
-
-# Orchestrator temporary files
-.orchestrator/inbox/*.tmp
-.orchestrator/outbox/*.tmp
-.orchestrator/status/*.tmp
+*CLAUDE*.md
+*changelog.md
+context.md
+!README.md
 
 # Logs and Debug
 # ==============

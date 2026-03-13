@@ -5,6 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Default to Release build for optimization (-O2/-O3)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
 # --- CPM.cmake ---
 # Use a short cache path to avoid Windows MAX_PATH issues with long project paths
 if(WIN32 AND NOT DEFINED ENV{CPM_SOURCE_CACHE})
@@ -69,25 +74,12 @@ target_link_libraries(boid_swarm PRIVATE
     raylib
 )
 
-# --- Render demo executable ---
-add_executable(render_demo
-    src/render/render_demo.cpp
-    src/render/renderer.cpp
-)
-
-target_include_directories(render_demo PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${flecs_SOURCE_DIR}/include
-)
-target_include_directories(render_demo SYSTEM PRIVATE
-    ${raygui_SOURCE_DIR}/src
-)
-
-target_link_libraries(render_demo PRIVATE
-    raylib
-    flecs::flecs_static
-)
+# Optimization flags (compatible with GCC, Clang, MSVC)
+if(MSVC)
+    target_compile_options(boid_swarm PRIVATE $<$<CONFIG:Release>:/O2>)
+else()
+    target_compile_options(boid_swarm PRIVATE $<$<CONFIG:Release>:-O2>)
+endif()
 
 # --- Test executable ---
 file(GLOB_RECURSE TEST_SOURCES

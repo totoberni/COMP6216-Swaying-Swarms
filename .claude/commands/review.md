@@ -1,1 +1,0 @@
-Use the code-reviewer subagent to review all uncommitted changes. Run `git diff` first, then review against CLAUDE.md conventions. Summarize findings and suggest fixes for critical issues.

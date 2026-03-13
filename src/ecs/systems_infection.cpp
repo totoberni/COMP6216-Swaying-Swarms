@@ -30,8 +30,8 @@ void register_infection_system(flecs::world& world) {
             std::vector<SpatialGrid::QueryResult> neighbors;
 
             // Unified infection pass: iterate all infected alive boids
-            auto q_infected = w.query<const Position, const Alive, const Infected>();
-            q_infected.each([&](flecs::entity e, const Position& pos, const Alive&, const Infected&) {
+            auto q_infected = w.query<const Position, const Infected>();
+            q_infected.each([&](flecs::entity e, const Position& pos, const Infected&) {
                 // Determine spreader's swarm type and effective radius/probability
                 bool is_doctor = e.has<DoctorBoid>();
                 float effective_r_interact;
@@ -41,7 +41,7 @@ void register_infection_system(flecs::world& world) {
                     effective_r_interact = config.r_interact_doctor * config.debuff_r_interact_doctor_infected;
                     p_infect = config.p_infect_doctor;
                 } else {
-                    // Normal and Antivax use the same infection params
+                    // Normal boids infection params
                     effective_r_interact = config.r_interact_normal * config.debuff_r_interact_normal_infected;
                     p_infect = config.p_infect_normal;
                 }
@@ -53,18 +53,23 @@ void register_infection_system(flecs::world& world) {
                     const auto* ne_entry = qr.entry;
                     if (ne_entry->entity_id == e.id()) continue;
 
-                    // Use enriched entry: skip non-alive, skip already infected
-                    if (!(ne_entry->flags & SpatialGrid::FLAG_ALIVE)) continue;
-                    if (ne_entry->flags & SpatialGrid::FLAG_INFECTED) continue;
+                    // Use enriched entry: skip already infected
+                    if (ne_entry->infected) continue;
 
-                    // Any boid type (0=normal, 1=doctor, 2=antivax) can be infected
-                    // swarm_type is always 0, 1, or 2 — no filter needed
+                    // Free cross-swarm infection: any infected boid can infect any susceptible boid
+                    // Apply immunity reduction to infection probability
+                    float effective_p = p_infect;
+                    flecs::entity ne = w.entity(ne_entry->entity_id);
+                    bool has_immunity = ne.has<ImmunityState>();
+                    if (has_immunity) {
+                        const ImmunityState& imm = ne.get<ImmunityState>();
+                        effective_p *= (1.0f - imm.immunity_level);
+                    }
 
-                    // Try to infect
-                    if (try_infect(p_infect, rng)) {
-                        flecs::entity ne = w.entity(ne_entry->entity_id);
+                    if (try_infect(effective_p, rng)) {
                         ne.add<Infected>();
-                        ne.set(InfectionState{0.0f, config.t_death});
+                        ne.set(InfectionState{0.0f});
+                        if (has_immunity) ne.remove<ImmunityState>();
                     }
                 }
             });
@@ -85,9 +90,9 @@ void register_cure_system(flecs::world& world) {
             w.defer_begin();
 
             // Only doctors can cure
-            auto q_doctor = w.query<const Position, const DoctorBoid, const Alive>();
+            auto q_doctor = w.query<const Position, const DoctorBoid>();
             std::vector<SpatialGrid::QueryResult> neighbors;
-            q_doctor.each([&](flecs::entity e, const Position& pos, const DoctorBoid&, const Alive&) {
+            q_doctor.each([&](flecs::entity e, const Position& pos, const DoctorBoid&) {
                 // Check if doctor is infected for debuff calculation
                 bool doctor_infected = e.has<Infected>();
 
@@ -106,8 +111,7 @@ void register_cure_system(flecs::world& world) {
                     if (ne_entry->entity_id == e.id()) continue;
 
                     // Use enriched entry: skip non-alive, skip non-infected
-                    if (!(ne_entry->flags & SpatialGrid::FLAG_ALIVE)) continue;
-                    if (!(ne_entry->flags & SpatialGrid::FLAG_INFECTED)) continue;
+                    if (!(ne_entry->infected)) continue;
 
                     // Calculate effective cure probability (debuffed if doctor is infected)
                     float effective_p_cure = config.p_cure;
@@ -116,14 +120,12 @@ void register_cure_system(flecs::world& world) {
                     }
 
                     // Try to cure (doctors cure ANY infected boid, including other doctors)
+                    // Cure grants partial immunity to prevent immediate re-infection
                     if (try_cure(effective_p_cure, rng)) {
                         flecs::entity ne = w.entity(ne_entry->entity_id);
                         ne.remove<Infected>();
-                        // Reset infection timer
-                        if (ne.has<InfectionState>()) {
-                            InfectionState& inf = ne.get_mut<InfectionState>();
-                            inf.time_infected = 0.0f;
-                        }
+                        ne.remove<InfectionState>();
+                        ne.set(ImmunityState{config.cure_immunity_level, 0.0f});
                     }
                 }
             });
@@ -131,3 +133,6 @@ void register_cure_system(flecs::world& world) {
             w.defer_end();
         });
 }
+
+// DeathRecoverySystem removed: SIR model — infected boids stay infected until cured
+// ImmunityDecaySystem removed: SIR model — immunity is permanent after cure

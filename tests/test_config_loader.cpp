@@ -56,12 +56,12 @@ TEST_F(ConfigLoaderTest, SectionHeadersIgnored) {
         "[some_section]\n"
         "p_cure = 0.3\n"
         "[another]\n"
-        "t_death = 10.0\n"
+        "max_speed = 200.0\n"
     );
     SimConfig config{};
     EXPECT_TRUE(load_config(tmp_path_, config));
     EXPECT_FLOAT_EQ(config.p_cure, 0.3f);
-    EXPECT_FLOAT_EQ(config.t_death, 10.0f);
+    EXPECT_FLOAT_EQ(config.max_speed, 200.0f);
 }
 
 TEST_F(ConfigLoaderTest, ParsesAllFloatFields) {
@@ -70,19 +70,9 @@ TEST_F(ConfigLoaderTest, ParsesAllFloatFields) {
         "p_initial_infect_doctor = 0.2\n"
         "p_infect_normal = 0.3\n"
         "p_infect_doctor = 0.4\n"
-        "p_offspring_normal = 0.55\n"
-        "p_offspring_doctor = 0.15\n"
         "p_cure = 0.9\n"
-        "p_become_doctor = 0.07\n"
-        "p_antivax = 0.2\n"
         "r_interact_normal = 35.0\n"
         "r_interact_doctor = 45.0\n"
-        "t_death = 7.0\n"
-        "t_adult = 10.0\n"
-        "offspring_mean_normal = 3.0\n"
-        "offspring_stddev_normal = 0.5\n"
-        "offspring_mean_doctor = 2.0\n"
-        "offspring_stddev_doctor = 0.8\n"
         "world_width = 1280.0\n"
         "world_height = 720.0\n"
         "max_speed = 200.0\n"
@@ -93,14 +83,10 @@ TEST_F(ConfigLoaderTest, ParsesAllFloatFields) {
         "separation_radius = 30.0\n"
         "alignment_radius = 60.0\n"
         "cohesion_radius = 55.0\n"
-        "reproduction_cooldown = 3.0\n"
         "debuff_p_cure_infected = 0.4\n"
         "debuff_r_interact_doctor_infected = 0.6\n"
-        "debuff_p_offspring_doctor_infected = 0.3\n"
         "debuff_r_interact_normal_infected = 0.7\n"
-        "debuff_p_offspring_normal_infected = 0.4\n"
-        "antivax_repulsion_radius = 120.0\n"
-        "antivax_repulsion_weight = 4.0\n"
+        "cure_immunity_level = 0.8\n"
     );
     SimConfig config{};
     EXPECT_TRUE(load_config(tmp_path_, config));
@@ -109,19 +95,9 @@ TEST_F(ConfigLoaderTest, ParsesAllFloatFields) {
     EXPECT_FLOAT_EQ(config.p_initial_infect_doctor, 0.2f);
     EXPECT_FLOAT_EQ(config.p_infect_normal, 0.3f);
     EXPECT_FLOAT_EQ(config.p_infect_doctor, 0.4f);
-    EXPECT_FLOAT_EQ(config.p_offspring_normal, 0.55f);
-    EXPECT_FLOAT_EQ(config.p_offspring_doctor, 0.15f);
     EXPECT_FLOAT_EQ(config.p_cure, 0.9f);
-    EXPECT_FLOAT_EQ(config.p_become_doctor, 0.07f);
-    EXPECT_FLOAT_EQ(config.p_antivax, 0.2f);
     EXPECT_FLOAT_EQ(config.r_interact_normal, 35.0f);
     EXPECT_FLOAT_EQ(config.r_interact_doctor, 45.0f);
-    EXPECT_FLOAT_EQ(config.t_death, 7.0f);
-    EXPECT_FLOAT_EQ(config.t_adult, 10.0f);
-    EXPECT_FLOAT_EQ(config.offspring_mean_normal, 3.0f);
-    EXPECT_FLOAT_EQ(config.offspring_stddev_normal, 0.5f);
-    EXPECT_FLOAT_EQ(config.offspring_mean_doctor, 2.0f);
-    EXPECT_FLOAT_EQ(config.offspring_stddev_doctor, 0.8f);
     EXPECT_FLOAT_EQ(config.world_width, 1280.0f);
     EXPECT_FLOAT_EQ(config.world_height, 720.0f);
     EXPECT_FLOAT_EQ(config.max_speed, 200.0f);
@@ -132,14 +108,10 @@ TEST_F(ConfigLoaderTest, ParsesAllFloatFields) {
     EXPECT_FLOAT_EQ(config.separation_radius, 30.0f);
     EXPECT_FLOAT_EQ(config.alignment_radius, 60.0f);
     EXPECT_FLOAT_EQ(config.cohesion_radius, 55.0f);
-    EXPECT_FLOAT_EQ(config.reproduction_cooldown, 3.0f);
     EXPECT_FLOAT_EQ(config.debuff_p_cure_infected, 0.4f);
     EXPECT_FLOAT_EQ(config.debuff_r_interact_doctor_infected, 0.6f);
-    EXPECT_FLOAT_EQ(config.debuff_p_offspring_doctor_infected, 0.3f);
     EXPECT_FLOAT_EQ(config.debuff_r_interact_normal_infected, 0.7f);
-    EXPECT_FLOAT_EQ(config.debuff_p_offspring_normal_infected, 0.4f);
-    EXPECT_FLOAT_EQ(config.antivax_repulsion_radius, 120.0f);
-    EXPECT_FLOAT_EQ(config.antivax_repulsion_weight, 4.0f);
+    EXPECT_FLOAT_EQ(config.cure_immunity_level, 0.8f);
 }
 
 TEST_F(ConfigLoaderTest, ParsesIntFields) {

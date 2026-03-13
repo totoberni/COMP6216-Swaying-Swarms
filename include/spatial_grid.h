@@ -7,18 +7,13 @@
 
 class SpatialGrid {
 public:
-    // --- Flag constants for Entry::flags bitfield ---
-    static constexpr uint8_t FLAG_INFECTED = 0x01;
-    static constexpr uint8_t FLAG_ALIVE    = 0x02;
-    static constexpr uint8_t FLAG_MALE     = 0x04;
-
     // --- Enriched entry stored in each grid cell ---
     struct Entry {
         uint64_t entity_id;
         float x, y;
         float vx, vy;         // velocity for alignment
-        uint8_t swarm_type;    // 0=normal, 1=doctor, 2=antivax
-        uint8_t flags;         // bit 0=infected, bit 1=alive, bit 2=male
+        uint8_t swarm_type;    // 0=normal, 1=doctor
+        bool infected;
     };
 
     // --- Query result: pointer to entry + squared distance ---
@@ -34,19 +29,27 @@ public:
 
     // Full insert with enriched fields
     void insert(uint64_t entity_id, float x, float y,
-                float vx, float vy, uint8_t swarm_type, uint8_t flags);
+                float vx, float vy, uint8_t swarm_type, bool infected);
 
     // Convenience overload: no extra fields (backward compat for tests)
     void insert(uint64_t entity_id, float x, float y) {
-        insert(entity_id, x, y, 0.0f, 0.0f, 0, FLAG_ALIVE);
+        insert(entity_id, x, y, 0.0f, 0.0f, 0, false);
     }
 
     // Fills `results` with QueryResult entries within radius. Not sorted.
     // Caller should reuse the vector for amortized zero-allocation queries.
     // Search window expands dynamically: ceil(radius / cell_size) cells in each direction.
     // dist_sq is squared distance — caller takes sqrt only when needed.
-    void query_neighbors(float x, float y, float radius,
-                         std::vector<QueryResult>& results) const;
+    void query_neighbors(
+        float x, float y, float radius,
+        std::vector<QueryResult>& results
+    ) const;
+
+    void query_neighbors_fov(
+        float x, float y, float radius,
+        std::vector<QueryResult>& results,
+        float fov, float vx, float vy
+    ) const;
 
     // Returns the cell size used for spatial partitioning (diagnostic use).
     float cell_size() const { return cell_size_; }
