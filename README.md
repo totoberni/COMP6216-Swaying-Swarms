@@ -98,8 +98,8 @@ The `configs/` directory contains 9 experiment configs in a 3×3 matrix:
 
 |  | D1 (Normal) | D2 (Seek Nearest) | D3 (Seek Centroid) |
 |---|---|---|---|
-| **B1 (Line)** | B1_D1.ini | B1_D2.ini | B1_D3.ini |
-| **B2 (Oval)** | B2_D1.ini | B2_D2.ini | B2_D3.ini |
+| **B1 (Narrow FOV)** | B1_D1.ini | B1_D2.ini | B1_D3.ini |
+| **B2 (Wide FOV)** | B2_D1.ini | B2_D2.ini | B2_D3.ini |
 | **B3 (Chaotic)** | B3_D1.ini | B3_D2.ini | B3_D3.ini |
 
 Run all 9 experiments:
@@ -130,12 +130,13 @@ Requires `matplotlib` (`pip3 install matplotlib`).
 
 | Control | Description |
 |---|---|
-| **Pause / Resume** button | Toggles simulation |
-| **Reset** button | Destroys all boids, re-spawns initial population |
-| **Sliders** | p_infect_normal, p_cure, r_interact_normal, r_interact_doctor |
-| **Cohesion graph** | Average distance to centroid over time |
-| **Alignment graph** | Average alignment angle over time |
-| **Stats panel** | Average position, cohesion, alignment angle, RMS separation |
+| **Pause / Resume** button | Toggles simulation (also SPACE key) |
+| **Reset (R)** button | Destroys all boids, re-spawns initial population |
+| **Hide (H)** button | Hides the stats overlay (also H key) |
+| **Graph selector** dropdown | None, Population, Cohesion, Alignment, Separation, Infected, % Infected, Growth Rate, Recovered |
+| **Controls** dropdown | Infection, Cure, Interaction, Movement, Debuffs — each shows relevant sliders |
+| **Export CSV** button | Visible when paused; exports history buffers to `sim-out/outN/metrics.csv` |
+| **Stats panel** | Swarm populations, average cohesion, alignment, RMS separation |
 
 ---
 
@@ -200,7 +201,7 @@ config.ini         Default simulation parameters
 | SIR disease model (infection, cure, permanent immunity) | Done |
 | Two swarms (Normal, Doctor) with configurable behaviors | Done |
 | Doctor strategies: D1 normal, D2 seek nearest, D3 seek centroid | Done |
-| Swarm shapes: B1 line, B2 oval, B3 chaotic (noise injection) | Done |
+| Swarm formations: B1 narrow-FOV line, B2 wide-FOV oval, B3 chaotic (noise injection) | Done |
 | Headless mode with CLI flags + incremental CSV output | Done |
 | 9 experiment configs + batch runner + analysis script | Done |
 | Interactive GUI: sliders, graphs, stats panel | Done |

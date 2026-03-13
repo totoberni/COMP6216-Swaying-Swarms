@@ -6,6 +6,7 @@
 #include <fstream>
 #include <vector>
 #include <cstddef>
+#include <cstdio>
 #include <algorithm>
 
 #define RAYGUI_IMPLEMENTATION
@@ -651,8 +652,9 @@ void draw_stats_overlay(const RenderState& state) {
                       "Reset (R)")) {
             sim_state->reset_requested = true;
         }
+        y += button_height + 4;
 
-        if (GuiButton(Rectangle{static_cast<float>(x + button_width + 10), static_cast<float>(y),
+        if (GuiButton(Rectangle{static_cast<float>(x), static_cast<float>(y),
                                  static_cast<float>(button_width), static_cast<float>(button_height)},
                       "Hide (H)")) {
             sim_state->show_stats_overlay = false;
@@ -824,7 +826,9 @@ void draw_stats_overlay(const RenderState& state) {
                                  static_cast<float>(button_width), static_cast<float>(button_height)},
                       "Export CSV")) {
             if (config && export_gui_csv(stats, *config)) {
-                export_feedback_text = TextFormat("Exported to %s/", s_export_path);
+                static char export_msg[300];
+                std::snprintf(export_msg, sizeof(export_msg), "Exported to %s/", s_export_path);
+                export_feedback_text = export_msg;
             } else {
                 export_feedback_text = "Export failed!";
             }

@@ -191,5 +191,14 @@ void register_stats_system(flecs::world& world) {
             stats.pct_infected_history[hi] = stats.pct_infected;
             stats.growth_rate_history[hi] = stats.infection_growth_rate;
             stats.recovered_count_history[hi] = static_cast<float>(recovered_count);
+
+            // Populate population history
+            stats.history[hi].normal_alive = stats.swarm[0].alive;
+            stats.history[hi].doctor_alive = stats.swarm[1].alive;
+            stats.history[hi].infected_count = infected_count;
+
+            // Advance global history index and count
+            stats.history_index = (stats.history_index + 1) % SimStats::HISTORY_SIZE;
+            if (stats.history_count < SimStats::HISTORY_SIZE) stats.history_count++;
         });
 }

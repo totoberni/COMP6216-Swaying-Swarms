@@ -33,7 +33,7 @@ BEHAVIOR_LABELS = {"B1": "Line", "B2": "Oval", "B3": "Chaotic"}
 DOCTORS = ["D1", "D2", "D3"]
 DOCTOR_LABELS = {"D1": "Normal", "D2": "Seek Nearest", "D3": "Seek Centroid"}
 
-SWARM_TO_B = {"simple": "B1", "oval": "B2", "chaotic": "B3"}
+SWARM_TO_B = {"normal": "B1", "line": "B1", "oval": "B2", "chaotic": "B3"}
 DOCTOR_TO_D = {"normal": "D1", "seek_nearest": "D2", "seek_centroid": "D3"}
 
 
@@ -48,14 +48,14 @@ def read_config(config_path):
     cp = configparser.ConfigParser()
     cp.read(config_path)
 
-    swarm = "simple"
+    swarm = "normal"
     doctor = "normal"
 
     for section in cp.sections():
-        if cp.has_option(section, "swarm_behavior"):
-            swarm = cp.get(section, "swarm_behavior").strip()
-        if cp.has_option(section, "doctor_behavior"):
-            doctor = cp.get(section, "doctor_behavior").strip()
+        if section == "normal_swarm" and cp.has_option(section, "behavior"):
+            swarm = cp.get(section, "behavior").strip()
+        if section == "doctor_swarm" and cp.has_option(section, "behavior"):
+            doctor = cp.get(section, "behavior").strip()
 
     return swarm, doctor
 
