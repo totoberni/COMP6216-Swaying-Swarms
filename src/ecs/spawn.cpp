@@ -23,7 +23,7 @@ void spawn_normal_boids(flecs::world& world, int count) {
         float x = dist_x(rng);
         float y = dist_y(rng);
         float angle = dist_angle(rng);
-        float speed = config.max_speed * 1.0f; // Start with moderate speed
+        float speed = config.normal.max_speed;
 
         auto boid = world.entity()
             .add<NormalBoid>()
@@ -51,7 +51,7 @@ void spawn_doctor_boids(flecs::world& world, int count) {
         float x = dist_x(rng);
         float y = dist_y(rng);
         float angle = dist_angle(rng);
-        float speed = config.max_speed * 1.0f; // Start with moderate speed
+        float speed = config.normal.max_speed;
 
         auto boid = world.entity()
             .add<DoctorBoid>()

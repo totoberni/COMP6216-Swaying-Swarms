@@ -11,7 +11,7 @@
 // ============================================================
 
 enum class DoctorBehavior { Normal, SeekNearest, SeekCentroid };
-enum class SwarmBehavior { Simple, Oval, Chaotic };
+enum class SwarmBehavior { Line, Oval, Chaotic };
 
 // ============================================================
 // Core components — attached to every boid entity
@@ -47,69 +47,75 @@ struct DoctorBoid {};
 struct Infected {};
 
 // ============================================================
+// SwarmParams — per-swarm steering parameters (POD for FLECS)
+// ============================================================
+
+struct SwarmParams {
+    float cohesion_weight    = 1.0f;
+    float alignment_weight   = 1.0f;
+    float separation_weight  = 1.5f;
+    float cohesion_radius    = 50.0f;
+    float alignment_radius   = 50.0f;
+    float separation_radius  = 25.0f;
+    float fov                = 3.14f;
+    float noise_factor       = 0.0f;
+    float max_speed          = 180.0f;
+    float max_force          = 180.0f;
+    float min_speed          = 54.0f;
+};
+
+// ============================================================
 // SimConfig singleton — ALL tunable simulation parameters
 // ============================================================
 
 struct SimConfig {
+    // --- Per-swarm steering parameters ---
+    SwarmParams normal;
+    SwarmParams doctor;
+
+    // --- Behavior mode selectors (select code paths, not param values) ---
+    SwarmBehavior normal_behavior   = SwarmBehavior::Oval;
+    DoctorBehavior doctor_behavior  = DoctorBehavior::Normal;
+
+    // --- Doctor seeking params (doctor-only) ---
+    float doctor_seek_radius        = 300.0f;
+    float doctor_seek_weight        = 5.0f;
+
     // --- Initial infection probabilities ---
-    float p_initial_infect_normal  = 0.05f;
-    float p_initial_infect_doctor  = 0.02f;
+    float p_initial_infect_normal   = 0.05f;
+    float p_initial_infect_doctor   = 0.02f;
 
     // --- Interaction infection probabilities ---
-    float p_infect_normal          = 0.5f;
-    float p_infect_doctor          = 0.5f;
+    float p_infect_normal           = 0.5f;
+    float p_infect_doctor           = 0.5f;
 
     // --- Cure probability ---
-    float p_cure                   = 0.8f;
+    float p_cure                    = 0.8f;
 
     // --- Interaction radii (pixels) ---
-    float r_interact_normal        = 30.0f;
-    float r_interact_doctor        = 40.0f;
+    float r_interact_normal         = 30.0f;
+    float r_interact_doctor         = 40.0f;
 
     // --- World bounds ---
-    float world_width              = 1920.0f;
-    float world_height             = 1080.0f;
-    bool wall_bounce               = true; // If true, boids bounce off walls instead of wrapping around
+    float world_width               = 1920.0f;
+    float world_height              = 1080.0f;
+    bool wall_bounce                = true;
 
     // --- Initial population ---
-    int initial_normal_count       = 200;
-    int initial_doctor_count       = 10;
-
-    // --- Boid movement (Shiffman/Processing.org Model B, scaled to per-second @ 60fps) ---
-    float max_speed                = 180.0f;  // Shiffman maxspeed=3 * 60fps
-    float max_force                = 180.0f;  // Shiffman maxforce=0.05 * 60^2 (preserves per-frame steering ratio)
-    float min_speed                = 54.0f;   // 30% of max_speed — prevents stalling
-
-    float separation_weight        = 1.5f;    // Shiffman default
-    float alignment_weight         = 1.0f;    // Shiffman default
-    float cohesion_weight          = 1.0f;    // Shiffman default
-
-    float separation_radius        = 25.0f;   // Shiffman desiredSeparation
-    float alignment_radius         = 50.0f;   // Shiffman neighbor distance
-    float cohesion_radius          = 50.0f;   // Shiffman neighbor distance
-
-    float fov                      = 1.05f; // 1/2 of fov angle in radians
+    int initial_normal_count        = 200;
+    int initial_doctor_count        = 10;
 
     // --- Infected debuff multipliers ---
-    float debuff_p_cure_infected       = 0.5f;  // Doctor p_cure multiplier when infected
-    float debuff_r_interact_doctor_infected = 0.7f;  // Doctor interaction radius multiplier when infected
-    float debuff_r_interact_normal_infected = 0.8f;  // Normal interaction radius multiplier when infected
+    float debuff_p_cure_infected       = 0.5f;
+    float debuff_r_interact_doctor_infected = 0.7f;
+    float debuff_r_interact_normal_infected = 0.8f;
 
     // --- Cure immunity (SIR: permanent immunity after cure) ---
-    float cure_immunity_level          = 1.0f;    // Immunity granted by doctor cure (0.0-1.0)
+    float cure_immunity_level          = 1.0f;
 
-    // --- Doctor behavior (stubs for P2) ---
-    DoctorBehavior doctor_behavior     = DoctorBehavior::Normal;
-    float doctor_seek_radius           = 300.0f;  // D2/D3: how far doctors scan for sick
-    float doctor_seek_weight           = 5.0f;    // D2/D3: force multiplier for seeking
-
-    // --- Swarm behavior (stubs for P2) ---
-    SwarmBehavior swarm_behavior       = SwarmBehavior::Simple;
-    float noise_factor                 = 0.0f;    // B3 chaotic: random force magnitude
-
-    // --- Headless mode (stubs for P2) ---
+    // --- Headless mode ---
     bool nogui                         = false;
-    float nogui_duration               = 300.0f;  // seconds (5 min default)
+    float nogui_duration               = 300.0f;
 
     // --- Output ---
     char output_dir[256]               = "sim-out";

@@ -462,15 +462,15 @@ static void build_slider_specs(SimConfig* config) {
     s_slider_specs.push_back({"r_interact_doc", &config->r_interact_doctor,        1.0f, 200.0f, 2});
 
     // Category 3: Movement
-    s_slider_specs.push_back({"max_speed",      &config->max_speed,               10.0f, 500.0f, 3});
-    s_slider_specs.push_back({"max_force",      &config->max_force,               10.0f, 500.0f, 3});
-    s_slider_specs.push_back({"min_speed",      &config->min_speed,                0.0f, 500.0f, 3});
-    s_slider_specs.push_back({"sep_weight",     &config->separation_weight,        0.0f,   5.0f, 3});
-    s_slider_specs.push_back({"align_weight",   &config->alignment_weight,         0.0f,   5.0f, 3});
-    s_slider_specs.push_back({"cohes_weight",   &config->cohesion_weight,          0.0f,   5.0f, 3});
-    s_slider_specs.push_back({"sep_radius",     &config->separation_radius,        1.0f, 200.0f, 3});
-    s_slider_specs.push_back({"align_radius",   &config->alignment_radius,         1.0f, 200.0f, 3});
-    s_slider_specs.push_back({"cohes_radius",   &config->cohesion_radius,          1.0f, 200.0f, 3});
+    s_slider_specs.push_back({"max_speed",      &config->normal.max_speed,               10.0f, 500.0f, 3});
+    s_slider_specs.push_back({"max_force",      &config->normal.max_force,               10.0f, 500.0f, 3});
+    s_slider_specs.push_back({"min_speed",      &config->normal.min_speed,                0.0f, 500.0f, 3});
+    s_slider_specs.push_back({"sep_weight",     &config->normal.separation_weight,        0.0f,   5.0f, 3});
+    s_slider_specs.push_back({"align_weight",   &config->normal.alignment_weight,         0.0f,   5.0f, 3});
+    s_slider_specs.push_back({"cohes_weight",   &config->normal.cohesion_weight,          0.0f,   5.0f, 3});
+    s_slider_specs.push_back({"sep_radius",     &config->normal.separation_radius,        1.0f, 200.0f, 3});
+    s_slider_specs.push_back({"align_radius",   &config->normal.alignment_radius,         1.0f, 200.0f, 3});
+    s_slider_specs.push_back({"cohes_radius",   &config->normal.cohesion_radius,          1.0f, 200.0f, 3});
 
     // Category 4: Debuffs
     s_slider_specs.push_back({"db_p_cure",      &config->debuff_p_cure_infected,            0.0f, 2.0f, 4});
@@ -624,8 +624,8 @@ void draw_stats_overlay(const RenderState& state) {
 
             // Cross-parameter guard: min_speed <= max_speed
             if (s_active_category == 3) {
-                if (config->min_speed > config->max_speed) {
-                    config->min_speed = config->max_speed;
+                if (config->normal.min_speed > config->normal.max_speed) {
+                    config->normal.min_speed = config->normal.max_speed;
                 }
             }
         }
