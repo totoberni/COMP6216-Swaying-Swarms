@@ -6,8 +6,6 @@
 #include "sim/rng.h"
 #include <flecs.h>
 #include <vector>
-#include <algorithm>
-#include <random>
 
 // ============================================================
 // PostUpdate Phase: Collisions and Behavior
@@ -43,7 +41,7 @@ void register_infection_system(flecs::world& world) {
                     effective_r_interact = config.r_interact_doctor * config.debuff_r_interact_doctor_infected;
                     p_infect = config.p_infect_doctor;
                 } else {
-                    // Normal and Antivax use the same infection params
+                    // Normal boids infection params
                     effective_r_interact = config.r_interact_normal * config.debuff_r_interact_normal_infected;
                     p_infect = config.p_infect_normal;
                 }
@@ -70,7 +68,7 @@ void register_infection_system(flecs::world& world) {
 
                     if (try_infect(effective_p, rng)) {
                         ne.add<Infected>();
-                        ne.set(InfectionState{0.0f, config.t_death});
+                        ne.set(InfectionState{0.0f});
                         if (has_immunity) ne.remove<ImmunityState>();
                     }
                 }
@@ -136,47 +134,5 @@ void register_cure_system(flecs::world& world) {
         });
 }
 
-void register_death_recovery_system(flecs::world& world) {
-    world.system<InfectionState>("DeathRecoverySystem")
-        .with<Infected>()
-        .kind(flecs::PostUpdate)
-        .each([](flecs::entity e, InfectionState& inf) {
-            flecs::world w = e.world();
-            const SimConfig& config = w.get<SimConfig>();
-            float dt = w.delta_time();
-
-            inf.time_infected += dt;
-
-            if (inf.time_infected >= inf.time_to_death) {
-                std::mt19937& rng = sim_rng();
-                std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-                if (dist(rng) < config.p_death_infected) {
-                    // Death
-                    e.destruct();
-                } else {
-                    // Survived — gain full immunity
-                    e.remove<Infected>();
-                    e.remove<InfectionState>();
-                    e.set(ImmunityState{1.0f, 0.0f});
-                }
-            }
-        });
-}
-
-void register_immunity_decay_system(flecs::world& world) {
-    world.system<ImmunityState>("ImmunityDecaySystem")
-        .without<Infected>()
-        .kind(flecs::PostUpdate)
-        .each([](flecs::entity e, ImmunityState& imm) {
-            flecs::world w = e.world();
-            const SimConfig& config = w.get<SimConfig>();
-            float dt = w.delta_time();
-
-            imm.time_since_recovery += dt;
-            imm.immunity_level = std::max(0.0f, 1.0f - imm.time_since_recovery / config.t_immunity);
-
-            if (imm.immunity_level <= 0.0f) {
-                e.remove<ImmunityState>();
-            }
-        });
-}
+// DeathRecoverySystem removed: SIR model — infected boids stay infected until cured
+// ImmunityDecaySystem removed: SIR model — immunity is permanent after cure

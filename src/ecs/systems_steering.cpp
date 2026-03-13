@@ -35,8 +35,7 @@ void register_rebuild_grid_system(flecs::world& world) {
 
             auto q = w.query<const Position, const Velocity>();
             q.each([&grid](flecs::entity e, const Position& pos, const Velocity& vel) {
-                uint8_t swarm_type = e.has<NormalBoid>() ? 0
-                                   : e.has<DoctorBoid>() ? 1 : 2;
+                uint8_t swarm_type = e.has<DoctorBoid>() ? 1 : 0;
                 bool infected = e.has<Infected>();
 
                 grid.insert(e.id(), pos.x, pos.y, vel.vx, vel.vy, swarm_type, infected);
@@ -72,7 +71,7 @@ void register_steering_system(flecs::world& world) {
                 grid.query_neighbors_fov(pos.x, pos.y, query_radius, neighbors, config.fov, vel.vx, vel.vy);
 
                 // Cache own swarm type once (avoid re-checking per neighbor)
-                int my_swarm = e.has<NormalBoid>() ? 0 : e.has<DoctorBoid>() ? 1 : 2;
+                int my_swarm = e.has<DoctorBoid>() ? 1 : 0;
                 Vector2 my_pos = {pos.x, pos.y};
                 Vector2 my_vel = {vel.vx, vel.vy};
 
@@ -138,28 +137,6 @@ void register_steering_system(flecs::world& world) {
                     Vector2 toward_center = Vector2Subtract(coh, my_pos);
                     Vector2 steer = steer_toward(toward_center, config.max_speed, my_vel, config.max_force);
                     force = Vector2Add(force, Vector2Scale(steer, config.cohesion_weight));
-                }
-
-                // Antivax doctor-avoidance: repel from doctor boids
-                if (my_swarm == 2) {
-                    std::vector<SpatialGrid::QueryResult> av_neighbors;
-                    grid.query_neighbors(pos.x, pos.y, config.antivax_repulsion_radius, av_neighbors);
-                    Vector2 av_repel = Vector2Zero();
-                    int av_count = 0;
-                    for (const auto& aqr : av_neighbors) {
-                        const auto* ane = aqr.entry;
-                        if (ane->entity_id == e.id()) continue;
-                        if (ane->swarm_type != 1) continue; // only flee from doctors
-                        if (aqr.dist_sq < 0.000001f) continue;
-                        Vector2 diff = Vector2Subtract(my_pos, {ane->x, ane->y});
-                        av_repel = Vector2Add(av_repel, Vector2Scale(diff, 1.0f / aqr.dist_sq));
-                        av_count++;
-                    }
-                    if (av_count > 0) {
-                        av_repel = Vector2Scale(av_repel, 1.0f / av_count);
-                        Vector2 steer = steer_toward(av_repel, config.max_speed, my_vel, config.max_force);
-                        force = Vector2Add(force, Vector2Scale(steer, config.antivax_repulsion_weight));
-                    }
                 }
 
                 // Apply force to velocity

@@ -118,13 +118,13 @@ static bool export_population_csv(const SimStats& stats) {
     std::ofstream file("population_data.csv");
     if (!file.is_open()) return false;
 
-    file << "frame,normal,doctor,antivax,infected\n";
+    file << "frame,normal,doctor,infected\n";
 
     for (int i = 0; i < stats.history_count; i++) {
         int read_index = (stats.history_index - stats.history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
         const auto& pt = stats.history[read_index];
         file << (i + 1) << "," << pt.normal_alive << "," << pt.doctor_alive
-             << "," << pt.antivax_alive << "," << pt.infected_count << "\n";
+             << "," << pt.infected_count << "\n";
     }
 
     return file.good();
@@ -152,7 +152,7 @@ static void draw_population_graph(const SimStats& stats, int x, int y, int width
     // Find current max population
     int current_max = 1;
     for (int i = 0; i < stats.history_count; i++) {
-        int total = stats.history[i].normal_alive + stats.history[i].doctor_alive + stats.history[i].antivax_alive;
+        int total = stats.history[i].normal_alive + stats.history[i].doctor_alive;
         if (total > current_max) current_max = total;
         if (stats.history[i].infected_count > current_max) current_max = stats.history[i].infected_count;
     }
@@ -216,32 +216,15 @@ static void draw_population_graph(const SimStats& stats, int x, int y, int width
         DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, doctor_color);
     }
 
-    // Antivax population (orange)
-    Color antivax_color = {255, 165, 0, 230};
-    for (int i = 0; i < stats.history_count - 1; i++) {
-        int ri = (stats.history_index - stats.history_count + i + SimStats::HISTORY_SIZE) % SimStats::HISTORY_SIZE;
-        int ni = (ri + 1) % SimStats::HISTORY_SIZE;
-
-        float x1 = x + 2 + i * x_scale;
-        float y1 = y + height - 2 - stats.history[ri].antivax_alive * y_scale;
-        float x2 = x + 2 + (i + 1) * x_scale;
-        float y2 = y + height - 2 - stats.history[ni].antivax_alive * y_scale;
-
-        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 2.0f, antivax_color);
-    }
-
     // Legend (top-right, vertical)
     int lx = x + width - 68;
     int ly = y + 5;
-    DrawRectangle(lx - 3, ly - 2, 70, 56, Color{20, 20, 25, 200});
+    DrawRectangle(lx - 3, ly - 2, 70, 44, Color{20, 20, 25, 200});
     DrawRectangle(lx, ly, 8, 8, normal_color);
     DrawText("Normal", lx + 12, ly, 8, LIGHTGRAY);
     ly += 12;
     DrawRectangle(lx, ly, 8, 8, doctor_color);
     DrawText("Doctor", lx + 12, ly, 8, LIGHTGRAY);
-    ly += 12;
-    DrawRectangle(lx, ly, 8, 8, antivax_color);
-    DrawText("Antivax", lx + 12, ly, 8, LIGHTGRAY);
     ly += 12;
     DrawRectangle(lx, ly, 8, 8, infected_color);
     DrawText("Infected", lx + 12, ly, 8, LIGHTGRAY);
@@ -251,12 +234,11 @@ static void draw_population_graph(const SimStats& stats, int x, int y, int width
 }
 
 // Per-swarm line colors
-static const Color SWARM_COLORS[3] = {
+static const Color SWARM_COLORS[2] = {
     {0, 230, 0, 230},    // Normal (green)
     {0, 120, 255, 230},  // Doctor (blue)
-    {255, 165, 0, 230},  // Antivax (orange)
 };
-static const char* SWARM_NAMES[3] = {"Normal", "Doctor", "Antivax"};
+static const char* SWARM_NAMES[2] = {"Normal", "Doctor"};
 
 static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, int height) {
     static float smoothed_max = 1.0f;
@@ -266,7 +248,7 @@ static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, 
 
     // Check if any swarm has data
     int max_count = 0;
-    for (int s = 0; s < 3; ++s)
+    for (int s = 0; s < 2; ++s)
         if (stats.swarm[s].coh_history_count > max_count) max_count = stats.swarm[s].coh_history_count;
     if (max_count < 2) {
         DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
@@ -275,7 +257,7 @@ static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, 
 
     // Find current max across all swarms
     float current_max = 1.0f;
-    for (int s = 0; s < 3; ++s)
+    for (int s = 0; s < 2; ++s)
         for (int i = 0; i < stats.swarm[s].coh_history_count; i++)
             if (stats.swarm[s].coh_history[i] > current_max) current_max = stats.swarm[s].coh_history[i];
 
@@ -294,7 +276,7 @@ static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, 
     }
 
     // Draw 3 swarm lines
-    for (int s = 0; s < 3; ++s) {
+    for (int s = 0; s < 2; ++s) {
         const auto& sm = stats.swarm[s];
         if (sm.coh_history_count < 2) continue;
         for (int i = 0; i < sm.coh_history_count - 1; i++) {
@@ -312,7 +294,7 @@ static void draw_cohesion_graph(const SimStats& stats, int x, int y, int width, 
     int lx = x + width - 60;
     int ly = y + 5;
     DrawRectangle(lx - 3, ly - 2, 62, 42, Color{20, 20, 25, 200});
-    for (int s = 0; s < 3; ++s) {
+    for (int s = 0; s < 2; ++s) {
         DrawRectangle(lx, ly, 8, 8, SWARM_COLORS[s]);
         DrawText(SWARM_NAMES[s], lx + 12, ly, 8, LIGHTGRAY);
         ly += 12;
@@ -326,7 +308,7 @@ static void draw_alignment_graph(const SimStats& stats, int x, int y, int width,
     DrawRectangleLines(x, y, width, height, Color{80, 80, 80, 255});
 
     int max_count = 0;
-    for (int s = 0; s < 3; ++s)
+    for (int s = 0; s < 2; ++s)
         if (stats.swarm[s].ali_history_count > max_count) max_count = stats.swarm[s].ali_history_count;
     if (max_count < 2) {
         DrawText("Collecting data...", x + 5, y + height / 2 - 5, 10, LIGHTGRAY);
@@ -356,7 +338,7 @@ static void draw_alignment_graph(const SimStats& stats, int x, int y, int width,
     }
 
     // Draw 3 swarm lines
-    for (int s = 0; s < 3; ++s) {
+    for (int s = 0; s < 2; ++s) {
         const auto& sm = stats.swarm[s];
         if (sm.ali_history_count < 2) continue;
         for (int i = 0; i < sm.ali_history_count - 1; i++) {
@@ -374,7 +356,7 @@ static void draw_alignment_graph(const SimStats& stats, int x, int y, int width,
     int lx = x + width - 60;
     int ly = y + 5;
     DrawRectangle(lx - 3, ly - 2, 62, 42, Color{20, 20, 25, 200});
-    for (int s = 0; s < 3; ++s) {
+    for (int s = 0; s < 2; ++s) {
         DrawRectangle(lx, ly, 8, 8, SWARM_COLORS[s]);
         DrawText(SWARM_NAMES[s], lx + 12, ly, 8, LIGHTGRAY);
         ly += 12;
@@ -390,7 +372,7 @@ static void draw_separation_graph(const SimStats& stats, int x, int y, int width
     DrawRectangleLines(x, y, width, height, Color{80, 80, 80, 255});
 
     int max_count = 0;
-    for (int s = 0; s < 3; ++s)
+    for (int s = 0; s < 2; ++s)
         if (stats.swarm[s].sep_history_count > max_count) max_count = stats.swarm[s].sep_history_count;
     if (max_count < 2) {
         smoothed_max = 1.0f;
@@ -399,7 +381,7 @@ static void draw_separation_graph(const SimStats& stats, int x, int y, int width
     }
 
     float current_max = 1.0f;
-    for (int s = 0; s < 3; ++s)
+    for (int s = 0; s < 2; ++s)
         for (int i = 0; i < stats.swarm[s].sep_history_count; i++)
             if (stats.swarm[s].sep_history[i] > current_max) current_max = stats.swarm[s].sep_history[i];
 
@@ -417,7 +399,7 @@ static void draw_separation_graph(const SimStats& stats, int x, int y, int width
     }
 
     // Draw 3 swarm lines
-    for (int s = 0; s < 3; ++s) {
+    for (int s = 0; s < 2; ++s) {
         const auto& sm = stats.swarm[s];
         if (sm.sep_history_count < 2) continue;
         for (int i = 0; i < sm.sep_history_count - 1; i++) {
@@ -435,7 +417,7 @@ static void draw_separation_graph(const SimStats& stats, int x, int y, int width
     int lx = x + width - 60;
     int ly = y + 5;
     DrawRectangle(lx - 3, ly - 2, 62, 42, Color{20, 20, 25, 200});
-    for (int s = 0; s < 3; ++s) {
+    for (int s = 0; s < 2; ++s) {
         DrawRectangle(lx, ly, 8, 8, SWARM_COLORS[s]);
         DrawText(SWARM_NAMES[s], lx + 12, ly, 8, LIGHTGRAY);
         ly += 12;
@@ -475,48 +457,25 @@ static void build_slider_specs(SimConfig* config) {
     s_slider_specs.push_back({"p_cure",          &config->p_cure,                   0.0f,   1.0f, 1});
     s_slider_specs.push_back({"cure_immunity",   &config->cure_immunity_level,      0.0f,   1.0f, 1});
 
-    // Category 2: Reproduction
-    s_slider_specs.push_back({"p_offspr_nrm",   &config->p_offspring_normal,       0.0f,   1.0f, 2});
-    s_slider_specs.push_back({"p_offspr_doc",   &config->p_offspring_doctor,       0.0f,   1.0f, 2});
-    s_slider_specs.push_back({"mean_offspr_nrm", &config->offspring_mean_normal,   0.0f,  10.0f, 2});
-    s_slider_specs.push_back({"std_offspr_nrm", &config->offspring_stddev_normal,  0.0f,   5.0f, 2});
-    s_slider_specs.push_back({"mean_offspr_doc", &config->offspring_mean_doctor,   0.0f,  10.0f, 2});
-    s_slider_specs.push_back({"std_offspr_doc", &config->offspring_stddev_doctor,  0.0f,   5.0f, 2});
-    s_slider_specs.push_back({"repro_cooldown", &config->reproduction_cooldown,    0.0f,  30.0f, 2});
+    // Category 2: Interaction
+    s_slider_specs.push_back({"r_interact_nrm", &config->r_interact_normal,        1.0f, 200.0f, 2});
+    s_slider_specs.push_back({"r_interact_doc", &config->r_interact_doctor,        1.0f, 200.0f, 2});
 
-    // Category 3: Transition
-    s_slider_specs.push_back({"p_become_doc",   &config->p_become_doctor,          0.0f,   1.0f, 3});
-    s_slider_specs.push_back({"p_antivax",      &config->p_antivax,               0.0f,   1.0f, 3});
+    // Category 3: Movement
+    s_slider_specs.push_back({"max_speed",      &config->max_speed,               10.0f, 500.0f, 3});
+    s_slider_specs.push_back({"max_force",      &config->max_force,               10.0f, 500.0f, 3});
+    s_slider_specs.push_back({"min_speed",      &config->min_speed,                0.0f, 500.0f, 3});
+    s_slider_specs.push_back({"sep_weight",     &config->separation_weight,        0.0f,   5.0f, 3});
+    s_slider_specs.push_back({"align_weight",   &config->alignment_weight,         0.0f,   5.0f, 3});
+    s_slider_specs.push_back({"cohes_weight",   &config->cohesion_weight,          0.0f,   5.0f, 3});
+    s_slider_specs.push_back({"sep_radius",     &config->separation_radius,        1.0f, 200.0f, 3});
+    s_slider_specs.push_back({"align_radius",   &config->alignment_radius,         1.0f, 200.0f, 3});
+    s_slider_specs.push_back({"cohes_radius",   &config->cohesion_radius,          1.0f, 200.0f, 3});
 
-    // Category 4: Interaction
-    s_slider_specs.push_back({"r_interact_nrm", &config->r_interact_normal,        1.0f, 200.0f, 4});
-    s_slider_specs.push_back({"r_interact_doc", &config->r_interact_doctor,        1.0f, 200.0f, 4});
-
-    // Category 5: Movement
-    s_slider_specs.push_back({"max_speed",      &config->max_speed,               10.0f, 500.0f, 5});
-    s_slider_specs.push_back({"max_force",      &config->max_force,               10.0f, 500.0f, 5});
-    s_slider_specs.push_back({"min_speed",      &config->min_speed,                0.0f, 500.0f, 5});
-    s_slider_specs.push_back({"sep_weight",     &config->separation_weight,        0.0f,   5.0f, 5});
-    s_slider_specs.push_back({"align_weight",   &config->alignment_weight,         0.0f,   5.0f, 5});
-    s_slider_specs.push_back({"cohes_weight",   &config->cohesion_weight,          0.0f,   5.0f, 5});
-    s_slider_specs.push_back({"sep_radius",     &config->separation_radius,        1.0f, 200.0f, 5});
-    s_slider_specs.push_back({"align_radius",   &config->alignment_radius,         1.0f, 200.0f, 5});
-    s_slider_specs.push_back({"cohes_radius",   &config->cohesion_radius,          1.0f, 200.0f, 5});
-
-    // Category 6: Debuffs
-    s_slider_specs.push_back({"db_p_cure",      &config->debuff_p_cure_infected,            0.0f, 2.0f, 6});
-    s_slider_specs.push_back({"db_r_int_doc",   &config->debuff_r_interact_doctor_infected, 0.0f, 2.0f, 6});
-    s_slider_specs.push_back({"db_p_off_doc",   &config->debuff_p_offspring_doctor_infected, 0.0f, 2.0f, 6});
-    s_slider_specs.push_back({"db_r_int_nrm",   &config->debuff_r_interact_normal_infected, 0.0f, 2.0f, 6});
-    s_slider_specs.push_back({"db_p_off_nrm",   &config->debuff_p_offspring_normal_infected, 0.0f, 2.0f, 6});
-
-    // Category 7: Antivax
-    s_slider_specs.push_back({"av_repul_radius", &config->antivax_repulsion_radius, 1.0f, 300.0f, 7});
-    s_slider_specs.push_back({"av_repul_weight", &config->antivax_repulsion_weight, 0.0f,  10.0f, 7});
-
-    // Category 8: Time
-    s_slider_specs.push_back({"t_death",        &config->t_death,                  0.5f,  30.0f, 8});
-    s_slider_specs.push_back({"t_adult",        &config->t_adult,                  0.5f,  60.0f, 8});
+    // Category 4: Debuffs
+    s_slider_specs.push_back({"db_p_cure",      &config->debuff_p_cure_infected,            0.0f, 2.0f, 4});
+    s_slider_specs.push_back({"db_r_int_doc",   &config->debuff_r_interact_doctor_infected, 0.0f, 2.0f, 4});
+    s_slider_specs.push_back({"db_r_int_nrm",   &config->debuff_r_interact_normal_infected, 0.0f, 2.0f, 4});
 }
 
 void draw_stats_overlay(const RenderState& state) {
@@ -579,8 +538,8 @@ void draw_stats_overlay(const RenderState& state) {
     y += line_height - 4;
 
     GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             TextFormat("N:%d  D:%d  A:%d",
-                        stats.swarm[0].alive, stats.swarm[1].alive, stats.swarm[2].alive));
+             TextFormat("N:%d  D:%d",
+                        stats.swarm[0].alive, stats.swarm[1].alive));
     y += line_height - 4;
 
     /*
@@ -608,26 +567,23 @@ void draw_stats_overlay(const RenderState& state) {
         int fs = 10;
 
         DrawText("Avg Cohesion:", x, y + 2, fs, label_col);
-        DrawText(TextFormat("N:%.1f  D:%.1f  A:%.1f",
+        DrawText(TextFormat("N:%.1f  D:%.1f",
                  stats.swarm[0].average_cohesion,
-                 stats.swarm[1].average_cohesion,
-                 stats.swarm[2].average_cohesion),
+                 stats.swarm[1].average_cohesion),
                  x + 90, y + 2, fs, value_col);
         y += line_height - 4;
 
         DrawText("Avg Alignment:", x, y + 2, fs, label_col);
-        DrawText(TextFormat("N:%.2f  D:%.2f  A:%.2f",
+        DrawText(TextFormat("N:%.2f  D:%.2f",
                  stats.swarm[0].average_alignment_angle,
-                 stats.swarm[1].average_alignment_angle,
-                 stats.swarm[2].average_alignment_angle),
+                 stats.swarm[1].average_alignment_angle),
                  x + 95, y + 2, fs, value_col);
         y += line_height - 4;
 
         DrawText("Avg Sep (RMS):", x, y + 2, fs, label_col);
-        DrawText(TextFormat("N:%.1f  D:%.1f  A:%.1f",
+        DrawText(TextFormat("N:%.1f  D:%.1f",
                  stats.swarm[0].average_separation,
-                 stats.swarm[1].average_separation,
-                 stats.swarm[2].average_separation),
+                 stats.swarm[1].average_separation),
                  x + 95, y + 2, fs, value_col);
         y += line_height - 4;
     }
@@ -667,7 +623,7 @@ void draw_stats_overlay(const RenderState& state) {
             }
 
             // Cross-parameter guard: min_speed <= max_speed
-            if (s_active_category == 5) {
+            if (s_active_category == 3) {
                 if (config->min_speed > config->max_speed) {
                     config->min_speed = config->max_speed;
                 }
@@ -711,15 +667,6 @@ void draw_stats_overlay(const RenderState& state) {
     y += graph_height + 8;
 
     // ========================================================
-    // Separation Graph
-    // ========================================================
-    GuiLabel(Rectangle{static_cast<float>(x), static_cast<float>(y), 280, 20},
-             "--- Separation History ---");
-    y += line_height + 14;
-    draw_separation_graph(stats, x, y, graph_width, graph_height);
-    y += graph_height + 8;
-
-    // ========================================================
     // CSV Export (only when paused)
     // ========================================================
     if (sim_state && sim_state->is_paused) {
@@ -746,7 +693,7 @@ void draw_stats_overlay(const RenderState& state) {
     // Deferred dropdown rendering (drawn LAST so items appear on top)
     // ========================================================
     if (config && dropdown_y > 0) {
-        const char* categories = "Infection;Cure;Reproduction;Transition;Interaction;Movement;Debuffs;Antivax;Time";
+        const char* categories = "Infection;Cure;Interaction;Movement;Debuffs";
         Rectangle dropdown_rect = {static_cast<float>(x), static_cast<float>(dropdown_y),
                                     static_cast<float>(RenderConfig::STATS_PANEL_WIDTH - 20), 24};
         if (s_dropdown_edit_mode) {
@@ -771,31 +718,24 @@ void render_frame(const RenderState& state) {
     // Draw interaction radii (background layer) — toggled with V key, off by default
     if (state.sim_state && state.sim_state->show_radii) {
         for (const auto& boid : state.boids) {
-            uint32_t radius_color;
-            if (boid.swarm_type == 1) {
-                radius_color = RenderConfig::COLOR_RADIUS_DOCTOR;
-            } else if (boid.swarm_type == 2) {
-                radius_color = RenderConfig::COLOR_RADIUS_ANTIVAX;
-            } else {
-                radius_color = RenderConfig::COLOR_RADIUS_NORMAL;
-            }
+            uint32_t radius_color = (boid.swarm_type == 1)
+                ? RenderConfig::COLOR_RADIUS_DOCTOR
+                : RenderConfig::COLOR_RADIUS_NORMAL;
             draw_interaction_radius(boid.x, boid.y, boid.radius, radius_color);
         }
     }
 
     // Draw per-swarm centroid indicators (circle + alignment arrow)
     {
-        static const uint32_t centroid_colors[3] = {
+        static const uint32_t centroid_colors[2] = {
             0x5500FF00,  // Normal: semi-transparent green
             0x5578B4FF,  // Doctor: semi-transparent blue
-            0x5500A5FF,  // Antivax: semi-transparent orange
         };
-        static const uint32_t arrow_colors[3] = {
+        static const uint32_t arrow_colors[2] = {
             0xFF00FF00,  // Normal: green
             0xFFFF7800,  // Doctor: blue
-            0xFF00A5FF,  // Antivax: orange
         };
-        for (int s = 0; s < 3; ++s) {
+        for (int s = 0; s < 2; ++s) {
             const auto& sm = state.stats.swarm[s];
             if (sm.alive > 0) {
                 draw_avg_boid_indicator(sm.pos_avg.x, sm.pos_avg.y, 8.f,

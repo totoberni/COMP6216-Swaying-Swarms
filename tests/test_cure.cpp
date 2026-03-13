@@ -37,19 +37,19 @@ TEST(CureContract, DoctorCannotCureSelf) {
     register_components(world);
     set_singletons(world);
 
-    // Create a single infected doctor with a long time-to-death (far from dying)
+    // Create a single infected doctor
     auto doctor = world.entity()
         .add<DoctorBoid>()
         .add<Infected>()
         .set(Position{500.0f, 500.0f})
         .set(Velocity{0.0f, 0.0f})
         .set(Heading{0.0f})
-        .set(InfectionState{0.0f, 5.0f});
+        .set(InfectionState{0.0f});
 
     register_rebuild_grid_system(world);
     register_cure_system(world);
 
-    // Run 120 ticks (= 2 s at 60 fps).  t_death = 5 s so the doctor stays alive.
+    // Run 120 ticks (= 2 s at 60 fps). SIR: no death, infected stays infected.
     for (int i = 0; i < 120; ++i) {
         world.progress(1.0f / 60.0f);
     }
@@ -75,7 +75,7 @@ TEST(CureContract, DoctorCanCureOtherDoctor) {
         .set(Position{500.0f, 500.0f})
         .set(Velocity{0.0f, 0.0f})
         .set(Heading{0.0f})
-        .set(InfectionState{0.0f, 5.0f});
+        .set(InfectionState{0.0f});
 
     // Doctor 2 — healthy, at (510, 510) — 14 px away, within r_interact_doctor (40)
     auto doctor2 = world.entity()
@@ -83,7 +83,7 @@ TEST(CureContract, DoctorCanCureOtherDoctor) {
         .set(Position{510.0f, 510.0f})
         .set(Velocity{0.0f, 0.0f})
         .set(Heading{0.0f})
-        .set(InfectionState{0.0f, 5.0f});
+        .set(InfectionState{0.0f});
 
     register_rebuild_grid_system(world);
     register_cure_system(world);

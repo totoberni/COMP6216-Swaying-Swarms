@@ -85,6 +85,7 @@ cmake-build-*/
 .worktrees/
 *CLAUDE*.md
 *changelog.md
+context.md
 !README.md
 
 # Logs and Debug

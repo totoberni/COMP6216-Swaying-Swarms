@@ -12,7 +12,7 @@ public:
         uint64_t entity_id;
         float x, y;
         float vx, vy;         // velocity for alignment
-        uint8_t swarm_type;    // 0=normal, 1=doctor, 2=antivax
+        uint8_t swarm_type;    // 0=normal, 1=doctor
         bool infected;
     };
 
