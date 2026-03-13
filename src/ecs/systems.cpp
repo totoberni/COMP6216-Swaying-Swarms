@@ -16,6 +16,7 @@ void register_all_systems(flecs::world& world) {
 
     // OnUpdate
     register_steering_system(world);
+    register_doctor_steering_system(world);
     register_movement_system(world);
 
     // PostUpdate
