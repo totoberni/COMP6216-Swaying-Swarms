@@ -2,14 +2,14 @@
 """Compare results from the 3x3 experiment matrix.
 
 Reads sim-out/out*/metrics.csv and config_used.ini to generate:
-  1. 3x3 grid of infection curves
-  2. 3x3 grid of growth rate curves
-  3. 3x3 grid of % infected curves
-  4. Overlay of all 9 infection curves
-  5. Recovery curves per experiment
-  6. Heatmap of peak infection count
-  7. Heatmap of steady-state infected count
-  8. Heatmap of convergence time
+  1. 3x3 grid of infection curves (with error bands for multi-trial)
+  2. 3x3 grid of growth rate curves (with error bands)
+  3. 3x3 grid of % infected curves (with error bands)
+  4. Overlay of all 9 infection curves (with error bands)
+  5. Recovery curves per experiment (with error bands)
+  6. Heatmap of peak infection count (mean +/- std)
+  7. Heatmap of steady-state infected count (mean +/- std)
+  8. Heatmap of convergence time (mean +/- std)
 
 Output: sim-out/analysis/*.png + summary table to stdout.
 
@@ -91,7 +91,7 @@ def read_metrics(csv_path):
 
 
 def discover_runs(sim_dir):
-    """Find all out* directories with metrics.csv and config_used.ini."""
+    """Find all out* directories, group by experiment cell."""
     runs = {}
     sim_path = Path(sim_dir)
 
@@ -118,10 +118,14 @@ def discover_runs(sim_dir):
         cell = f"{b_key}_{d_key}"
         data = read_metrics(metrics_file)
 
-        if cell in runs:
-            print(f"Warning: duplicate run for {cell} ({d.name}), using latest", file=sys.stderr)
+        if cell not in runs:
+            runs[cell] = {"trials": [], "b_key": b_key, "d_key": d_key}
+        runs[cell]["trials"].append({"data": data, "dir": d.name})
 
-        runs[cell] = {"data": data, "dir": d.name, "b_key": b_key, "d_key": d_key}
+    # Print discovery summary
+    for cell, info in sorted(runs.items()):
+        n = len(info["trials"])
+        print(f"  {cell}: {n} trial(s)")
 
     return runs
 
@@ -191,8 +195,55 @@ def extract_stats(data):
     }
 
 
+def aggregate_trials(trial_stats_list):
+    """Compute mean +/- std across trials for each metric."""
+    agg = {}
+    keys = trial_stats_list[0].keys()
+    for key in keys:
+        values = [s[key] for s in trial_stats_list]
+        finite = [v for v in values if not np.isinf(v)]
+        if finite:
+            agg[f"{key}_mean"] = float(np.mean(finite))
+            agg[f"{key}_std"] = float(np.std(finite)) if len(finite) > 1 else 0.0
+        else:
+            agg[f"{key}_mean"] = float("inf")
+            agg[f"{key}_std"] = 0.0
+        agg[f"{key}_n"] = len(finite)
+    return agg
+
+
+def aggregate_time_series(trials, column):
+    """Stack a column across trials, compute per-frame mean and std.
+
+    Returns (time_s, mean_arr, std_arr). Truncates to shortest trial.
+    """
+    series = []
+    time_s = None
+    min_len = float("inf")
+
+    for t in trials:
+        vals = t["data"].get(column, [])
+        if not vals:
+            continue
+        min_len = min(min_len, len(vals))
+        series.append(vals)
+        if time_s is None:
+            time_s = t["data"].get("time_s", [])
+
+    if not series or time_s is None:
+        return [], [], []
+
+    min_len = int(min_len)
+    time_s = time_s[:min_len]
+    stacked = np.array([s[:min_len] for s in series])
+    mean = np.mean(stacked, axis=0)
+    std = np.std(stacked, axis=0) if len(series) > 1 else np.zeros(min_len)
+
+    return time_s, mean, std
+
+
 def plot_infection_grid(runs, out_dir):
-    """3x3 grid of infection curves."""
+    """3x3 grid of infection curves with error bands."""
     fig, axes = plt.subplots(3, 3, figsize=(14, 10), sharex=True, sharey=True)
     fig.suptitle("Infection Curves — 3x3 Experiment Matrix", fontsize=14, fontweight="bold")
 
@@ -202,11 +253,11 @@ def plot_infection_grid(runs, out_dir):
             cell = f"{b}_{d}"
 
             if cell in runs:
-                data = runs[cell]["data"]
-                time_s = data.get("time_s", [])
-                infected = data.get("infected", [])
-                ax.plot(time_s, infected, color="tab:red", linewidth=1.2)
-                ax.fill_between(time_s, infected, alpha=0.15, color="tab:red")
+                time_s, mean, std = aggregate_time_series(
+                    runs[cell]["trials"], "infected")
+                ax.plot(time_s, mean, color="tab:red", linewidth=1.2)
+                ax.fill_between(time_s, mean - std, mean + std,
+                                alpha=0.2, color="tab:red")
             else:
                 ax.text(0.5, 0.5, "No data", transform=ax.transAxes,
                         ha="center", va="center", fontsize=12, color="gray")
@@ -224,9 +275,10 @@ def plot_infection_grid(runs, out_dir):
 
 
 def plot_overlay(runs, out_dir):
-    """All 9 infection curves on one plot."""
+    """All 9 infection curves on one plot with error bands."""
     fig, ax = plt.subplots(figsize=(12, 7))
-    ax.set_title("Infection Curves — All Experiments Overlaid", fontsize=13, fontweight="bold")
+    ax.set_title("Infection Curves — All Experiments Overlaid",
+                 fontsize=13, fontweight="bold")
 
     colors = list(mcolors.TABLEAU_COLORS.values())
     styles = ["-", "--", ":"]
@@ -239,12 +291,15 @@ def plot_overlay(runs, out_dir):
                 idx += 1
                 continue
 
-            data = runs[cell]["data"]
-            time_s = data.get("time_s", [])
-            infected = data.get("infected", [])
+            time_s, mean, std = aggregate_time_series(
+                runs[cell]["trials"], "infected")
             label = f"{b}_{d} ({BEHAVIOR_LABELS[b]}, {DOCTOR_LABELS[d]})"
-            ax.plot(time_s, infected, color=colors[idx % len(colors)],
-                    linestyle=styles[di % len(styles)], linewidth=1.3, label=label)
+            color = colors[idx % len(colors)]
+            ax.plot(time_s, mean, color=color,
+                    linestyle=styles[di % len(styles)],
+                    linewidth=1.3, label=label)
+            ax.fill_between(time_s, mean - std, mean + std,
+                            alpha=0.1, color=color)
             idx += 1
 
     ax.set_xlabel("Time (s)", fontsize=11)
@@ -258,7 +313,7 @@ def plot_overlay(runs, out_dir):
 
 
 def plot_growth_rate_grid(runs, out_dir):
-    """3x3 grid of growth rate curves."""
+    """3x3 grid of growth rate curves with error bands."""
     fig, axes = plt.subplots(3, 3, figsize=(14, 10), sharex=True)
     fig.suptitle("Infection Growth Rate — 3x3 Experiment Matrix",
                  fontsize=14, fontweight="bold")
@@ -269,19 +324,17 @@ def plot_growth_rate_grid(runs, out_dir):
             cell = f"{b}_{d}"
 
             if cell in runs:
-                data = runs[cell]["data"]
-                time_s = data.get("time_s", [])
-                growth = data.get("growth_rate", [])
-                ax.plot(time_s, growth, color="tab:orange", linewidth=0.8)
+                time_s, mean, std = aggregate_time_series(
+                    runs[cell]["trials"], "growth_rate")
+                ax.plot(time_s, mean, color="tab:orange", linewidth=0.8)
+                ax.fill_between(time_s, mean - std, mean + std,
+                                alpha=0.15, color="tab:orange")
                 ax.axhline(y=0, color="gray", linestyle="--", linewidth=0.5)
-                growth_arr = np.array(growth)
-                time_arr = np.array(time_s)
-                ax.fill_between(time_arr, growth_arr, 0,
-                                where=growth_arr > 0, alpha=0.2,
-                                color="tab:red", interpolate=True)
-                ax.fill_between(time_arr, growth_arr, 0,
-                                where=growth_arr < 0, alpha=0.2,
-                                color="tab:green", interpolate=True)
+                # Directional fill on the mean
+                ax.fill_between(time_s, mean, 0, where=mean > 0,
+                                alpha=0.1, color="tab:red", interpolate=True)
+                ax.fill_between(time_s, mean, 0, where=mean < 0,
+                                alpha=0.1, color="tab:green", interpolate=True)
             else:
                 ax.text(0.5, 0.5, "No data", transform=ax.transAxes,
                         ha="center", va="center", fontsize=12, color="gray")
@@ -299,7 +352,7 @@ def plot_growth_rate_grid(runs, out_dir):
 
 
 def plot_pct_infected_grid(runs, out_dir):
-    """3x3 grid of % population infected curves."""
+    """3x3 grid of % population infected curves with error bands."""
     fig, axes = plt.subplots(3, 3, figsize=(14, 10), sharex=True, sharey=True)
     fig.suptitle("% Population Infected — 3x3 Experiment Matrix",
                  fontsize=14, fontweight="bold")
@@ -310,11 +363,14 @@ def plot_pct_infected_grid(runs, out_dir):
             cell = f"{b}_{d}"
 
             if cell in runs:
-                data = runs[cell]["data"]
-                time_s = data.get("time_s", [])
-                pct = [v * 100 for v in data.get("pct_infected", [])]
-                ax.plot(time_s, pct, color="tab:purple", linewidth=1.2)
-                ax.fill_between(time_s, pct, alpha=0.15, color="tab:purple")
+                time_s, mean, std = aggregate_time_series(
+                    runs[cell]["trials"], "pct_infected")
+                mean_pct = mean * 100
+                std_pct = std * 100
+                ax.plot(time_s, mean_pct, color="tab:purple", linewidth=1.2)
+                ax.fill_between(time_s, mean_pct - std_pct,
+                                mean_pct + std_pct,
+                                alpha=0.2, color="tab:purple")
             else:
                 ax.text(0.5, 0.5, "No data", transform=ax.transAxes,
                         ha="center", va="center", fontsize=12, color="gray")
@@ -331,9 +387,10 @@ def plot_pct_infected_grid(runs, out_dir):
     plt.close(fig)
 
 
-def plot_heatmap(matrix, title, filename, out_dir, fmt=".0f", cmap="YlOrRd"):
-    """Generic 3x3 heatmap."""
-    fig, ax = plt.subplots(figsize=(7, 5))
+def plot_heatmap(matrix, title, filename, out_dir, fmt=".0f", cmap="YlOrRd",
+                 std_matrix=None):
+    """Generic 3x3 heatmap with optional mean +/- std annotations."""
+    fig, ax = plt.subplots(figsize=(8, 5))
     im = ax.imshow(matrix, cmap=cmap, aspect="auto")
 
     ax.set_xticks(range(3))
@@ -341,14 +398,24 @@ def plot_heatmap(matrix, title, filename, out_dir, fmt=".0f", cmap="YlOrRd"):
     ax.set_yticks(range(3))
     ax.set_yticklabels([f"{b} ({BEHAVIOR_LABELS[b]})" for b in BEHAVIORS], fontsize=9)
 
+    # Threshold for text color
+    finite_vals = [v for row in matrix for v in row
+                   if v is not None and not np.isinf(v)]
+    color_thresh = max(finite_vals) * 0.6 if finite_vals else 0
+
     for r in range(3):
         for c in range(3):
             val = matrix[r][c]
-            text = "N/A" if val is None or np.isinf(val) else f"{val:{fmt}}"
-            color = "white" if val is not None and not np.isinf(val) and val > np.nanmax(
-                [v for row in matrix for v in row if v is not None and not np.isinf(v)]
-            ) * 0.6 else "black"
-            ax.text(c, r, text, ha="center", va="center", fontsize=11, color=color)
+            if val is None or np.isinf(val):
+                text = "N/A"
+            elif std_matrix is not None and std_matrix[r][c] > 0:
+                text = f"{val:{fmt}}\n+/-{std_matrix[r][c]:{fmt}}"
+            else:
+                text = f"{val:{fmt}}"
+            color = ("white" if val is not None and not np.isinf(val)
+                     and val > color_thresh else "black")
+            ax.text(c, r, text, ha="center", va="center",
+                    fontsize=10, color=color)
 
     ax.set_title(title, fontsize=13, fontweight="bold")
     fig.colorbar(im, ax=ax, shrink=0.8)
@@ -358,7 +425,7 @@ def plot_heatmap(matrix, title, filename, out_dir, fmt=".0f", cmap="YlOrRd"):
 
 
 def plot_recovery_curves(runs, out_dir):
-    """Recovery curves per experiment."""
+    """Recovery curves per experiment with error bands."""
     fig, ax = plt.subplots(figsize=(12, 7))
     ax.set_title("Recovery Curves — All Experiments", fontsize=13, fontweight="bold")
 
@@ -371,12 +438,13 @@ def plot_recovery_curves(runs, out_dir):
                 idx += 1
                 continue
 
-            data = runs[cell]["data"]
-            time_s = data.get("time_s", [])
-            recovered = data.get("recovered", [])
+            time_s, mean, std = aggregate_time_series(
+                runs[cell]["trials"], "recovered")
             label = f"{b}_{d}"
-            ax.plot(time_s, recovered, color=colors[idx % len(colors)],
-                    linewidth=1.2, label=label)
+            color = colors[idx % len(colors)]
+            ax.plot(time_s, mean, color=color, linewidth=1.2, label=label)
+            ax.fill_between(time_s, mean - std, mean + std,
+                            alpha=0.1, color=color)
             idx += 1
 
     ax.set_xlabel("Time (s)", fontsize=11)
@@ -391,33 +459,60 @@ def plot_recovery_curves(runs, out_dir):
 
 def print_summary_table(runs, all_stats):
     """Print summary table to stdout."""
-    print("\n" + "=" * 80)
+    print("\n" + "=" * 110)
     print("EXPERIMENT RESULTS SUMMARY")
-    print("=" * 80)
-    print(f"{'Cell':<8} {'Boid':<10} {'Doctor':<16} {'Peak Inf':>9} {'Peak Time':>10} "
-          f"{'SS Inf':>8} {'SS %Inf':>8} {'Conv Time':>10} {'Mean GR(2H)':>12}")
-    print("-" * 92)
+    print("=" * 110)
+    print(f"{'Cell':<8} {'N':>3} {'Boid':<10} {'Doctor':<16} {'Peak Inf':>12} "
+          f"{'SS Inf':>12} {'SS %Inf':>10} {'Conv Time':>10} {'Mean GR':>10}")
+    print("-" * 110)
 
     for b in BEHAVIORS:
         for d in DOCTORS:
             cell = f"{b}_{d}"
             if cell not in runs:
-                print(f"{cell:<8} {'---':<10} {'---':<16} {'N/A':>9} {'N/A':>10} "
-                      f"{'N/A':>8} {'N/A':>8} {'N/A':>10} {'N/A':>12}")
+                print(f"{cell:<8} {'':>3} {'---':<10} {'---':<16} {'N/A':>12} "
+                      f"{'N/A':>12} {'N/A':>10} {'N/A':>10} {'N/A':>10}")
                 continue
 
             stats = all_stats[cell]
-            conv = (f"{stats['convergence_time']:.0f}s"
-                    if not np.isinf(stats["convergence_time"]) else "never")
-            gr = f"{stats['mean_growth_2h']:+.2f}"
+            n = stats.get("n_trials", 1)
 
-            print(f"{cell:<8} {BEHAVIOR_LABELS[b]:<10} {DOCTOR_LABELS[d]:<16} "
-                  f"{stats['peak_infected']:>9.0f} {stats['peak_time']:>9.1f}s "
-                  f"{stats['steady_state_infected']:>8.1f} "
-                  f"{stats['steady_state_pct']:>7.1f}% "
-                  f"{conv:>10} {gr:>12}")
+            # Convergence time
+            conv_mean = stats["convergence_time_mean"]
+            conv_std = stats.get("convergence_time_std", 0)
+            if np.isinf(conv_mean):
+                conv_text = "never"
+            elif n > 1 and conv_std > 0:
+                conv_text = f"{conv_mean:.0f}+/-{conv_std:.0f}s"
+            else:
+                conv_text = f"{conv_mean:.0f}s"
 
-    print("=" * 92)
+            # Growth rate
+            gr_mean = stats["mean_growth_2h_mean"]
+            gr_std = stats.get("mean_growth_2h_std", 0)
+            if n > 1 and gr_std > 0:
+                gr_text = f"{gr_mean:+.2f}+/-{gr_std:.2f}"
+            else:
+                gr_text = f"{gr_mean:+.2f}"
+
+            if n > 1:
+                peak_text = (f"{stats['peak_infected_mean']:.0f}"
+                             f"+/-{stats['peak_infected_std']:.0f}")
+                ss_text = (f"{stats['steady_state_infected_mean']:.1f}"
+                           f"+/-{stats['steady_state_infected_std']:.1f}")
+                pct_text = (f"{stats['steady_state_pct_mean']:.1f}"
+                            f"+/-{stats['steady_state_pct_std']:.1f}%")
+            else:
+                peak_text = f"{stats['peak_infected_mean']:.0f}"
+                ss_text = f"{stats['steady_state_infected_mean']:.1f}"
+                pct_text = f"{stats['steady_state_pct_mean']:.1f}%"
+
+            print(f"{cell:<8} {n:>3} {BEHAVIOR_LABELS[b]:<10} "
+                  f"{DOCTOR_LABELS[d]:<16} {peak_text:>12} "
+                  f"{ss_text:>12} {pct_text:>10} "
+                  f"{conv_text:>10} {gr_text:>10}")
+
+    print("=" * 110)
 
 
 def main():
@@ -431,12 +526,16 @@ def main():
         print("No valid experiment runs found.", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Found {len(runs)} experiment run(s): {', '.join(sorted(runs.keys()))}")
+    n_cells = len(runs)
+    total_trials = sum(len(info["trials"]) for info in runs.values())
+    print(f"Found {n_cells} experiment cell(s), {total_trials} total trial(s)")
 
-    # Compute stats
+    # Compute stats: per-trial then aggregate
     all_stats = {}
-    for cell, run in runs.items():
-        all_stats[cell] = extract_stats(run["data"])
+    for cell, run_info in runs.items():
+        trial_stats = [extract_stats(t["data"]) for t in run_info["trials"]]
+        all_stats[cell] = aggregate_trials(trial_stats)
+        all_stats[cell]["n_trials"] = len(run_info["trials"])
 
     # Create output directory
     out_dir = os.path.join(sim_dir, "analysis")
@@ -458,48 +557,68 @@ def main():
     print("Generating recovery curves...")
     plot_recovery_curves(runs, out_dir)
 
-    # Build heatmap matrices
+    # Build heatmap matrices (mean + std)
     peak_matrix = []
+    peak_std_matrix = []
     ss_matrix = []
+    ss_std_matrix = []
     conv_matrix = []
+    conv_std_matrix = []
     for b in BEHAVIORS:
-        peak_row = []
-        ss_row = []
-        conv_row = []
+        peak_row, peak_std_row = [], []
+        ss_row, ss_std_row = [], []
+        conv_row, conv_std_row = [], []
         for d in DOCTORS:
             cell = f"{b}_{d}"
             if cell in all_stats:
-                peak_row.append(all_stats[cell]["peak_infected"])
-                ss_row.append(all_stats[cell]["steady_state_infected"])
-                conv_row.append(all_stats[cell]["convergence_time"])
+                peak_row.append(all_stats[cell]["peak_infected_mean"])
+                peak_std_row.append(all_stats[cell].get("peak_infected_std", 0))
+                ss_row.append(all_stats[cell]["steady_state_infected_mean"])
+                ss_std_row.append(all_stats[cell].get("steady_state_infected_std", 0))
+                conv_row.append(all_stats[cell]["convergence_time_mean"])
+                conv_std_row.append(all_stats[cell].get("convergence_time_std", 0))
             else:
                 peak_row.append(None)
+                peak_std_row.append(0)
                 ss_row.append(None)
+                ss_std_row.append(0)
                 conv_row.append(None)
+                conv_std_row.append(0)
         peak_matrix.append(peak_row)
+        peak_std_matrix.append(peak_std_row)
         ss_matrix.append(ss_row)
+        ss_std_matrix.append(ss_std_row)
         conv_matrix.append(conv_row)
+        conv_std_matrix.append(conv_std_row)
 
     # Peak infection heatmap
     peak_for_plot = [[v if v is not None else 0 for v in row] for row in peak_matrix]
     print("Generating peak infection heatmap...")
-    plot_heatmap(peak_for_plot, "Peak Infection Count", "heatmap_peak.png", out_dir)
+    plot_heatmap(peak_for_plot, "Peak Infection Count", "heatmap_peak.png", out_dir,
+                 std_matrix=peak_std_matrix)
 
     # Steady-state infected heatmap
     ss_for_plot = [[v if v is not None else 0 for v in row] for row in ss_matrix]
     print("Generating steady-state infected heatmap...")
     plot_heatmap(ss_for_plot, "Steady-State Infected Count",
-                 "heatmap_steady_state.png", out_dir, fmt=".1f", cmap="YlGnBu_r")
+                 "heatmap_steady_state.png", out_dir, fmt=".1f", cmap="YlGnBu_r",
+                 std_matrix=ss_std_matrix)
 
     # Convergence time heatmap
     conv_for_plot = [[v if v is not None else float("inf") for v in row]
                      for row in conv_matrix]
     finite_vals = [v for row in conv_for_plot for v in row if not np.isinf(v)]
     cap = max(finite_vals) * 1.2 if finite_vals else 300.0
-    conv_capped = [[v if not np.isinf(v) else cap for v in row] for row in conv_for_plot]
+    conv_capped = [[v if not np.isinf(v) else cap for v in row]
+                   for row in conv_for_plot]
+    # Cap std too for display
+    conv_std_for_plot = [[s if not np.isinf(conv_for_plot[r][c]) else 0
+                          for c, s in enumerate(row)]
+                         for r, row in enumerate(conv_std_matrix)]
     print("Generating convergence time heatmap...")
     plot_heatmap(conv_capped, "Time to Convergence (s)",
-                 "heatmap_convergence.png", out_dir, fmt=".1f", cmap="YlGnBu")
+                 "heatmap_convergence.png", out_dir, fmt=".1f", cmap="YlGnBu",
+                 std_matrix=conv_std_for_plot)
 
     print(f"\nPlots saved to {out_dir}/")
 
