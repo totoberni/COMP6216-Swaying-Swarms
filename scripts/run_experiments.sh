@@ -25,7 +25,7 @@ for config in "${CONFIGS[@]}"; do
     CURRENT=$((CURRENT + 1))
     name=$(basename "$config" .ini)
     echo "[$CURRENT/$TOTAL] Running $name..."
-    "$BINARY" -nogui -config "$config"
+    "$BINARY" -nogui "$config"
     echo "[$CURRENT/$TOTAL] $name complete."
     echo ""
 done
