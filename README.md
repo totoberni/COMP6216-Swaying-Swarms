@@ -1,11 +1,10 @@
 # COMP6216-Swaying-Swarms
 
-2D pandemic boid simulation: three swarms (Normal Boids, Doctor Boids, Antivax Boids) with infection, cure, reproduction, death, and promotion mechanics. Built with C++17, FLECS ECS, and Raylib.
+2D pandemic boid simulation with SIR disease model. Two swarms (Normal Boids, Doctor Boids) with configurable flocking behaviors, infection, and cure mechanics. Includes a 3×3 experimental matrix (3 swarm shapes × 3 doctor strategies) with headless batch execution and automated analysis. Built with C++17, FLECS ECS, and Raylib.
 
-## Research Questions
-- Optimal number of doctors to save a swarm from a pandemic
-- Optimal behaviours of a doctor swarm to save a swarm from a pandemic
-- How does an antivax subpopulation affect pandemic outcomes?
+## Research Question
+
+> What Doctor behavior most effectively contains a pandemic, and how does this depend on the swarm's flocking characteristics?
 
 ---
 
@@ -21,7 +20,8 @@ cmake --build build
 | Action | Linux / macOS / WSL | Windows (Dev PowerShell) |
 |---|---|---|
 | Run simulation | `./build/boid_swarm` | `.\build\Debug\boid_swarm.exe` |
-| Run with config | `./build/boid_swarm config.ini` | `.\build\Debug\boid_swarm.exe config.ini` |
+| Run with config | `./build/boid_swarm -config configs/B2_D2.ini` | `.\build\Debug\boid_swarm.exe -config configs\B2_D2.ini` |
+| Run headless | `./build/boid_swarm -nogui -config configs/B2_D2.ini` | `.\build\Debug\boid_swarm.exe -nogui -config configs\B2_D2.ini` |
 | Run tests | `cd build && ctest --output-on-failure` | `cd build && ctest --output-on-failure -C Debug` |
 
 > **Windows:** Always use "Developer PowerShell for VS 2022". The `-C Debug` flag is required for ctest on MSVC multi-config builds.
@@ -73,6 +73,57 @@ The simulation reads an optional INI config file. A fully documented default is 
 
 ---
 
+## Headless Mode
+
+Run simulations without a GUI window for batch experiments:
+
+```bash
+./build/boid_swarm -nogui -config configs/B2_D2.ini
+```
+
+Output is written to `sim-out/outN/` (auto-incrementing). Each run produces:
+- `metrics.csv` — per-frame infection/swarm metrics (15 columns)
+- `config_used.ini` — snapshot of the config for reproducibility
+- `summary.txt` — peak infection, final counts, swarm metrics
+
+Set `nogui_duration` in the config file to control simulation length (seconds).
+
+---
+
+## Running Experiments
+
+The `configs/` directory contains 9 experiment configs in a 3×3 matrix:
+
+|  | D1 (Normal) | D2 (Seek Nearest) | D3 (Seek Centroid) |
+|---|---|---|---|
+| **B1 (Line)** | B1_D1.ini | B1_D2.ini | B1_D3.ini |
+| **B2 (Oval)** | B2_D1.ini | B2_D2.ini | B2_D3.ini |
+| **B3 (Chaotic)** | B3_D1.ini | B3_D2.ini | B3_D3.ini |
+
+Run all 9 experiments:
+```bash
+./scripts/run_experiments.sh          # uses build/ by default
+./scripts/run_experiments.sh mybuild  # custom build dir
+```
+
+---
+
+## Analysis
+
+Generate comparison plots from experiment results:
+
+```bash
+python3 scripts/compare_results.py --sim-dir sim-out
+```
+
+Produces `sim-out/analysis/` with:
+- 3×3 infection curve grid, overlay plot, recovery curves
+- Heatmaps: peak infection count, time to eradication
+
+Requires `matplotlib` (`pip3 install matplotlib`).
+
+---
+
 ## In-Simulation Controls
 
 | Control | Description |
@@ -80,7 +131,7 @@ The simulation reads an optional INI config file. A fully documented default is 
 | **Pause / Resume** button | Toggles simulation |
 | **Reset** button | Destroys all boids, re-spawns initial population |
 | **Sliders** | p_infect_normal, p_cure, r_interact_normal, r_interact_doctor |
-| **Population graph** | Real-time line chart (green=normal, blue=doctor, orange=antivax, 500-frame window) |
+| **Population graph** | Real-time line chart (green=normal, blue=doctor, red=infected, 500-frame window) |
 | **Cohesion graph** | Average distance to centroid over time |
 | **Alignment graph** | Average alignment angle over time |
 | **Separation graph** | RMS pairwise separation over time (cyan) |
@@ -94,10 +145,12 @@ The simulation reads an optional INI config file. A fully documented default is 
 include/           Shared headers (API contract between modules)
 src/main.cpp       Entry point: FLECS world + Raylib window + main loop
 src/ecs/           FLECS systems, world init, spawning, stats
-src/sim/           Behavior logic: infection, cure, reproduction, death, aging, promotion, config loader
+src/sim/           Behavior logic: infection, cure, config loader, headless output
 src/spatial/       Fixed-cell spatial hash grid (pure C++, no FLECS/Raylib)
 src/render/        Raylib rendering, raygui stats overlay, sliders, population graph
-tests/             40 unit tests (15 spatial grid + 13 config loader + 2 cure contract + 10 antivax)
+configs/           9 experiment config files (3×3 matrix)
+scripts/           Experiment runner + analysis scripts
+tests/             Unit tests (spatial grid, config loader, cure contract)
 config.ini         Default simulation parameters
 ```
 
@@ -141,22 +194,17 @@ config.ini         Default simulation parameters
 
 ## Current Status
 
-All core simulation features from `context.md` are implemented. The project is in the refinement phase.
-
 | Feature | Status |
 |---|---|
-| Flocking (Reynolds steering, vectorized with raymath) | ✅ |
-| Infection, death, cure, reproduction, aging, promotion | ✅ |
-| SIRS disease model (death/recovery, time-decaying immunity, cross-swarm infection) | ✅ |
-| Three swarms (Normal, Doctor, Antivax with doctor avoidance) | ✅ |
-| Infected debuffs, sex system | ✅ |
-| Interactive sliders, pause/reset, population graph | ✅ |
-| Stats overlay (cohesion, alignment, RMS separation graphs) | ✅ |
-| FOV-based neighbor detection with configurable angle | ✅ |
-| INI config file loader | ✅ |
-| Obstacles (future extension) | Planned |
-
-**Runtime:** 60 FPS, 27/30 tests passing (3 pre-existing config loader / test-data failures).
+| Reynolds flocking (separation, alignment, cohesion with FOV) | Done |
+| SIR disease model (infection, cure, permanent immunity) | Done |
+| Two swarms (Normal, Doctor) with configurable behaviors | Done |
+| Doctor strategies: D1 normal, D2 seek nearest, D3 seek centroid | Done |
+| Swarm shapes: B1 line, B2 oval, B3 chaotic (noise injection) | Done |
+| Headless mode with CLI flags + incremental CSV output | Done |
+| 9 experiment configs + batch runner + analysis script | Done |
+| Interactive GUI: sliders, graphs, stats panel | Done |
+| INI config file loader | Done |
 
 ---
 
