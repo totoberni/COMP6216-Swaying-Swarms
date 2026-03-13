@@ -90,14 +90,57 @@ void register_stats_system(flecs::world& world) {
             });
             compute_swarm_metrics(stats.swarm[1], positions, velocities);
 
-            // --- Swarm 2: AntivaxBoid ---
-            positions.clear();
-            velocities.clear();
-            auto q2 = w.query<const Position, const Velocity, const AntivaxBoid>();
-            q2.each([&](const Position& pos, const Velocity& vel, const AntivaxBoid&) {
-                positions.push_back({pos.x, pos.y});
-                velocities.push_back({vel.vx, vel.vy});
+            // --- Sickness metrics ---
+            int prev_infected = stats.total_infected;
+            int infected_count = 0;
+            float sick_sum_x = 0.0f, sick_sum_y = 0.0f;
+            float sick_sum_angle = 0.0f;
+
+            auto q_sick = w.query<const Position, const Heading, const Infected>();
+            q_sick.each([&](const Position& pos, const Heading& h, const Infected&) {
+                infected_count++;
+                sick_sum_x += pos.x;
+                sick_sum_y += pos.y;
+                sick_sum_angle += h.angle;
             });
-            compute_swarm_metrics(stats.swarm[2], positions, velocities);
+
+            int recovered_count = 0;
+            auto q_recovered = w.query<const ImmunityState>();
+            q_recovered.each([&](flecs::entity e, const ImmunityState& imm) {
+                if (imm.immunity_level > 0.0f && !e.has<Infected>()) {
+                    recovered_count++;
+                }
+            });
+
+            stats.total_infected = infected_count;
+            stats.total_recovered = recovered_count;
+
+            int total_pop = stats.swarm[0].alive + stats.swarm[1].alive;
+            stats.pct_infected = (total_pop > 0)
+                ? static_cast<float>(infected_count) / static_cast<float>(total_pop)
+                : 0.0f;
+
+            float dt = w.delta_time();
+            if (dt > 0.0f) {
+                float raw_rate = static_cast<float>(infected_count - prev_infected) / dt;
+                stats.infection_growth_rate = 0.9f * stats.infection_growth_rate + 0.1f * raw_rate;
+            }
+
+            if (infected_count > 0) {
+                stats.sick_centroid_x = sick_sum_x / infected_count;
+                stats.sick_centroid_y = sick_sum_y / infected_count;
+                stats.sick_avg_alignment = sick_sum_angle / infected_count;
+            } else {
+                stats.sick_centroid_x = 0.0f;
+                stats.sick_centroid_y = 0.0f;
+                stats.sick_avg_alignment = 0.0f;
+            }
+
+            // Write to sickness history buffers (reuse history_index for sync)
+            int hi = stats.history_index;
+            stats.infected_count_history[hi] = static_cast<float>(infected_count);
+            stats.pct_infected_history[hi] = stats.pct_infected;
+            stats.growth_rate_history[hi] = stats.infection_growth_rate;
+            stats.recovered_count_history[hi] = static_cast<float>(recovered_count);
         });
 }
