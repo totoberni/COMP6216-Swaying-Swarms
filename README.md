@@ -20,8 +20,8 @@ cmake --build build
 | Action | Linux / macOS / WSL | Windows (Dev PowerShell) |
 |---|---|---|
 | Run simulation | `./build/boid_swarm` | `.\build\Debug\boid_swarm.exe` |
-| Run with config | `./build/boid_swarm -config configs/B2_D2.ini` | `.\build\Debug\boid_swarm.exe -config configs\B2_D2.ini` |
-| Run headless | `./build/boid_swarm -nogui -config configs/B2_D2.ini` | `.\build\Debug\boid_swarm.exe -nogui -config configs\B2_D2.ini` |
+| Run with config | `./build/boid_swarm configs/B2_D2.ini` | `.\build\Debug\boid_swarm.exe configs\B2_D2.ini` |
+| Run headless | `./build/boid_swarm -nogui configs/B2_D2.ini` | `.\build\Debug\boid_swarm.exe -nogui configs\B2_D2.ini` |
 | Run tests | `cd build && ctest --output-on-failure` | `cd build && ctest --output-on-failure -C Debug` |
 
 > **Windows:** Always use "Developer PowerShell for VS 2022". The `-C Debug` flag is required for ctest on MSVC multi-config builds.
@@ -59,17 +59,19 @@ export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):0
 
 ## Configuration
 
-The simulation reads an optional INI config file. A fully documented default is included at `config.ini`.
+The simulation reads an optional INI config file (positional argument). `config.ini` is the default for interactive GUI use; `configs/` contains the 9 experiment presets.
 
 ```bash
 ./build/boid_swarm                        # uses config.ini if present, else defaults
-./build/boid_swarm experiment.ini         # custom config
+./build/boid_swarm configs/B2_D1.ini      # custom config (positional arg)
 ```
 
+- `[normal_swarm]` and `[doctor_swarm]` sections accept independent steering params (speed, force, radii, fov, weights)
+- `[world]` section: set `wall_bounce = false` for toroidal wrapping
 - Partial configs are valid — missing keys keep built-in defaults
 - Unknown keys warn to stderr but don't crash
 - Sliders override config values at runtime; the file sets starting values
-- See `config.ini` for all ~40 parameters with comments
+- See `include/components.h` (`SimConfig`/`SwarmParams` structs) for the full parameter reference
 
 ---
 
@@ -78,7 +80,7 @@ The simulation reads an optional INI config file. A fully documented default is 
 Run simulations without a GUI window for batch experiments:
 
 ```bash
-./build/boid_swarm -nogui -config configs/B2_D2.ini
+./build/boid_swarm -nogui configs/B2_D2.ini
 ```
 
 Output is written to `sim-out/outN/` (auto-incrementing). Each run produces:
@@ -131,10 +133,8 @@ Requires `matplotlib` (`pip3 install matplotlib`).
 | **Pause / Resume** button | Toggles simulation |
 | **Reset** button | Destroys all boids, re-spawns initial population |
 | **Sliders** | p_infect_normal, p_cure, r_interact_normal, r_interact_doctor |
-| **Population graph** | Real-time line chart (green=normal, blue=doctor, red=infected, 500-frame window) |
 | **Cohesion graph** | Average distance to centroid over time |
 | **Alignment graph** | Average alignment angle over time |
-| **Separation graph** | RMS pairwise separation over time (cyan) |
 | **Stats panel** | Average position, cohesion, alignment angle, RMS separation |
 
 ---

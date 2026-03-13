@@ -11,7 +11,7 @@
 // ============================================================
 
 enum class DoctorBehavior { Normal, SeekNearest, SeekCentroid };
-enum class SwarmBehavior { Line, Oval, Chaotic };
+enum class SwarmBehavior { Normal, Chaotic };
 
 // ============================================================
 // Core components — attached to every boid entity
@@ -74,7 +74,7 @@ struct SimConfig {
     SwarmParams doctor;
 
     // --- Behavior mode selectors (select code paths, not param values) ---
-    SwarmBehavior normal_behavior   = SwarmBehavior::Oval;
+    SwarmBehavior normal_behavior   = SwarmBehavior::Normal;
     DoctorBehavior doctor_behavior  = DoctorBehavior::Normal;
 
     // --- Doctor seeking params (doctor-only) ---

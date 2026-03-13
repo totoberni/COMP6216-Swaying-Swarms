@@ -51,7 +51,7 @@ void spawn_doctor_boids(flecs::world& world, int count) {
         float x = dist_x(rng);
         float y = dist_y(rng);
         float angle = dist_angle(rng);
-        float speed = config.normal.max_speed;
+        float speed = config.doctor.max_speed;
 
         auto boid = world.entity()
             .add<DoctorBoid>()
