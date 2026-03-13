@@ -11,6 +11,9 @@
 # =================
 sim-out/
 
+# Raw COVID data (large download — only filtered subset committed)
+data/owid-covid-data.csv
+
 # C++ Build Artifacts
 # ===================
 # Build directories
