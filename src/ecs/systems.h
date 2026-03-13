@@ -11,4 +11,5 @@ void register_movement_system(flecs::world& world);
 void register_collision_system(flecs::world& world);
 void register_infection_system(flecs::world& world);
 void register_cure_system(flecs::world& world);
+void register_doctor_systems(flecs::world& world);
 void register_render_sync_system(flecs::world& world);
