@@ -486,6 +486,10 @@ static void write_sweep_summary(
         float run_duration = 0.0f;
 
         std::ifstream summary(summary_path);
+        if (!summary.is_open()) {
+            std::fprintf(stderr, "WARNING: missing summary for run %d: %s\n",
+                         i, summary_path.c_str());
+        }
         if (summary.is_open()) {
             std::string line;
             while (std::getline(summary, line)) {
@@ -536,6 +540,12 @@ void run_sweep(const SweepConfig& config) {
     if (config.n_samples <= 0) {
         std::fprintf(stderr, "Error: --n-samples must be positive (got %d)\n",
                      config.n_samples);
+        return;
+    }
+
+    if (!fs::exists(config.base_config_path)) {
+        std::fprintf(stderr, "FATAL: base config not found: %s\n",
+                     config.base_config_path.c_str());
         return;
     }
 
