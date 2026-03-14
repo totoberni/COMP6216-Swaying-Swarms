@@ -234,6 +234,12 @@ PARAM_LABELS = {
     "r_interact_doctor": "Interaction Radius",
 }
 
+# Formation names correspond to steering presets in configs/B{N}_D1.ini [normal_swarm]
+FORMATION_DISPLAY = {"B1": "Line", "B2": "Oval", "B3": "Chaotic"}
+# Doctor behavior names correspond to configs/B2_D{N}.ini [doctor_swarm] behavior=
+DOCTOR_DISPLAY = {"Normal": "Naive", "SeekNearest": "Greedy Search",
+                  "SeekCentroid": "Centroid Search"}
+
 
 def plot_correlation_heatmap(df, output_dir):
     """Spearman rank correlation: params vs metrics."""
@@ -308,6 +314,8 @@ def plot_pareto_front(df, output_dir):
 
     behavior_colors = {"Normal": "#1f77b4", "SeekNearest": "#ff7f0e", "SeekCentroid": "#2ca02c"}
     formation_markers = {"B1": "o", "B2": "s", "B3": "^"}
+    behavior_labels = DOCTOR_DISPLAY
+    formation_labels = FORMATION_DISPLAY
 
     x = clean["convergence_time"].values
     y = clean["steady_state_pct"].values
@@ -318,8 +326,10 @@ def plot_pareto_front(df, output_dir):
             mask = (clean.get("doctor_type", "") == behavior) & \
                    (clean.get("formation", "") == formation)
             if hasattr(mask, "sum") and mask.sum() > 0:
+                b_lbl = behavior_labels.get(behavior, behavior)
+                f_lbl = formation_labels.get(formation, formation)
                 ax.scatter(x[mask], y[mask], c=color, marker=marker,
-                          alpha=0.5, s=30, label=f"{behavior} / {formation}")
+                          alpha=0.5, s=30, label=f"{b_lbl} / {f_lbl}")
 
     # Highlight Pareto front
     pareto_mask = identify_pareto_front(x, y)
@@ -394,16 +404,18 @@ def plot_sensitivity_tornado(df, output_dir):
     print(f"  Saved: {path}")
 
 
-def plot_box_by_category(df, category_col, category_label, output_dir, filename):
-    """Box plots of metrics grouped by a categorical variable."""
+def plot_violin_by_category(df, category_col, category_label, output_dir, filename):
+    """Violin + strip plots of metrics grouped by a categorical variable."""
+    import seaborn as sns
+
     available_metrics = [c for c in METRIC_COLS if c in df.columns]
     if category_col not in df.columns or not available_metrics:
-        print(f"  Skipping box plot ({category_label}): missing columns")
+        print(f"  Skipping violin plot ({category_label}): missing columns")
         return
 
     categories = sorted(df[category_col].dropna().unique())
     if len(categories) < 2:
-        print(f"  Skipping box plot ({category_label}): fewer than 2 categories")
+        print(f"  Skipping violin plot ({category_label}): fewer than 2 categories")
         return
 
     n_metrics = len(available_metrics)
@@ -413,20 +425,14 @@ def plot_box_by_category(df, category_col, category_label, output_dir, filename)
 
     for idx, metric in enumerate(available_metrics):
         ax = axes[idx]
-        data_groups = []
-        labels = []
-        for cat in categories:
-            vals = df.loc[df[category_col] == cat, metric].dropna().values
-            if len(vals) > 0:
-                data_groups.append(vals)
-                labels.append(str(cat))
-
-        if data_groups:
-            bp = ax.boxplot(data_groups, tick_labels=labels, patch_artist=True)
-            colors = plt.cm.Set2(np.linspace(0, 1, len(data_groups)))
-            for patch, color in zip(bp["boxes"], colors):
-                patch.set_facecolor(color)
-
+        subset = df[[category_col, metric]].dropna()
+        if len(subset) == 0:
+            continue
+        sns.violinplot(data=subset, x=category_col, y=metric, hue=category_col,
+                       inner="quartile", cut=0, palette="colorblind",
+                       legend=False, ax=ax, order=categories)
+        sns.stripplot(data=subset, x=category_col, y=metric, color="black",
+                      alpha=0.1, size=1.5, jitter=True, ax=ax, order=categories)
         ax.set_xlabel(category_label)
         ax.set_ylabel(METRIC_LABELS.get(metric, metric))
         ax.set_title(METRIC_LABELS.get(metric, metric), fontsize=10)
@@ -441,7 +447,9 @@ def plot_box_by_category(df, category_col, category_label, output_dir, filename)
 
 
 def plot_ecdf(df, output_dir):
-    """Empirical CDF of steady_state_pct by doctor behavior."""
+    """Empirical CDF of steady_state_pct by doctor behavior, with KS test annotations."""
+    from scipy.stats import ks_2samp
+
     if "steady_state_pct" not in df.columns:
         print("  Skipping ECDF: missing steady_state_pct")
         return
@@ -449,18 +457,39 @@ def plot_ecdf(df, output_dir):
     fig, ax = plt.subplots(figsize=(8, 5))
 
     behavior_col = "doctor_type" if "doctor_type" in df.columns else None
+    behavior_data = {}
+
     if behavior_col and df[behavior_col].nunique() > 1:
         for behavior in sorted(df[behavior_col].dropna().unique()):
             vals = df.loc[df[behavior_col] == behavior, "steady_state_pct"].dropna().values
+            display = DOCTOR_DISPLAY.get(behavior, behavior)
             if len(vals) > 0:
                 sorted_vals = np.sort(vals)
                 ecdf = np.arange(1, len(sorted_vals) + 1) / len(sorted_vals)
-                ax.step(sorted_vals, ecdf, label=behavior, linewidth=2)
+                ax.step(sorted_vals, ecdf, label=display, linewidth=2)
+                behavior_data[behavior] = vals
     else:
         vals = df["steady_state_pct"].dropna().values
         sorted_vals = np.sort(vals)
         ecdf = np.arange(1, len(sorted_vals) + 1) / len(sorted_vals)
         ax.step(sorted_vals, ecdf, linewidth=2, label="All configs")
+
+    # Pairwise KS tests
+    ks_lines = []
+    behaviors = sorted(behavior_data.keys())
+    for i in range(len(behaviors)):
+        for j in range(i + 1, len(behaviors)):
+            a, b = behaviors[i], behaviors[j]
+            stat, pval = ks_2samp(behavior_data[a], behavior_data[b])
+            label_a = DOCTOR_DISPLAY.get(a, a)
+            label_b = DOCTOR_DISPLAY.get(b, b)
+            ks_lines.append(f"{label_a} vs {label_b}: D={stat:.3f}, p={pval:.3g}")
+
+    if ks_lines:
+        ax.text(0.98, 0.05, "\n".join(ks_lines), transform=ax.transAxes,
+                fontsize=7, verticalalignment="bottom", horizontalalignment="right",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                          edgecolor="#cccccc", alpha=0.8))
 
     ax.set_xlabel("Steady-State Infected (%)", fontsize=11)
     ax.set_ylabel("Cumulative Probability", fontsize=11)
@@ -470,6 +499,65 @@ def plot_ecdf(df, output_dir):
     ax.set_ylim(0, 1.05)
     fig.tight_layout()
     path = os.path.join(output_dir, "ecdf_steady_state.png")
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+    print(f"  Saved: {path}")
+
+
+def plot_violin_3x3_global(df, output_dir):
+    """3x3 violin grid: rows=Formation, cols=Doctor, each cell = violin of steady_state_pct."""
+    import seaborn as sns
+
+    if "steady_state_pct" not in df.columns:
+        print("  Skipping 3x3 violin: missing steady_state_pct")
+        return
+
+    formation_col = "formation" if "formation" in df.columns else None
+    doctor_col = "doctor_type" if "doctor_type" in df.columns else None
+    if not formation_col or not doctor_col:
+        print("  Skipping 3x3 violin: missing formation/doctor columns")
+        return
+
+    formations = sorted(df[formation_col].dropna().unique())
+    doctors = sorted(df[doctor_col].dropna().unique())
+    if len(formations) < 2 or len(doctors) < 2:
+        print("  Skipping 3x3 violin: fewer than 2 categories")
+        return
+
+    fig, axes = plt.subplots(len(formations), len(doctors),
+                             figsize=(4 * len(doctors), 3 * len(formations)),
+                             sharey=True)
+
+    for r, form in enumerate(formations):
+        for c, doc in enumerate(doctors):
+            ax = axes[r][c] if len(formations) > 1 else axes[c]
+            subset = df[(df[formation_col] == form) & (df[doctor_col] == doc)]
+            vals = subset["steady_state_pct"].dropna()
+
+            if len(vals) >= 2:
+                sns.violinplot(y=vals, inner="quartile", cut=0,
+                               color="tab:blue", ax=ax)
+                sns.stripplot(y=vals, color="black", alpha=0.15,
+                              size=1.5, jitter=True, ax=ax)
+            elif len(vals) == 1:
+                ax.axhline(vals.iloc[0], color="tab:blue", linewidth=1)
+            else:
+                ax.text(0.5, 0.5, "No data", transform=ax.transAxes,
+                        ha="center", va="center", color="gray")
+
+            if r == 0:
+                ax.set_title(DOCTOR_DISPLAY.get(doc, doc), fontsize=10)
+            if c == 0:
+                ax.set_ylabel(FORMATION_DISPLAY.get(form, form), fontsize=10)
+            else:
+                ax.set_ylabel("")
+            ax.set_xlabel("")
+            ax.set_xticks([])
+
+    fig.suptitle("Steady-State Infected (%) \u2014 Formation \u00d7 Doctor Behavior",
+                 fontsize=13, fontweight="bold")
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    path = os.path.join(output_dir, "violin_3x3_global.png")
     fig.savefig(path, dpi=150)
     plt.close(fig)
     print(f"  Saved: {path}")
@@ -582,14 +670,28 @@ def main():
 
     print(f"\nPhase 2: Generating plots ({len(df)} samples)...")
 
+    # Apply display label mappings for plots
+    if "formation" in df.columns:
+        df["formation_label"] = df["formation"].map(FORMATION_DISPLAY).fillna(df["formation"])
+    if "doctor_type" in df.columns:
+        df["doctor_label"] = df["doctor_type"].map(DOCTOR_DISPLAY).fillna(df["doctor_type"])
+
     # Generate all plots
     plot_correlation_heatmap(df, output_dir)
     plot_pareto_front(df, output_dir)
     plot_sensitivity_tornado(df, output_dir)
-    plot_box_by_category(df, "doctor_type", "Doctor Behavior", output_dir, "box_by_doctor.png")
-    plot_box_by_category(df, "formation", "Boid Formation", output_dir, "box_by_formation.png")
+
+    # Violin plots (replace old box plots)
+    label_col_doctor = "doctor_label" if "doctor_label" in df.columns else "doctor_type"
+    label_col_form = "formation_label" if "formation_label" in df.columns else "formation"
+    plot_violin_by_category(df, label_col_doctor, "Doctor Behavior",
+                            output_dir, "violin_by_doctor.png")
+    plot_violin_by_category(df, label_col_form, "Boid Formation",
+                            output_dir, "violin_by_formation.png")
+
     plot_ecdf(df, output_dir)
     plot_hexbin_interaction(df, output_dir)
+    plot_violin_3x3_global(df, output_dir)
 
     # Top configs table
     print_top_configs(df)
