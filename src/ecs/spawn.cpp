@@ -1,15 +1,10 @@
 #include "spawn.h"
 #include "components.h"
 #include "spatial_grid.h"
+#include "sim/rng.h"
 #include <flecs.h>
-#include <random>
 #include <cmath>
 #include <algorithm>
-
-namespace {
-    // Seeded random engine for reproducible spawning
-    std::mt19937 rng(42);
-}
 
 void spawn_normal_boids(flecs::world& world, int count) {
     const SimConfig& config = world.get<SimConfig>();
@@ -20,9 +15,9 @@ void spawn_normal_boids(flecs::world& world, int count) {
     std::uniform_real_distribution<float> dist_infect(0.0f, 1.0f);
 
     for (int i = 0; i < count; ++i) {
-        float x = dist_x(rng);
-        float y = dist_y(rng);
-        float angle = dist_angle(rng);
+        float x = dist_x(sim_rng());
+        float y = dist_y(sim_rng());
+        float angle = dist_angle(sim_rng());
         float speed = config.normal.max_speed;
 
         auto boid = world.entity()
@@ -32,7 +27,7 @@ void spawn_normal_boids(flecs::world& world, int count) {
             .set(Heading{angle});
 
         // Initial infection
-        if (dist_infect(rng) < config.p_initial_infect_normal) {
+        if (dist_infect(sim_rng()) < config.p_initial_infect_normal) {
             boid.add<Infected>();
             boid.set(InfectionState{0.0f});
         }
@@ -48,9 +43,9 @@ void spawn_doctor_boids(flecs::world& world, int count) {
     std::uniform_real_distribution<float> dist_infect(0.0f, 1.0f);
 
     for (int i = 0; i < count; ++i) {
-        float x = dist_x(rng);
-        float y = dist_y(rng);
-        float angle = dist_angle(rng);
+        float x = dist_x(sim_rng());
+        float y = dist_y(sim_rng());
+        float angle = dist_angle(sim_rng());
         float speed = config.doctor.max_speed;
 
         auto boid = world.entity()
@@ -60,7 +55,7 @@ void spawn_doctor_boids(flecs::world& world, int count) {
             .set(Heading{angle});
 
         // Initial infection
-        if (dist_infect(rng) < config.p_initial_infect_doctor) {
+        if (dist_infect(sim_rng()) < config.p_initial_infect_doctor) {
             boid.add<Infected>();
             boid.set(InfectionState{0.0f});
         }

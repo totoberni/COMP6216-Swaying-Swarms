@@ -49,6 +49,9 @@ CPMAddPackage(
         "BUILD_GMOCK OFF"
 )
 
+# --- Threading ---
+find_package(Threads REQUIRED)
+
 # --- Collect sources ---
 file(GLOB_RECURSE MAIN_SOURCES
     src/*.cpp
@@ -72,6 +75,7 @@ target_include_directories(boid_swarm SYSTEM PRIVATE
 target_link_libraries(boid_swarm PRIVATE
     flecs::flecs_static
     raylib
+    Threads::Threads
 )
 
 # Optimization flags (compatible with GCC, Clang, MSVC)
@@ -114,6 +118,7 @@ if(TEST_SOURCES)
     target_link_libraries(tests PRIVATE
         flecs::flecs_static
         raylib
+        Threads::Threads
         gtest_main
         gtest
     )

@@ -11,6 +11,9 @@
 # =================
 sim-out/
 
+# Generated sweep configs (reproducible from C++ sweep runner)
+/configs/sweep/
+
 # Raw COVID data (large download — only filtered subset committed)
 data/owid-covid-data.csv
 

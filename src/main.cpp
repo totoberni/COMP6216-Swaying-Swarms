@@ -4,6 +4,7 @@
 #include "ecs/stats.h"
 #include "render/renderer.h"
 #include "sim/output.h"
+#include "sim/sweep.h"
 #include "components.h"
 #include "render_state.h"
 #include <flecs.h>
@@ -12,22 +13,60 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <thread>
 
 // ---------------------------------------------------------------------------
-// CLI argument parsing (T2a.1)
+// CLI argument parsing
 // ---------------------------------------------------------------------------
 
 struct CliArgs {
     std::string config_path = "config.ini";
     bool nogui = false;
+    // Sweep mode
+    bool sweep = false;
+    int n_samples = 600;
+    int threads = 0;  // 0 = auto-detect
+    uint32_t seed = 42;
+    float duration = 0.0f;  // 0 = use config's nogui_duration
+    std::string output_dir = "sim-out";
 };
+
+static void print_usage(const char* prog) {
+    std::printf("Usage: %s [options] [config.ini]\n\n", prog);
+    std::printf("Single-run mode:\n");
+    std::printf("  %s config.ini          Run with GUI\n", prog);
+    std::printf("  %s -nogui config.ini   Run headless\n\n", prog);
+    std::printf("Sweep mode:\n");
+    std::printf("  --sweep                Enable Monte Carlo sweep mode\n");
+    std::printf("  --n-samples N          Number of LHS samples (default: 600)\n");
+    std::printf("  --threads T            Worker threads (default: cores - 2)\n");
+    std::printf("  --seed S               RNG seed (default: 42)\n");
+    std::printf("  --duration D           Sim duration in seconds (default: config value)\n");
+    std::printf("  --output-dir DIR       Output directory (default: sim-out)\n");
+    std::printf("  --help                 Show this help\n");
+}
 
 static CliArgs parse_args(int argc, char* argv[]) {
     CliArgs args;
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "-nogui") == 0) {
             args.nogui = true;
-        } else {
+        } else if (std::strcmp(argv[i], "--sweep") == 0) {
+            args.sweep = true;
+        } else if (std::strcmp(argv[i], "--n-samples") == 0 && i + 1 < argc) {
+            args.n_samples = std::atoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "--threads") == 0 && i + 1 < argc) {
+            args.threads = std::atoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
+            args.seed = static_cast<uint32_t>(std::atoi(argv[++i]));
+        } else if (std::strcmp(argv[i], "--duration") == 0 && i + 1 < argc) {
+            args.duration = static_cast<float>(std::atof(argv[++i]));
+        } else if (std::strcmp(argv[i], "--output-dir") == 0 && i + 1 < argc) {
+            args.output_dir = argv[++i];
+        } else if (std::strcmp(argv[i], "--help") == 0) {
+            print_usage(argv[0]);
+            std::exit(0);
+        } else if (argv[i][0] != '-') {
             args.config_path = argv[i];
         }
     }
@@ -161,16 +200,29 @@ static void run_gui(flecs::world& world, const SimConfig& config) {
 int main(int argc, char* argv[]) {
     CliArgs args = parse_args(argc, argv);
 
-    // Initialize FLECS world
+    // Sweep mode — parallel Monte Carlo runs
+    if (args.sweep) {
+        SweepConfig sc;
+        sc.base_config_path = args.config_path;
+        sc.output_dir = args.output_dir;
+        sc.n_samples = args.n_samples;
+        sc.threads = args.threads > 0
+            ? args.threads
+            : std::max(1, static_cast<int>(std::thread::hardware_concurrency()) - 2);
+        sc.seed = args.seed;
+        if (args.duration > 0.0f) sc.duration = args.duration;
+        run_sweep(sc);
+        return 0;
+    }
+
+    // Single-run mode (existing logic)
     flecs::world world;
     init_world(world, args.config_path);
     register_all_systems(world);
     register_stats_system(world);
 
-    // Spawn initial population
     spawn_initial_population(world);
 
-    // Apply CLI override: -nogui flag
     SimConfig& config = world.get_mut<SimConfig>();
     if (args.nogui) {
         config.nogui = true;
