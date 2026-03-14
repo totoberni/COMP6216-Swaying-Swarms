@@ -7,13 +7,14 @@
 
 class SpatialGrid {
 public:
-    // --- Enriched entry stored in each grid cell ---
+    // --- Enriched entry stored in flat sorted array ---
     struct Entry {
         uint64_t entity_id;
         float x, y;
         float vx, vy;         // velocity for alignment
         uint8_t swarm_type;    // 0=normal, 1=doctor
         bool infected;
+        uint32_t cell_id;      // grid cell index (for sort-based layout)
     };
 
     // --- Query result: pointer to entry + squared distance ---
@@ -61,8 +62,14 @@ private:
     int cols_ = 0;
     int rows_ = 0;
     bool toroidal_ = false;
+    int total_cells_ = 0;
 
-    std::vector<std::vector<Entry>> cells_;
+    // Sort-based flat array (mutable for lazy build from const queries)
+    mutable std::vector<Entry> entries_;
+    mutable std::vector<int> cell_start_;
+    mutable std::vector<int> cell_end_;
+    mutable int entry_count_ = 0;
+    mutable bool built_ = false;
 
-    int cell_index(float x, float y) const;
+    void build() const;
 };
