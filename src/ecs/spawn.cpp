@@ -95,6 +95,21 @@ void reset_simulation(flecs::world& world) {
         stats.history[i] = {};
     }
 
+    // Reset sickness metrics
+    stats.total_infected = 0;
+    stats.total_recovered = 0;
+    stats.pct_infected = 0.0f;
+    stats.infection_growth_rate = 0.0f;
+    stats.sick_centroid_x = 0.0f;
+    stats.sick_centroid_y = 0.0f;
+    stats.sick_avg_alignment = 0.0f;
+    for (int i = 0; i < SimStats::HISTORY_SIZE; ++i) {
+        stats.infected_count_history[i] = 0.0f;
+        stats.pct_infected_history[i] = 0.0f;
+        stats.growth_rate_history[i] = 0.0f;
+        stats.recovered_count_history[i] = 0.0f;
+    }
+
     // Rebuild spatial grid with current config (sliders may have changed radii).
     // Cell size = largest infection radius; steering uses dynamic search window expansion.
     const SimConfig& config = world.get<SimConfig>();

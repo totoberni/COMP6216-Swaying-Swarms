@@ -23,6 +23,7 @@ void register_infection_system(flecs::world& world) {
             flecs::world w = it.world();
             const SimConfig& config = w.get<SimConfig>();
             const SpatialGrid& grid = w.get<SpatialGrid>();
+            float dt = it.delta_time();
             std::mt19937& rng = sim_rng();
 
             w.defer_begin();
@@ -66,7 +67,7 @@ void register_infection_system(flecs::world& world) {
                         effective_p *= (1.0f - imm.immunity_level);
                     }
 
-                    if (try_infect(effective_p, rng)) {
+                    if (try_infect(effective_p, dt, rng)) {
                         ne.add<Infected>();
                         ne.set(InfectionState{0.0f});
                         if (has_immunity) ne.remove<ImmunityState>();
@@ -118,6 +119,7 @@ void register_cure_system(flecs::world& world) {
             flecs::world w = it.world();
             const SimConfig& config = w.get<SimConfig>();
             const SpatialGrid& grid = w.get<SpatialGrid>();
+            float dt = it.delta_time();
             std::mt19937& rng = sim_rng();
 
             w.defer_begin();
@@ -154,7 +156,7 @@ void register_cure_system(flecs::world& world) {
 
                     // Try to cure (doctors cure ANY infected boid, including other doctors)
                     // Cure grants partial immunity to prevent immediate re-infection
-                    if (try_cure(effective_p_cure, rng)) {
+                    if (try_cure(effective_p_cure, dt, rng)) {
                         flecs::entity ne = w.entity(ne_entry->entity_id);
                         ne.remove<Infected>();
                         ne.remove<InfectionState>();
