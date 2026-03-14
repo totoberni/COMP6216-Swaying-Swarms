@@ -458,50 +458,74 @@ def plot_recovery_curves(runs, out_dir):
 
 
 def plot_convergence_diagnostic(runs, out_dir):
-    """Running mean +/- SE of steady_state_pct as N increases, CoV on right y-axis."""
-    # Collect one steady_state_pct value per trial across all cells
-    values = []
+    """Per-cell convergence: running mean + CoV for the most variable cell."""
+    # Collect steady_state_pct per cell
+    cell_values = {}
     for cell, info in runs.items():
+        vals = []
         for t in info["trials"]:
             stats = extract_stats(t["data"])
-            values.append(stats["steady_state_pct"])
+            vals.append(stats["steady_state_pct"])
+        if len(vals) >= 3:
+            cell_values[cell] = np.array(vals)
 
-    if len(values) < 3:
-        print("  Skipping convergence diagnostic: too few trials")
+    if not cell_values:
+        print("  Skipping convergence diagnostic: too few trials per cell")
         return
 
-    rng = np.random.RandomState(42)
-    values = np.array(values)
-    rng.shuffle(values)
+    # Find the most variable cell (worst-case for convergence)
+    worst_cell = max(cell_values, key=lambda c: np.std(cell_values[c]))
+    worst_vals = cell_values[worst_cell]
 
-    ns = np.arange(1, len(values) + 1)
-    cum_sum = np.cumsum(values)
+    rng = np.random.RandomState(42)
+    rng.shuffle(worst_vals)
+
+    fig, ax1 = plt.subplots(figsize=(8, 5))
+    ax2 = ax1.twinx()
+
+    # Plot thin CoV lines for all cells (background context)
+    for cell, vals in sorted(cell_values.items()):
+        v = vals.copy()
+        rng = np.random.RandomState(42)
+        rng.shuffle(v)
+        ns = np.arange(1, len(v) + 1)
+        cum_sum = np.cumsum(v)
+        r_mean = cum_sum / ns
+        cum_sq = np.cumsum(v ** 2)
+        r_var = np.maximum(cum_sq / ns - r_mean ** 2, 0)
+        r_std = np.sqrt(r_var)
+        r_cov = np.where(np.abs(r_mean) > 1e-9, r_std / np.abs(r_mean), 0.0)
+        ax2.plot(ns, r_cov, color="tab:gray", linewidth=0.4, alpha=0.4)
+
+    # Highlight worst-case cell
+    ns = np.arange(1, len(worst_vals) + 1)
+    cum_sum = np.cumsum(worst_vals)
     running_mean = cum_sum / ns
-    cum_sq = np.cumsum(values ** 2)
-    running_var = cum_sq / ns - running_mean ** 2
-    running_var = np.maximum(running_var, 0)
+    cum_sq = np.cumsum(worst_vals ** 2)
+    running_var = np.maximum(cum_sq / ns - running_mean ** 2, 0)
     running_std = np.sqrt(running_var)
     running_se = running_std / np.sqrt(ns)
     running_cov = np.where(np.abs(running_mean) > 1e-9,
                            running_std / np.abs(running_mean), 0.0)
 
-    fig, ax1 = plt.subplots(figsize=(8, 5))
     ax1.plot(ns, running_mean, color="tab:blue", linewidth=1.3, label="Running Mean")
     ax1.fill_between(ns, running_mean - running_se, running_mean + running_se,
                      alpha=0.25, color="tab:blue", label="\u00b1 SE")
-    ax1.set_xlabel("Number of Runs")
+    ax1.set_xlabel("Number of Runs (per cell)")
     ax1.set_ylabel("Steady-State Infected (%)", color="tab:blue")
     ax1.tick_params(axis="y", labelcolor="tab:blue")
 
-    ax2 = ax1.twinx()
-    ax2.plot(ns, running_cov, color="tab:orange", linewidth=1.0, label="CoV")
+    ax2.plot(ns, running_cov, color="tab:orange", linewidth=1.2,
+             label=f"CoV ({worst_cell})")
     ax2.axhline(0.05, color="tab:orange", linestyle="--", linewidth=0.7,
                 alpha=0.7, label="CoV = 0.05")
     ax2.set_ylabel("Coefficient of Variation", color="tab:orange")
     ax2.tick_params(axis="y", labelcolor="tab:orange")
     ax2.set_ylim(bottom=0)
 
-    ax1.set_title("Monte Carlo Convergence Diagnostic", fontsize=13, fontweight="bold")
+    ax1.set_title(
+        f"Monte Carlo Convergence Diagnostic (worst-case: {worst_cell})",
+        fontsize=12, fontweight="bold")
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="upper right")

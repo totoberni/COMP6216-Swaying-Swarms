@@ -230,19 +230,25 @@ def plot_shape_comparison(covid, runs_data, dataset_cfg, output_dir):
     """Two-panel figure: normalized cumulative + daily incidence."""
     plt.rcParams.update(PUB_RCPARAMS)
 
-    # -- Cumulative percentiles --
-    cum_pct = compute_percentiles(runs_data, "pct_infected")
+    # -- Cumulative percentiles (per-run normalization for true shape comparison) --
+    # Normalize each run to [0,1] BEFORE computing percentiles so that bands
+    # represent uncertainty in shape, not magnitude.
+    for d in runs_data:
+        if "pct_infected" in d:
+            run_max = d["pct_infected"].max()
+            d["_cum_norm"] = d["pct_infected"] / run_max if run_max > 0 else d["pct_infected"]
+
+    cum_pct = compute_percentiles(runs_data, "_cum_norm")
     if cum_pct is None:
         print("No pct_infected data for shape comparison", file=sys.stderr)
         return
 
     n_runs = cum_pct["n_runs"]
 
-    # Normalize sim cumulative to [0, 1]
-    sim_cum_max = cum_pct["median"].max() or 1.0
+    # Time normalization only (values already in [0,1])
     sim_t_max = cum_pct["time_s"].max() or 1.0
     sim_t_norm = cum_pct["time_s"] / sim_t_max
-    cum_norm = scale_percentiles(cum_pct, 1.0 / sim_cum_max)
+    cum_norm = {k: cum_pct[k] for k in ("median", "p25", "p75", "p5", "p95")}
 
     # Normalize COVID cumulative to [0, 1]
     covid_cum_max = covid["cumulative_frac"].max() or 1.0
@@ -258,11 +264,13 @@ def plot_shape_comparison(covid, runs_data, dataset_cfg, output_dir):
     ss_tot = float(np.sum((covid_cum_norm - covid_cum_norm.mean()) ** 2))
     r_sq = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
 
-    # -- Daily incidence per run, then percentiles --
+    # -- Daily incidence per run (per-run normalization) --
     for d in runs_data:
         if "pct_infected" in d:
-            d["_daily_incidence"] = np.gradient(d["pct_infected"])
-    daily_pct = compute_percentiles(runs_data, "_daily_incidence")
+            daily = np.gradient(d["pct_infected"])
+            daily_max = daily.max()
+            d["_daily_norm"] = daily / daily_max if daily_max > 0 else daily
+    daily_pct = compute_percentiles(runs_data, "_daily_norm")
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
@@ -284,10 +292,9 @@ def plot_shape_comparison(covid, runs_data, dataset_cfg, output_dir):
     ax1.set_xlim(0, 1)
     ax1.set_ylim(0, 1.05)
 
-    # Right panel: daily
+    # Right panel: daily (already per-run normalized)
     if daily_pct is not None:
-        daily_max = daily_pct["median"].max() or 1.0
-        daily_norm = scale_percentiles(daily_pct, 1.0 / daily_max)
+        daily_norm = {k: daily_pct[k] for k in ("median", "p25", "p75", "p5", "p95")}
         draw_fan_chart(ax2, sim_t_norm[:len(daily_norm["median"])],
                        daily_norm, color="#1b9e77",
                        label=f"ABM (n={n_runs})")
@@ -350,18 +357,19 @@ def plot_sir_dynamics(covid, runs_data, dataset_cfg, output_dir):
     ax.set_title("Susceptible")
     ax.legend(fontsize=7)
 
-    # (0,1) Infected + COVID overlay
+    # (0,1) Infected + COVID daily incidence overlay
     ax = axes[0, 1]
     draw_fan_chart(ax, days, scale_percentiles(i_pct, 100),
                    color="#d95319", label="Infected (ABM)")
-    # Scale COVID to sim peak for visual overlay
+    # Overlay COVID daily incidence (new cases / pop), scaled to sim peak
+    # Daily incidence peaks and declines like prevalence — comparable quantities
     sim_peak_pct = i_pct["median"].max() * 100
-    covid_cum_frac_pct = covid["cumulative_frac"] * 100
-    covid_peak = covid_cum_frac_pct.max() or 1.0
-    covid_scaled = covid_cum_frac_pct * (sim_peak_pct / covid_peak)
+    covid_daily_frac = covid["new_smoothed"] / covid["population"] * 100
+    covid_daily_peak = covid_daily_frac.max() or 1.0
+    covid_scaled = covid_daily_frac * (sim_peak_pct / covid_daily_peak)
     ax.plot(covid["days"], covid_scaled, color=dataset_cfg["color"],
             marker="o", markersize=2, linewidth=0.8, markeredgewidth=0,
-            label=f"{dataset_cfg['label']} (scaled)", alpha=0.8)
+            label=f"{dataset_cfg['label']} daily (scaled)", alpha=0.8)
     ax.set_ylabel("Population (%)")
     ax.set_title("Infected")
     ax.legend(fontsize=7)
