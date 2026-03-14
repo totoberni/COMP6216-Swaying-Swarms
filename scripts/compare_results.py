@@ -32,7 +32,7 @@ import numpy as np
 
 # Matrix layout
 BEHAVIORS = ["B1", "B2", "B3"]
-BEHAVIOR_LABELS = {"B1": "Stable", "B2": "Normal", "B3": "Chaotic"}
+BEHAVIOR_LABELS = {"B1": "Line", "B2": "Oval", "B3": "Chaotic"}
 DOCTORS = ["D1", "D2", "D3"]
 DOCTOR_LABELS = {"D1": "Naive", "D2": "Greedy Search", "D3": "Centroid Search"}
 
@@ -457,6 +457,227 @@ def plot_recovery_curves(runs, out_dir):
     plt.close(fig)
 
 
+def plot_convergence_diagnostic(runs, out_dir):
+    """Per-cell convergence: running mean + CoV for the most variable cell."""
+    # Collect steady_state_pct per cell
+    cell_values = {}
+    for cell, info in runs.items():
+        vals = []
+        for t in info["trials"]:
+            stats = extract_stats(t["data"])
+            vals.append(stats["steady_state_pct"])
+        if len(vals) >= 3:
+            cell_values[cell] = np.array(vals)
+
+    if not cell_values:
+        print("  Skipping convergence diagnostic: too few trials per cell")
+        return
+
+    # Find the most variable cell (worst-case for convergence)
+    worst_cell = max(cell_values, key=lambda c: np.std(cell_values[c]))
+    worst_vals = cell_values[worst_cell]
+
+    rng = np.random.RandomState(42)
+    rng.shuffle(worst_vals)
+
+    fig, ax1 = plt.subplots(figsize=(8, 5))
+    ax2 = ax1.twinx()
+
+    # Plot thin CoV lines for all cells (background context)
+    for cell, vals in sorted(cell_values.items()):
+        v = vals.copy()
+        rng = np.random.RandomState(42)
+        rng.shuffle(v)
+        ns = np.arange(1, len(v) + 1)
+        cum_sum = np.cumsum(v)
+        r_mean = cum_sum / ns
+        cum_sq = np.cumsum(v ** 2)
+        r_var = np.maximum(cum_sq / ns - r_mean ** 2, 0)
+        r_std = np.sqrt(r_var)
+        r_cov = np.where(np.abs(r_mean) > 1e-9, r_std / np.abs(r_mean), 0.0)
+        ax2.plot(ns, r_cov, color="tab:gray", linewidth=0.4, alpha=0.4)
+
+    # Highlight worst-case cell
+    ns = np.arange(1, len(worst_vals) + 1)
+    cum_sum = np.cumsum(worst_vals)
+    running_mean = cum_sum / ns
+    cum_sq = np.cumsum(worst_vals ** 2)
+    running_var = np.maximum(cum_sq / ns - running_mean ** 2, 0)
+    running_std = np.sqrt(running_var)
+    running_se = running_std / np.sqrt(ns)
+    running_cov = np.where(np.abs(running_mean) > 1e-9,
+                           running_std / np.abs(running_mean), 0.0)
+
+    ax1.plot(ns, running_mean, color="tab:blue", linewidth=1.3, label="Running Mean")
+    ax1.fill_between(ns, running_mean - running_se, running_mean + running_se,
+                     alpha=0.25, color="tab:blue", label="\u00b1 SE")
+    ax1.set_xlabel("Number of Runs (per cell)")
+    ax1.set_ylabel("Steady-State Infected (%)", color="tab:blue")
+    ax1.tick_params(axis="y", labelcolor="tab:blue")
+
+    ax2.plot(ns, running_cov, color="tab:orange", linewidth=1.2,
+             label=f"CoV ({worst_cell})")
+    ax2.axhline(0.05, color="tab:orange", linestyle="--", linewidth=0.7,
+                alpha=0.7, label="CoV = 0.05")
+    ax2.set_ylabel("Coefficient of Variation", color="tab:orange")
+    ax2.tick_params(axis="y", labelcolor="tab:orange")
+    ax2.set_ylim(bottom=0)
+
+    ax1.set_title(
+        f"Monte Carlo Convergence Diagnostic (worst-case: {worst_cell})",
+        fontsize=12, fontweight="bold")
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="upper right")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, "convergence_diagnostic.png"), dpi=150)
+    plt.close(fig)
+
+
+def plot_interaction_effects(runs, all_stats, out_dir):
+    """1x3 interaction plot: formation on x-axis, colored lines per doctor behavior."""
+    metrics = ["steady_state_pct", "convergence_time", "peak_infected"]
+    metric_labels = {
+        "steady_state_pct": "Steady-State Infected (%)",
+        "convergence_time": "Convergence Time (s)",
+        "peak_infected": "Peak Infected",
+    }
+    doctor_colors = {"D1": "#1b9e77", "D2": "#d95f02", "D3": "#7570b3"}
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+
+    for idx, metric in enumerate(metrics):
+        ax = axes[idx]
+        for d_key in DOCTORS:
+            x_vals, y_means, y_ci = [], [], []
+            for b_idx, b_key in enumerate(BEHAVIORS):
+                cell = f"{b_key}_{d_key}"
+                if cell not in all_stats:
+                    continue
+                st = all_stats[cell]
+                mean_key = f"{metric}_mean"
+                std_key = f"{metric}_std"
+                n_key = f"{metric}_n"
+                m = st.get(mean_key, 0)
+                s = st.get(std_key, 0)
+                n = st.get(n_key, 1)
+                ci = 1.96 * s / max(np.sqrt(n), 1) if not np.isinf(m) else 0
+                x_vals.append(b_idx)
+                y_means.append(m if not np.isinf(m) else 0)
+                y_ci.append(ci)
+
+            if x_vals:
+                ax.errorbar(x_vals, y_means, yerr=y_ci,
+                            color=doctor_colors[d_key], marker="o",
+                            linewidth=1.3, capsize=4,
+                            label=DOCTOR_LABELS[d_key])
+
+        ax.set_xticks(range(len(BEHAVIORS)))
+        ax.set_xticklabels([BEHAVIOR_LABELS[b] for b in BEHAVIORS], fontsize=9)
+        ax.set_xlabel("Formation")
+        ax.set_ylabel(metric_labels[metric])
+        ax.set_title(metric_labels[metric], fontsize=10)
+        ax.legend(fontsize=7)
+        ax.grid(True, alpha=0.2)
+
+    fig.suptitle("Interaction Effects: Formation \u00d7 Doctor Behavior",
+                 fontsize=13, fontweight="bold")
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    fig.savefig(os.path.join(out_dir, "interaction_effects.png"), dpi=150)
+    plt.close(fig)
+
+
+def plot_sick_healthy_grid(runs, out_dir):
+    """3x3 grid with overlaid infected (red) and healthy (blue) fan charts."""
+    fig, axes = plt.subplots(3, 3, figsize=(14, 10), sharex=True, sharey=True)
+    fig.suptitle("Infected vs Healthy Population \u2014 3\u00d73 Matrix",
+                 fontsize=14, fontweight="bold")
+
+    for r, b in enumerate(BEHAVIORS):
+        for c, d in enumerate(DOCTORS):
+            ax = axes[r][c]
+            cell = f"{b}_{d}"
+
+            if cell not in runs:
+                ax.text(0.5, 0.5, "No data", transform=ax.transAxes,
+                        ha="center", va="center", fontsize=12, color="gray")
+            else:
+                trials = runs[cell]["trials"]
+                # Infected fan chart
+                ts_i, mean_i, std_i = aggregate_time_series(trials, "infected")
+                # Recovered for healthy computation
+                ts_r, mean_r, std_r = aggregate_time_series(trials, "recovered")
+
+                if len(ts_i) > 0:
+                    # Estimate total pop from first frame
+                    total_pop = 135
+                    for t in trials:
+                        inf = t["data"].get("infected", [])
+                        pct = t["data"].get("pct_infected", [])
+                        if inf and pct and pct[0] > 0 and inf[0] > 0:
+                            total_pop = round(inf[0] / pct[0])
+                            break
+
+                    # Healthy = total - infected - recovered
+                    n = min(len(mean_i), len(mean_r)) if len(ts_r) > 0 else len(mean_i)
+                    time_s = np.array(ts_i[:n])
+
+                    # Infected: individual run stacking for proper fan chart
+                    inf_series = []
+                    healthy_series = []
+                    min_len = float("inf")
+                    for t in trials:
+                        inf_arr = t["data"].get("infected", [])
+                        rec_arr = t["data"].get("recovered", [])
+                        if inf_arr and rec_arr:
+                            ln = min(len(inf_arr), len(rec_arr))
+                            min_len = min(min_len, ln)
+                            inf_series.append(inf_arr[:ln])
+                            h = [total_pop - inf_arr[i] - rec_arr[i]
+                                 for i in range(ln)]
+                            healthy_series.append(h)
+
+                    if inf_series:
+                        min_len = int(min_len)
+                        time_s = np.array(ts_i[:min_len])
+                        inf_stacked = np.array([s[:min_len] for s in inf_series])
+                        h_stacked = np.array([s[:min_len] for s in healthy_series])
+
+                        # Infected fan chart (red)
+                        i_med = np.median(inf_stacked, axis=0)
+                        i_25 = np.percentile(inf_stacked, 25, axis=0)
+                        i_75 = np.percentile(inf_stacked, 75, axis=0)
+                        ax.fill_between(time_s, i_25, i_75,
+                                        alpha=0.3, color="tab:red", linewidth=0)
+                        ax.plot(time_s, i_med, color="tab:red", lw=1.0,
+                                label="Infected" if r == 0 and c == 0 else "")
+
+                        # Healthy fan chart (blue)
+                        h_med = np.median(h_stacked, axis=0)
+                        h_25 = np.percentile(h_stacked, 25, axis=0)
+                        h_75 = np.percentile(h_stacked, 75, axis=0)
+                        ax.fill_between(time_s, h_25, h_75,
+                                        alpha=0.3, color="tab:blue", linewidth=0)
+                        ax.plot(time_s, h_med, color="tab:blue", lw=1.0,
+                                label="Healthy" if r == 0 and c == 0 else "")
+
+            if r == 0:
+                ax.set_title(f"{d} ({DOCTOR_LABELS[d]})", fontsize=10)
+            if c == 0:
+                ax.set_ylabel(f"{b} ({BEHAVIOR_LABELS[b]})\nCount", fontsize=9)
+            if r == 2:
+                ax.set_xlabel("Time (s)", fontsize=9)
+
+    # Single legend from first cell
+    handles, labels = axes[0][0].get_legend_handles_labels()
+    if handles:
+        fig.legend(handles, labels, loc="upper right", fontsize=9)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    fig.savefig(os.path.join(out_dir, "sick_healthy_grid.png"), dpi=150)
+    plt.close(fig)
+
+
 def print_summary_table(runs, all_stats):
     """Print summary table to stdout."""
     print("\n" + "=" * 110)
@@ -556,6 +777,15 @@ def main():
 
     print("Generating recovery curves...")
     plot_recovery_curves(runs, out_dir)
+
+    print("Generating convergence diagnostic...")
+    plot_convergence_diagnostic(runs, out_dir)
+
+    print("Generating interaction effects...")
+    plot_interaction_effects(runs, all_stats, out_dir)
+
+    print("Generating sick/healthy grid...")
+    plot_sick_healthy_grid(runs, out_dir)
 
     # Build heatmap matrices (mean + std)
     peak_matrix = []
