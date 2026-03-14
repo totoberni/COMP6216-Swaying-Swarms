@@ -4,6 +4,6 @@
 
 // Pure C++ infection logic — no FLECS includes
 
-// Attempt infection with given probability
+// Attempt infection with per-second probability, dt-scaled to per-frame
 // Returns true if infection succeeds
-bool try_infect(float p_infect, std::mt19937& rng);
+bool try_infect(float p_per_second, float dt, std::mt19937& rng);

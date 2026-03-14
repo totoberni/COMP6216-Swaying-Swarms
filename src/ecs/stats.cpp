@@ -65,8 +65,14 @@ static void compute_swarm_metrics(SwarmMetrics& m,
         m.average_alignment_angle += theta;
     }
 
-    // Write to history buffers
-    m.coh_history[m.coh_history_index] = m.average_cohesion / count;
+    // Normalize accumulators to per-boid means
+    if (count > 0) {
+        m.average_cohesion /= count;
+        m.average_alignment_angle /= count;
+    }
+
+    // Write to history buffers (already divided by count)
+    m.coh_history[m.coh_history_index] = m.average_cohesion;
     m.coh_history_index = (m.coh_history_index + 1) % SwarmMetrics::HISTORY_SIZE;
     if (m.coh_history_count < SwarmMetrics::HISTORY_SIZE) m.coh_history_count++;
 
@@ -78,7 +84,7 @@ static void compute_swarm_metrics(SwarmMetrics& m,
     m.sep_history_index = (m.sep_history_index + 1) % SwarmMetrics::HISTORY_SIZE;
     if (m.sep_history_count < SwarmMetrics::HISTORY_SIZE) m.sep_history_count++;
 
-    m.ali_history[m.ali_history_index] = m.average_alignment_angle / count;
+    m.ali_history[m.ali_history_index] = m.average_alignment_angle;
     m.ali_history_index = (m.ali_history_index + 1) % SwarmMetrics::HISTORY_SIZE;
     if (m.ali_history_count < SwarmMetrics::HISTORY_SIZE) m.ali_history_count++;
 }
