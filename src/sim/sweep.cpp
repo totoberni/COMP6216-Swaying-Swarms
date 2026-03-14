@@ -220,7 +220,7 @@ struct IniFile {
              const std::string& value) {
         auto& sec = get_or_create(section);
         for (auto& [k, v] : sec.entries) {
-            if (k == key) { v = value; return; }
+            if (!k.empty() && k == key) { v = value; return; }
         }
         sec.entries.emplace_back(key, value);
     }
@@ -231,7 +231,10 @@ struct IniFile {
         for (const auto& sec : sections) {
             out << "\n[" << sec.name << "]\n";
             for (const auto& [k, v] : sec.entries) {
-                out << k << " = " << v << "\n";
+                if (k.empty())
+                    out << v << "\n"; // comment or blank line
+                else
+                    out << k << " = " << v << "\n";
             }
         }
     }
@@ -254,9 +257,12 @@ static IniFile parse_ini(const std::string& path) {
                                   || line.back() == '\t'))
             line.pop_back();
 
-        // Skip empty lines and comments
+        // Blank lines and comments
         if (line.empty() || line[0] == '#' || line[0] == ';') {
-            if (!current) ini.preamble.push_back(line);
+            if (!current)
+                ini.preamble.push_back(line);
+            else
+                current->entries.emplace_back("", line); // preserve in-section comments
             continue;
         }
 
@@ -412,11 +418,10 @@ static void write_manifest(
 // ============================================================
 
 static void run_single_headless(flecs::world& world, const SimConfig& config,
-                                const std::string& config_path) {
+                                const std::string& config_path,
+                                const std::string& out_dir) {
     const float dt = (config.headless_dt > 0.0f) ? config.headless_dt : (1.0f / 60.0f);
     const float duration = config.nogui_duration;
-
-    std::string out_dir = create_output_dir(config.output_dir);
 
     FILE* csv = open_csv(out_dir);
     const float csv_interval = config.csv_sample_interval;
@@ -460,17 +465,17 @@ static void run_single_headless(flecs::world& world, const SimConfig& config,
 // ============================================================
 
 static void write_sweep_summary(
-    const std::string& output_dir,
+    const std::vector<std::string>& run_dirs,
     const SampleSet& samples,
     int n_samples)
 {
-    std::string path = (fs::path(output_dir) / "sweep_summary.csv").string();
+    std::string path = (fs::path(run_dirs[0]).parent_path() / "sweep_summary.csv").string();
     std::ofstream out(path);
     out << "run_dir,formation,doctor_type,peak_infected,peak_pct,"
            "steady_state_infected,steady_state_pct,convergence_time,duration\n";
 
     for (int i = 0; i < n_samples; ++i) {
-        std::string run_dir = (fs::path(output_dir) / ("out" + std::to_string(i))).string();
+        const std::string& run_dir = run_dirs[i];
         std::string summary_path = (fs::path(run_dir) / "summary.txt").string();
 
         // Parse summary.txt for metrics
@@ -510,7 +515,7 @@ static void write_sweep_summary(
             ? static_cast<float>(final_infected) / static_cast<float>(total_pop)
             : 0.0f;
 
-        out << "out" << i << ","
+        out << fs::path(run_dir).filename().string() << ","
             << samples.formations[i] << ","
             << samples.doctor_behaviors[i] << ","
             << peak_infected << ","
@@ -527,6 +532,13 @@ static void write_sweep_summary(
 // ============================================================
 
 void run_sweep(const SweepConfig& config) {
+    // T-3: Input validation
+    if (config.n_samples <= 0) {
+        std::fprintf(stderr, "Error: --n-samples must be positive (got %d)\n",
+                     config.n_samples);
+        return;
+    }
+
     auto t_start = std::chrono::steady_clock::now();
 
     std::printf("=== C++ Monte Carlo Sweep ===\n");
@@ -561,11 +573,17 @@ void run_sweep(const SweepConfig& config) {
     std::string configs_dir = (fs::path(config.output_dir) / "configs").string();
     fs::create_directories(configs_dir);
 
+    // Pre-allocate per-run output dirs (serial — no TOCTOU race)
+    std::vector<std::string> run_dirs(config.n_samples);
+    for (int i = 0; i < config.n_samples; ++i) {
+        run_dirs[i] = (fs::path(config.output_dir) / ("out" + std::to_string(i))).string();
+        fs::create_directories(run_dirs[i]);
+    }
+
     for (int i = 0; i < config.n_samples; ++i) {
         char name[32];
         std::snprintf(name, sizeof(name), "sweep_%03d.ini", i);
         std::string cfg_path = (fs::path(configs_dir) / name).string();
-        std::string run_out = (fs::path(config.output_dir)).string();
 
         write_sweep_config(
             base_ini,
@@ -575,7 +593,7 @@ void run_sweep(const SweepConfig& config) {
             presets.at(samples.formations[i]),
             config.duration,
             cfg_path,
-            run_out);
+            run_dirs[i]);
     }
 
     // Write manifest
@@ -586,6 +604,7 @@ void run_sweep(const SweepConfig& config) {
                 config.n_samples, configs_dir.c_str());
 
     // Thread-pool execution
+    int threads = config.threads > 0 ? config.threads : 1;
     std::atomic<int> next_run{0};
     std::atomic<int> completed{0};
     std::mutex print_mutex;
@@ -612,9 +631,9 @@ void run_sweep(const SweepConfig& config) {
             register_stats_system(world);
             spawn_initial_population(world);
 
-            // Run headless simulation
+            // Run headless simulation with pre-allocated output dir
             const SimConfig& sim_cfg = world.get<SimConfig>();
-            run_single_headless(world, sim_cfg, cfg_path);
+            run_single_headless(world, sim_cfg, cfg_path, run_dirs[run_idx]);
 
             auto run_end = std::chrono::steady_clock::now();
             float run_secs = std::chrono::duration<float>(run_end - run_start).count();
@@ -629,15 +648,15 @@ void run_sweep(const SweepConfig& config) {
     };
 
     // Launch thread pool
-    std::printf("Starting %d worker threads...\n", config.threads);
-    std::vector<std::thread> threads;
-    threads.reserve(config.threads);
-    for (int t = 0; t < config.threads; ++t) {
-        threads.emplace_back(worker, t);
+    std::printf("Starting %d worker threads...\n", threads);
+    std::vector<std::thread> pool;
+    pool.reserve(threads);
+    for (int t = 0; t < threads; ++t) {
+        pool.emplace_back(worker, t);
     }
 
     // Wait for all threads
-    for (auto& t : threads) {
+    for (auto& t : pool) {
         t.join();
     }
 
@@ -651,6 +670,6 @@ void run_sweep(const SweepConfig& config) {
 
     // Post-sweep summary
     std::printf("Writing sweep summary...\n");
-    write_sweep_summary(config.output_dir, samples, config.n_samples);
+    write_sweep_summary(run_dirs, samples, config.n_samples);
     std::printf("Done. Results in %s/\n", config.output_dir.c_str());
 }
