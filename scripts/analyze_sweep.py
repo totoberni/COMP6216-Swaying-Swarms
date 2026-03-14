@@ -7,7 +7,7 @@ Two-phase pipeline:
 
 Output: sim-out/sweep-analysis/*.png + sweep_summary.csv
 
-Usage: python3 scripts/analyze_sweep.py --sim-dir sim-out --manifest configs/sweep/manifest.json
+Usage: python3 scripts/analyze_sweep.py --sim-dir sim-out --manifest sim-out/configs/manifest.json
        [--skip-collect]  # reuse cached sweep_summary.csv
 """
 import argparse
@@ -94,7 +94,7 @@ def extract_stats_from_csv(csv_path):
 
     return {
         "peak_infected": peak_infected,
-        "peak_pct": peak_pct,
+        "peak_pct": peak_pct * 100,  # percentage
         "steady_state_infected": ss_infected,
         "steady_state_pct": ss_pct * 100,  # percentage
         "convergence_time": convergence_time,
@@ -223,7 +223,7 @@ METRIC_COLS = ["steady_state_pct", "convergence_time", "peak_pct", "mean_growth_
 METRIC_LABELS = {
     "steady_state_pct": "Steady-State Infected (%)",
     "convergence_time": "Convergence Time (s)",
-    "peak_pct": "Peak Infected (fraction)",
+    "peak_pct": "Peak Infected (%)",
     "mean_growth_early": "Early Growth Rate",
 }
 PARAM_LABELS = {

@@ -204,7 +204,7 @@ def aggregate_trials(trial_stats_list):
         finite = [v for v in values if not np.isinf(v)]
         if finite:
             agg[f"{key}_mean"] = float(np.mean(finite))
-            agg[f"{key}_std"] = float(np.std(finite)) if len(finite) > 1 else 0.0
+            agg[f"{key}_std"] = float(np.std(finite, ddof=1)) if len(finite) > 1 else 0.0
         else:
             agg[f"{key}_mean"] = float("inf")
             agg[f"{key}_std"] = 0.0
@@ -494,7 +494,7 @@ def plot_convergence_diagnostic(runs, out_dir):
         cum_sq = np.cumsum(v ** 2)
         r_var = np.maximum(cum_sq / ns - r_mean ** 2, 0)
         r_std = np.sqrt(r_var)
-        r_cov = np.where(np.abs(r_mean) > 1e-9, r_std / np.abs(r_mean), 0.0)
+        r_cov = np.divide(r_std, np.abs(r_mean), out=np.zeros_like(r_std), where=np.abs(r_mean) > 1e-9)
         ax2.plot(ns, r_cov, color="tab:gray", linewidth=0.4, alpha=0.4)
 
     # Highlight worst-case cell
@@ -505,8 +505,8 @@ def plot_convergence_diagnostic(runs, out_dir):
     running_var = np.maximum(cum_sq / ns - running_mean ** 2, 0)
     running_std = np.sqrt(running_var)
     running_se = running_std / np.sqrt(ns)
-    running_cov = np.where(np.abs(running_mean) > 1e-9,
-                           running_std / np.abs(running_mean), 0.0)
+    running_cov = np.divide(running_std, np.abs(running_mean),
+                            out=np.zeros_like(running_std), where=np.abs(running_mean) > 1e-9)
 
     ax1.plot(ns, running_mean, color="tab:blue", linewidth=1.3, label="Running Mean")
     ax1.fill_between(ns, running_mean - running_se, running_mean + running_se,
@@ -633,7 +633,7 @@ def plot_sick_healthy_grid(runs, out_dir):
                             ln = min(len(inf_arr), len(rec_arr))
                             min_len = min(min_len, ln)
                             inf_series.append(inf_arr[:ln])
-                            h = [total_pop - inf_arr[i] - rec_arr[i]
+                            h = [max(0, total_pop - inf_arr[i] - rec_arr[i])
                                  for i in range(ln)]
                             healthy_series.append(h)
 
@@ -668,8 +668,15 @@ def plot_sick_healthy_grid(runs, out_dir):
             if r == 2:
                 ax.set_xlabel("Time (s)", fontsize=9)
 
-    # Single legend from first cell
-    handles, labels = axes[0][0].get_legend_handles_labels()
+    # Legend from first cell with data
+    handles, labels = [], []
+    for r_ax in range(len(BEHAVIORS)):
+        for c_ax in range(len(DOCTORS)):
+            handles, labels = axes[r_ax][c_ax].get_legend_handles_labels()
+            if handles:
+                break
+        if handles:
+            break
     if handles:
         fig.legend(handles, labels, loc="upper right", fontsize=9)
 

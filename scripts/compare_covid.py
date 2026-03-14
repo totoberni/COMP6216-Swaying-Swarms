@@ -333,9 +333,9 @@ def plot_sir_dynamics(covid, runs_data, dataset_cfg, output_dir):
         infected = d.get("infected", np.zeros(1))
         recovered = d.get("recovered", np.zeros(1))
         n = min(len(infected), len(recovered), len(d.get("time_s", [])))
-        d["_s_frac"] = (total_pop - infected[:n] - recovered[:n]) / total_pop
-        d["_i_frac"] = infected[:n] / total_pop
-        d["_r_frac"] = recovered[:n] / total_pop
+        d["_s_frac"] = np.clip((total_pop - infected[:n] - recovered[:n]) / total_pop, 0, 1)
+        d["_i_frac"] = np.clip(infected[:n] / total_pop, 0, 1)
+        d["_r_frac"] = np.clip(recovered[:n] / total_pop, 0, 1)
 
     s_pct = compute_percentiles(runs_data, "_s_frac")
     i_pct = compute_percentiles(runs_data, "_i_frac")
