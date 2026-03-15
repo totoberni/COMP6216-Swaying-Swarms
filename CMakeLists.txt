@@ -138,3 +138,42 @@ if(TEST_SOURCES)
     enable_testing()
     add_test(NAME unit_tests COMMAND tests)
 endif()
+
+# --- CUDA GPU acceleration (optional) ---
+option(USE_CUDA "Enable CUDA GPU acceleration" OFF)
+
+if(USE_CUDA)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_ARCHITECTURES 86)  # RTX 3050 = SM_86
+
+    file(GLOB_RECURSE CUDA_SOURCES src/gpu/*.cu)
+    target_sources(boid_swarm PRIVATE ${CUDA_SOURCES})
+    set_target_properties(boid_swarm PROPERTIES CUDA_ARCHITECTURES 86)
+    target_compile_definitions(boid_swarm PRIVATE USE_CUDA)
+    target_include_directories(boid_swarm PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+
+    # --- GPU test executable ---
+    file(GLOB GPU_TEST_SOURCES tests/*.cu)
+    if(GPU_TEST_SOURCES)
+        include(GoogleTest)
+        add_executable(gpu_tests ${GPU_TEST_SOURCES} ${CUDA_SOURCES} ${SPATIAL_SOURCES})
+        target_include_directories(gpu_tests PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        )
+        # spatial_grid.cpp uses raymath.h (inline Vector2 ops — no link needed)
+        target_include_directories(gpu_tests SYSTEM PRIVATE
+            ${raylib_SOURCE_DIR}/src
+        )
+        target_link_libraries(gpu_tests PRIVATE
+            gtest_main
+            gtest
+        )
+        set_target_properties(gpu_tests PROPERTIES
+            CUDA_SEPARABLE_COMPILATION ON
+        )
+        gtest_discover_tests(gpu_tests)
+    endif()
+endif()
