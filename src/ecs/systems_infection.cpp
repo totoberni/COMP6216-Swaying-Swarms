@@ -91,7 +91,7 @@ void register_spontaneous_infection_system(flecs::world& world) {
 
             std::mt19937& rng = sim_rng();
             std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-            float p_per_frame = p * dt;
+            float p_per_frame = 1.0f - std::pow(1.0f - p, dt);
 
             w.defer_begin();
 

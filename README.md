@@ -236,6 +236,20 @@ config.ini         Default simulation parameters
 
 ---
 
+## References
+
+1. Reynolds, C.W. (1987). *Flocks, Herds, and Schools: A Distributed Behavioral Model*. Computer Graphics, 21(4), 25-34.
+2. Kermack, W.O. & McKendrick, A.G. (1927). *A Contribution to the Mathematical Theory of Epidemics*. Proc. Royal Society A, 115(772), 700-721.
+3. Tracy, M., Cerdá, M. & Keyes, K.M. (2018). *Agent-Based Modeling in Public Health: Current Applications and Future Directions*. Annual Review of Public Health, 39, 77-94.
+4. McKay, M.D., Beckman, R.J. & Conover, W.J. (1979). *A Comparison of Three Methods for Selecting Values of Input Variables in the Analysis of Output from a Computer Code*. Technometrics, 21(2), 239-245.
+5. Teschner, M. et al. (2003). *Optimized Spatial Hashing for Collision Detection of Deformable Objects*. VMV, 47-54.
+6. Allen, M.P. & Tildesley, D.J. (2017). *Computer Simulation of Liquids* (2nd ed.). Oxford University Press. (Periodic boundary conditions)
+7. Green, S. (2013). *Particle Simulation using CUDA*. NVIDIA GPU Computing SDK.
+8. Nystrom, R. (2014). *Game Programming Patterns*. Genever Benning. (ECS architecture)
+9. Richmond, P. et al. (2023). *FLAMEGPU2: A framework for agent-based simulation on GPU architectures*. Software: Practice and Experience, 53(8), 1659-1680.
+
+---
+
 ## License
 
 TODO
