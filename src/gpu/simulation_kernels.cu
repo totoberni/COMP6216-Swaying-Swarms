@@ -469,6 +469,12 @@ __global__ void cureKernel(
                 if (j == i) continue;
                 if (!infected_read[j]) continue;  // not infected, skip
 
+                float diff_x, diff_y;
+                d_displacement(px, py, pos_x[j], pos_y[j], toroidal,
+                               cfg.world_w, cfg.world_h, diff_x, diff_y);
+                float dist_sq = diff_x * diff_x + diff_y * diff_y;
+                if (dist_sq > r_sq) continue;
+
                 if (curand_uniform(&rng_states[i]) < p_frame) {
                     infected_write[j] = 0;
                     immunity_write[j] = cfg.cure_immunity_level;

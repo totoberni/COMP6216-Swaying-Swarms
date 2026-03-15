@@ -17,6 +17,7 @@
 #include <cstring>
 #include <string>
 #include <thread>
+#include <vector>
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing
@@ -233,7 +234,51 @@ int main(int argc, char* argv[]) {
 
     if (config.nogui) {
 #ifdef USE_CUDA
-        gpu_run_headless(world, config, args.config_path);
+        // Extract entity data from FLECS into SoA host arrays
+        std::vector<float> h_px, h_py, h_vx, h_vy, h_imm;
+        std::vector<uint8_t> h_st, h_inf;
+        auto eq = world.query<const Position, const Velocity>();
+        eq.each([&](flecs::entity e, const Position& p, const Velocity& v) {
+            h_px.push_back(p.x); h_py.push_back(p.y);
+            h_vx.push_back(v.vx); h_vy.push_back(v.vy);
+            h_st.push_back(e.has<DoctorBoid>() ? 1 : 0);
+            h_inf.push_back(e.has<Infected>() ? 1 : 0);
+            h_imm.push_back(e.has<ImmunityState>()
+                ? e.get<ImmunityState>().immunity_level : 0.0f);
+        });
+        int n = static_cast<int>(h_px.size());
+        int n_normal = 0, n_doctor = 0;
+        for (int i = 0; i < n; ++i) { if (h_st[i] == 1) n_doctor++; else n_normal++; }
+
+        // Build GPU config from SimConfig
+        SimConfigGpu gcfg{};
+        auto copy_sp = [](SwarmParamsGpu& d, const SwarmParams& s) {
+            d.cohesion_weight = s.cohesion_weight; d.alignment_weight = s.alignment_weight;
+            d.separation_weight = s.separation_weight; d.cohesion_radius = s.cohesion_radius;
+            d.alignment_radius = s.alignment_radius; d.separation_radius = s.separation_radius;
+            d.fov = s.fov; d.noise_factor = s.noise_factor; d.max_speed = s.max_speed;
+            d.max_force = s.max_force; d.min_speed = s.min_speed;
+        };
+        copy_sp(gcfg.normal, config.normal); copy_sp(gcfg.doctor, config.doctor);
+        gcfg.world_w = config.world_width; gcfg.world_h = config.world_height;
+        gcfg.wall_bounce = config.wall_bounce;
+        gcfg.p_infect_normal = config.p_infect_normal; gcfg.p_infect_doctor = config.p_infect_doctor;
+        gcfg.p_spontaneous_infect = config.p_spontaneous_infect; gcfg.p_cure = config.p_cure;
+        gcfg.r_interact_normal = config.r_interact_normal; gcfg.r_interact_doctor = config.r_interact_doctor;
+        gcfg.debuff_p_cure_infected = config.debuff_p_cure_infected;
+        gcfg.debuff_r_interact_doctor_infected = config.debuff_r_interact_doctor_infected;
+        gcfg.debuff_r_interact_normal_infected = config.debuff_r_interact_normal_infected;
+        gcfg.cure_immunity_level = config.cure_immunity_level;
+        gcfg.doctor_behavior = static_cast<int>(config.doctor_behavior);
+        gcfg.doctor_seek_radius = config.doctor_seek_radius;
+        gcfg.doctor_seek_weight = config.doctor_seek_weight;
+
+        float gpu_dt = (config.headless_dt > 0.0f) ? config.headless_dt : (1.0f / 60.0f);
+        gpu_run_headless(n, n_normal, n_doctor,
+                         h_px.data(), h_py.data(), h_vx.data(), h_vy.data(),
+                         h_st.data(), h_inf.data(), h_imm.data(),
+                         gcfg, config.nogui_duration, gpu_dt, config.csv_sample_interval,
+                         config.output_dir, args.config_path);
 #else
         run_headless(world, config, args.config_path);
 #endif
