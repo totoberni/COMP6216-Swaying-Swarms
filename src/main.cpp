@@ -240,7 +240,7 @@ int main(int argc, char* argv[]) {
         std::vector<float> h_px(n), h_py(n), h_vx(n), h_vy(n), h_imm(n, 0.0f);
         std::vector<uint8_t> h_st(n), h_inf(n, 0);
 
-        seed_sim_rng(42);
+        // RNG already seeded to 42 at thread_local construction (rng.h).
         std::uniform_real_distribution<float> dx(0.0f, config.world_width);
         std::uniform_real_distribution<float> dy(0.0f, config.world_height);
         std::uniform_real_distribution<float> da(0.0f, 2.0f * 3.14159265f);

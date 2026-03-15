@@ -499,7 +499,7 @@ __global__ void spontaneousInfectionKernel(
 
     if (infected[i]) return;
 
-    float p_frame = p_spontaneous * dt;
+    float p_frame = 1.0f - powf(1.0f - p_spontaneous, dt);
     if (curand_uniform(&rng_states[i]) < p_frame) {
         infected[i] = 1;
         immunity[i] = 0.0f;
