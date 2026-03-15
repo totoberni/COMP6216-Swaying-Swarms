@@ -146,12 +146,14 @@ if(USE_CUDA)
     enable_language(CUDA)
     set(CMAKE_CUDA_STANDARD 17)
     set(CMAKE_CUDA_ARCHITECTURES 86)  # RTX 3050 = SM_86
+    find_package(CUDAToolkit REQUIRED)
 
     file(GLOB_RECURSE CUDA_SOURCES src/gpu/*.cu)
     target_sources(boid_swarm PRIVATE ${CUDA_SOURCES})
     set_target_properties(boid_swarm PROPERTIES CUDA_ARCHITECTURES 86)
     target_compile_definitions(boid_swarm PRIVATE USE_CUDA)
     target_include_directories(boid_swarm PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+    target_link_libraries(boid_swarm PRIVATE CUDA::curand)
 
     # --- GPU test executable ---
     file(GLOB GPU_TEST_SOURCES tests/*.cu)
@@ -170,6 +172,7 @@ if(USE_CUDA)
         target_link_libraries(gpu_tests PRIVATE
             gtest_main
             gtest
+            CUDA::curand
         )
         set_target_properties(gpu_tests PROPERTIES
             CUDA_SEPARABLE_COMPILATION ON

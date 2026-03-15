@@ -22,6 +22,7 @@ cmake --build build
 | Run simulation | `./build/boid_swarm` | `.\build\Debug\boid_swarm.exe` |
 | Run with config | `./build/boid_swarm configs/B2_D2.ini` | `.\build\Debug\boid_swarm.exe configs\B2_D2.ini` |
 | Run headless | `./build/boid_swarm -nogui configs/B2_D2.ini` | `.\build\Debug\boid_swarm.exe -nogui configs\B2_D2.ini` |
+| Run headless (force CPU) | `./build/boid_swarm -nogui --cpu configs/B2_D2.ini` | `.\build\Debug\boid_swarm.exe -nogui --cpu configs\B2_D2.ini` |
 | Run tests | `cd build && ctest --output-on-failure` | `cd build && ctest --output-on-failure -C Debug` |
 
 > **Windows:** Always use "Developer PowerShell for VS 2022". The `-C Debug` flag is required for ctest on MSVC multi-config builds.
@@ -89,6 +90,31 @@ Output is written to `sim-out/outN/` (auto-incrementing). Each run produces:
 - `summary.txt` — peak infection, final counts, swarm metrics
 
 Set `nogui_duration` in the config file to control simulation length (seconds).
+
+---
+
+## GPU Acceleration (CUDA)
+
+Optional GPU-accelerated headless mode for large-scale simulations (up to 1.4M boids). Requires an NVIDIA GPU with CUDA toolkit installed.
+
+### Building with CUDA
+
+```bash
+cmake -B build -DUSE_CUDA=ON
+cmake --build build
+```
+
+The default build (`USE_CUDA=OFF`) does not require CUDA and works exactly as before.
+
+### Running
+
+| Command | Description |
+|---|---|
+| `./build/boid_swarm -nogui configs/milan_test.ini` | GPU headless (1.4M boids) |
+| `./build/boid_swarm -nogui --cpu configs/B2_D1.ini` | Force CPU/FLECS path (even with CUDA build) |
+| `./build/boid_swarm configs/B2_D1.ini` | GUI mode (always uses CPU/FLECS) |
+
+**Note for teammates without NVIDIA GPUs**: Build without `-DUSE_CUDA=ON` (the default), or use the `--cpu` flag if using a CUDA-enabled build. GUI mode and `--sweep` always use the CPU/FLECS path regardless of build flags.
 
 ---
 
@@ -206,6 +232,7 @@ config.ini         Default simulation parameters
 | 9 experiment configs + batch runner + analysis script | Done |
 | Interactive GUI: sliders, graphs, stats panel | Done |
 | INI config file loader | Done |
+| CUDA GPU acceleration (headless, up to 1.4M boids) | Done |
 
 ---
 
