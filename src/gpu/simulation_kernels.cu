@@ -534,14 +534,14 @@ __global__ void countStatsKernel(
 __global__ void infectedCentroidKernel(
     const float* __restrict__ pos_x, const float* __restrict__ pos_y,
     const uint8_t* __restrict__ infected,
-    float* __restrict__ sum_x, float* __restrict__ sum_y,
+    double* __restrict__ sum_x, double* __restrict__ sum_y,
     int* __restrict__ d_count, int count)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= count) return;
     if (!infected[i]) return;
-    atomicAdd(sum_x, pos_x[i]);
-    atomicAdd(sum_y, pos_y[i]);
+    atomicAdd(sum_x, static_cast<double>(pos_x[i]));
+    atomicAdd(sum_y, static_cast<double>(pos_y[i]));
     atomicAdd(d_count, 1);
 }
 
@@ -619,33 +619,26 @@ void gpu_count_stats(GpuBuffers& buf) {
 }
 
 void gpu_infected_centroid(const GpuBuffers& buf, float& cx, float& cy) {
-    // Allocate temp device vars
-    float* d_sum_x; float* d_sum_y; int* d_cnt;
-    CUDA_CHECK(cudaMalloc(&d_sum_x, sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_sum_y, sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_cnt, sizeof(int)));
-    CUDA_CHECK(cudaMemset(d_sum_x, 0, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_sum_y, 0, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_cnt, 0, sizeof(int)));
+    // Use pre-allocated buffers from GpuBuffers (avoids cudaMalloc per frame)
+    CUDA_CHECK(cudaMemset(buf.d_centroid_sum_x, 0, sizeof(double)));
+    CUDA_CHECK(cudaMemset(buf.d_centroid_sum_y, 0, sizeof(double)));
+    CUDA_CHECK(cudaMemset(buf.d_centroid_count, 0, sizeof(int)));
 
     int grid_size = (buf.count + BLOCK_SIZE - 1) / BLOCK_SIZE;
     infectedCentroidKernel<<<grid_size, BLOCK_SIZE>>>(
         buf.d_pos_x, buf.d_pos_y, buf.d_infected,
-        d_sum_x, d_sum_y, d_cnt, buf.count);
+        buf.d_centroid_sum_x, buf.d_centroid_sum_y,
+        buf.d_centroid_count, buf.count);
     CUDA_CHECK(cudaDeviceSynchronize());
 
-    float h_sx, h_sy; int h_cnt;
-    CUDA_CHECK(cudaMemcpy(&h_sx, d_sum_x, sizeof(float), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(&h_sy, d_sum_y, sizeof(float), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(&h_cnt, d_cnt, sizeof(int), cudaMemcpyDeviceToHost));
-
-    cudaFree(d_sum_x);
-    cudaFree(d_sum_y);
-    cudaFree(d_cnt);
+    double h_sx, h_sy; int h_cnt;
+    CUDA_CHECK(cudaMemcpy(&h_sx, buf.d_centroid_sum_x, sizeof(double), cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(&h_sy, buf.d_centroid_sum_y, sizeof(double), cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(&h_cnt, buf.d_centroid_count, sizeof(int), cudaMemcpyDeviceToHost));
 
     if (h_cnt > 0) {
-        cx = h_sx / h_cnt;
-        cy = h_sy / h_cnt;
+        cx = static_cast<float>(h_sx / h_cnt);
+        cy = static_cast<float>(h_sy / h_cnt);
     } else {
         cx = 0.0f;
         cy = 0.0f;

@@ -25,6 +25,11 @@ struct GpuBuffers {
     int* d_infected_count = nullptr;
     int* d_recovered_count = nullptr;
 
+    // Centroid reduction (pre-allocated to avoid cudaMalloc per frame)
+    double* d_centroid_sum_x = nullptr;
+    double* d_centroid_sum_y = nullptr;
+    int* d_centroid_count = nullptr;
+
     // Spatial hash arrays
     uint32_t* d_cell_id = nullptr;
     uint32_t* d_boid_index = nullptr;

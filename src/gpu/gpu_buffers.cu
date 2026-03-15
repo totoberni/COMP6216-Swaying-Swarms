@@ -37,6 +37,11 @@ void gpu_buffers_alloc(GpuBuffers& buf, int capacity, int num_cells) {
     CUDA_CHECK(cudaMalloc(&buf.d_infected_count, sizeof(int)));
     CUDA_CHECK(cudaMalloc(&buf.d_recovered_count, sizeof(int)));
 
+    // Centroid reduction (pre-allocated — avoids cudaMalloc per frame)
+    CUDA_CHECK(cudaMalloc(&buf.d_centroid_sum_x, sizeof(double)));
+    CUDA_CHECK(cudaMalloc(&buf.d_centroid_sum_y, sizeof(double)));
+    CUDA_CHECK(cudaMalloc(&buf.d_centroid_count, sizeof(int)));
+
     // Spatial hash arrays
     CUDA_CHECK(cudaMalloc(&buf.d_cell_id, capacity * sizeof(uint32_t)));
     CUDA_CHECK(cudaMalloc(&buf.d_boid_index, capacity * sizeof(uint32_t)));
@@ -79,6 +84,9 @@ void gpu_buffers_free(GpuBuffers& buf) {
     cudaFree(buf.d_rng_states);  buf.d_rng_states = nullptr;
     cudaFree(buf.d_infected_count);   buf.d_infected_count = nullptr;
     cudaFree(buf.d_recovered_count);  buf.d_recovered_count = nullptr;
+    cudaFree(buf.d_centroid_sum_x);   buf.d_centroid_sum_x = nullptr;
+    cudaFree(buf.d_centroid_sum_y);   buf.d_centroid_sum_y = nullptr;
+    cudaFree(buf.d_centroid_count);   buf.d_centroid_count = nullptr;
 
     cudaFree(buf.d_cell_id);      buf.d_cell_id = nullptr;
     cudaFree(buf.d_boid_index);   buf.d_boid_index = nullptr;

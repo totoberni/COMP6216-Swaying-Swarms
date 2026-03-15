@@ -5,6 +5,8 @@
 #include "render/renderer.h"
 #include "sim/output.h"
 #include "sim/sweep.h"
+#include "sim/rng.h"
+#include "config_loader.h"
 #include "components.h"
 #include "render_state.h"
 #ifdef USE_CUDA
@@ -15,6 +17,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
 #include <string>
 #include <thread>
 #include <vector>
@@ -26,6 +29,7 @@
 struct CliArgs {
     std::string config_path = "config.ini";
     bool nogui = false;
+    bool force_cpu = false;  // --cpu: force FLECS/CPU path even with USE_CUDA
     // Sweep mode
     bool sweep = false;
     int n_samples = 600;
@@ -47,6 +51,7 @@ static void print_usage(const char* prog) {
     std::printf("  --seed S               RNG seed (default: 42)\n");
     std::printf("  --duration D           Sim duration in seconds (default: config value)\n");
     std::printf("  --output-dir DIR       Output directory (default: sim-out)\n");
+    std::printf("  --cpu                  Force CPU/FLECS path (ignore CUDA even if compiled in)\n");
     std::printf("  --help                 Show this help\n");
 }
 
@@ -67,6 +72,8 @@ static CliArgs parse_args(int argc, char* argv[]) {
             args.duration = static_cast<float>(std::atof(argv[++i]));
         } else if (std::strcmp(argv[i], "--output-dir") == 0 && i + 1 < argc) {
             args.output_dir = argv[++i];
+        } else if (std::strcmp(argv[i], "--cpu") == 0) {
+            args.force_cpu = true;
         } else if (std::strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             std::exit(0);
@@ -219,36 +226,42 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // Single-run mode (existing logic)
-    flecs::world world;
-    init_world(world, args.config_path);
-    register_all_systems(world);
-    register_stats_system(world);
-
-    spawn_initial_population(world);
-
-    SimConfig& config = world.get_mut<SimConfig>();
-    if (args.nogui) {
-        config.nogui = true;
-    }
-
-    if (config.nogui) {
 #ifdef USE_CUDA
-        // Extract entity data from FLECS into SoA host arrays
-        std::vector<float> h_px, h_py, h_vx, h_vy, h_imm;
-        std::vector<uint8_t> h_st, h_inf;
-        auto eq = world.query<const Position, const Velocity>();
-        eq.each([&](flecs::entity e, const Position& p, const Velocity& v) {
-            h_px.push_back(p.x); h_py.push_back(p.y);
-            h_vx.push_back(v.vx); h_vy.push_back(v.vy);
-            h_st.push_back(e.has<DoctorBoid>() ? 1 : 0);
-            h_inf.push_back(e.has<Infected>() ? 1 : 0);
-            h_imm.push_back(e.has<ImmunityState>()
-                ? e.get<ImmunityState>().immunity_level : 0.0f);
-        });
-        int n = static_cast<int>(h_px.size());
-        int n_normal = 0, n_doctor = 0;
-        for (int i = 0; i < n; ++i) { if (h_st[i] == 1) n_doctor++; else n_normal++; }
+    // GPU headless path — direct SoA generation, no FLECS
+    if (args.nogui && !args.force_cpu) {
+        SimConfig config{};
+        load_config(args.config_path, config);
+        config.nogui = true;
+
+        int n_normal = config.initial_normal_count;
+        int n_doctor = config.initial_doctor_count;
+        int n = n_normal + n_doctor;
+
+        std::vector<float> h_px(n), h_py(n), h_vx(n), h_vy(n), h_imm(n, 0.0f);
+        std::vector<uint8_t> h_st(n), h_inf(n, 0);
+
+        seed_sim_rng(42);
+        std::uniform_real_distribution<float> dx(0.0f, config.world_width);
+        std::uniform_real_distribution<float> dy(0.0f, config.world_height);
+        std::uniform_real_distribution<float> da(0.0f, 2.0f * 3.14159265f);
+        std::uniform_real_distribution<float> di(0.0f, 1.0f);
+
+        for (int i = 0; i < n_normal; ++i) {
+            h_px[i] = dx(sim_rng()); h_py[i] = dy(sim_rng());
+            float a = da(sim_rng());
+            h_vx[i] = config.normal.max_speed * std::cos(a);
+            h_vy[i] = config.normal.max_speed * std::sin(a);
+            h_st[i] = 0;
+            if (di(sim_rng()) < config.p_initial_infect_normal) h_inf[i] = 1;
+        }
+        for (int i = n_normal; i < n; ++i) {
+            h_px[i] = dx(sim_rng()); h_py[i] = dy(sim_rng());
+            float a = da(sim_rng());
+            h_vx[i] = config.doctor.max_speed * std::cos(a);
+            h_vy[i] = config.doctor.max_speed * std::sin(a);
+            h_st[i] = 1;
+            if (di(sim_rng()) < config.p_initial_infect_doctor) h_inf[i] = 1;
+        }
 
         // Build GPU config from SimConfig
         SimConfigGpu gcfg{};
@@ -279,9 +292,22 @@ int main(int argc, char* argv[]) {
                          h_st.data(), h_inf.data(), h_imm.data(),
                          gcfg, config.nogui_duration, gpu_dt, config.csv_sample_interval,
                          config.output_dir, args.config_path);
-#else
-        run_headless(world, config, args.config_path);
+        return 0;
+    }
 #endif
+
+    // FLECS path — GUI, CPU headless, --cpu, or USE_CUDA not defined
+    flecs::world world;
+    init_world(world, args.config_path);
+    register_all_systems(world);
+    register_stats_system(world);
+    spawn_initial_population(world);
+
+    SimConfig& config = world.get_mut<SimConfig>();
+    if (args.nogui) config.nogui = true;
+
+    if (config.nogui) {
+        run_headless(world, config, args.config_path);
     } else {
         run_gui(world, config);
     }

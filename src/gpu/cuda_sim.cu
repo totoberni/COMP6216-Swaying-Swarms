@@ -59,18 +59,7 @@ void gpu_run_headless(
     std::printf("GPU headless: %d boids (%d normal, %d doctor)\n",
                 count, normal_count, doctor_count);
 
-    // ---- Setup grid params ----
-    float cell_size = std::max(cfg.r_interact_normal, cfg.r_interact_doctor);
-    GridParams grid{};
-    grid.world_w = cfg.world_w;
-    grid.world_h = cfg.world_h;
-    grid.cell_size = cell_size;
-    grid.cols = static_cast<int>(std::ceil(cfg.world_w / cell_size));
-    grid.rows = static_cast<int>(std::ceil(cfg.world_h / cell_size));
-    grid.total_cells = grid.cols * grid.rows;
-    grid.toroidal = !cfg.wall_bounce;
-
-    // Per-swarm query radii
+    // ---- Per-swarm query radii (computed first — used for cell_size) ----
     float qr_normal = std::max({cfg.normal.separation_radius,
                                 cfg.normal.alignment_radius,
                                 cfg.normal.cohesion_radius});
@@ -80,6 +69,19 @@ void gpu_run_headless(
     if (cfg.doctor_behavior == 1) {  // SeekNearest
         qr_doctor = std::max(qr_doctor, cfg.doctor_seek_radius);
     }
+
+    // ---- Setup grid params ----
+    // Use max steering radius as cell_size (not interaction radius) so
+    // cell_range = ceil(radius/cell_size) = 1 for steering → 9-cell scan
+    float cell_size = std::max(qr_normal, qr_doctor);
+    GridParams grid{};
+    grid.world_w = cfg.world_w;
+    grid.world_h = cfg.world_h;
+    grid.cell_size = cell_size;
+    grid.cols = static_cast<int>(std::ceil(cfg.world_w / cell_size));
+    grid.rows = static_cast<int>(std::ceil(cfg.world_h / cell_size));
+    grid.total_cells = grid.cols * grid.rows;
+    grid.toroidal = !cfg.wall_bounce;
 
     // ---- Allocate + upload GPU buffers ----
     GpuBuffers buf{};
@@ -144,6 +146,9 @@ void gpu_run_headless(
         std::swap(buf.d_infected, buf.d_infected_sorted);
         std::swap(buf.d_immunity, buf.d_immunity_sorted);
 
+        // Spontaneous infection (in-place) — matches CPU order: infection → spontaneous → cure
+        gpu_spontaneous_infection(buf, cfg, dt);
+
         // Cure (deferred): copy primary -> scratch, kernel, swap
         CUDA_CHECK(cudaMemcpy(buf.d_infected_sorted, buf.d_infected,
                               count * sizeof(uint8_t), cudaMemcpyDeviceToDevice));
@@ -152,9 +157,6 @@ void gpu_run_headless(
         gpu_cure(buf, grid, cfg, dt);
         std::swap(buf.d_infected, buf.d_infected_sorted);
         std::swap(buf.d_immunity, buf.d_immunity_sorted);
-
-        // Spontaneous infection (in-place)
-        gpu_spontaneous_infection(buf, cfg, dt);
 
         // Stats
         gpu_count_stats(buf);
