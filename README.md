@@ -76,51 +76,49 @@ The simulation reads an optional INI config file (positional argument). `config.
 
 ---
 
-## Headless Mode
+## Running Simulations
 
-Run simulations without a GUI window for batch experiments:
+### Modes
+
+| Mode | Command | Description |
+|---|---|---|
+| GUI (interactive) | `./build/boid_swarm configs/B2_D1.ini` | Real-time visualization with sliders and graphs |
+| Headless (CPU) | `./build/boid_swarm -nogui configs/B2_D1.ini` | Batch mode, CSV output to `sim-out/outN/` |
+| Headless (GPU) | `./build/boid_swarm -nogui configs/milan.ini` | GPU-accelerated, up to 1.4M boids (requires CUDA build) |
+| Headless (force CPU) | `./build/boid_swarm -nogui --cpu configs/B2_D1.ini` | Force CPU/FLECS path even with CUDA build |
+| Monte Carlo sweep | `./build/boid_swarm --sweep --n-samples 600 configs/covid_base.ini` | LHS parameter sweep with thread pool |
+
+Each headless run writes to `sim-out/outN/` (auto-incrementing):
+- `metrics.csv` — per-frame SIR + swarm metrics (15 columns)
+- `config_used.ini` — config snapshot for reproducibility
+- `summary.txt` — peak infection, final counts
+
+### GPU Acceleration (CUDA)
+
+Optional. Requires an NVIDIA GPU + CUDA toolkit. The default build (`USE_CUDA=OFF`) works without CUDA.
 
 ```bash
-./build/boid_swarm -nogui configs/B2_D2.ini
+cmake -B build -DUSE_CUDA=ON && cmake --build build
 ```
 
-Output is written to `sim-out/outN/` (auto-incrementing). Each run produces:
-- `metrics.csv` — per-frame infection/swarm metrics (15 columns)
-- `config_used.ini` — snapshot of the config for reproducibility
-- `summary.txt` — peak infection, final counts, swarm metrics
+**Teammates without NVIDIA GPUs**: build without `-DUSE_CUDA=ON` (the default), or pass `--cpu` to force the CPU path. GUI mode and `--sweep` always use CPU/FLECS regardless of build flags.
 
-Set `nogui_duration` in the config file to control simulation length (seconds).
+### Sweep CLI
+
+```bash
+./build/boid_swarm --sweep [options] config.ini
+  --n-samples N    LHS samples (default: 600)
+  --threads T      Worker threads (default: cores - 2)
+  --seed S         RNG seed (default: 42)
+  --duration D     Sim duration in seconds
+  --output-dir DIR Output directory (default: sim-out)
+```
 
 ---
 
-## GPU Acceleration (CUDA)
+## Experiments & Analysis
 
-Optional GPU-accelerated headless mode for large-scale simulations (up to 1.4M boids). Requires an NVIDIA GPU with CUDA toolkit installed.
-
-### Building with CUDA
-
-```bash
-cmake -B build -DUSE_CUDA=ON
-cmake --build build
-```
-
-The default build (`USE_CUDA=OFF`) does not require CUDA and works exactly as before.
-
-### Running
-
-| Command | Description |
-|---|---|
-| `./build/boid_swarm -nogui configs/milan_test.ini` | GPU headless (1.4M boids) |
-| `./build/boid_swarm -nogui --cpu configs/B2_D1.ini` | Force CPU/FLECS path (even with CUDA build) |
-| `./build/boid_swarm configs/B2_D1.ini` | GUI mode (always uses CPU/FLECS) |
-
-**Note for teammates without NVIDIA GPUs**: Build without `-DUSE_CUDA=ON` (the default), or use the `--cpu` flag if using a CUDA-enabled build. GUI mode and `--sweep` always use the CPU/FLECS path regardless of build flags.
-
----
-
-## Running Experiments
-
-The `configs/` directory contains 9 experiment configs in a 3×3 matrix:
+### 3x3 Experiment Matrix
 
 |  | D1 (Normal) | D2 (Seek Nearest) | D3 (Seek Centroid) |
 |---|---|---|---|
@@ -128,27 +126,38 @@ The `configs/` directory contains 9 experiment configs in a 3×3 matrix:
 | **B2 (Wide FOV)** | B2_D1.ini | B2_D2.ini | B2_D3.ini |
 | **B3 (Chaotic)** | B3_D1.ini | B3_D2.ini | B3_D3.ini |
 
-Run all 9 experiments:
-```bash
-./scripts/run_experiments.sh          # uses build/ by default
-./scripts/run_experiments.sh mybuild  # custom build dir
-```
-
----
-
-## Analysis
-
-Generate comparison plots from experiment results:
+### Full Experiment Sequence
 
 ```bash
-python3 scripts/compare_results.py --sim-dir sim-out
+# 1. Run all 9 experiments (single trial, with analysis)
+./scripts/run_experiments.sh --clean --analyze
+
+# 2. Multi-trial with parallelism
+./scripts/run_experiments.sh --clean --repeat 3 --parallel 4 --analyze
+
+# 3. Monte Carlo sweep (600 LHS samples, 12 threads)
+./build/boid_swarm --sweep --n-samples 600 --threads 12 --duration 300 \
+  --output-dir sim-out configs/covid_base.ini
+
+# 4. Sweep analysis
+.venv/bin/python3 scripts/analyze_sweep.py --sim-dir sim-out --manifest sim-out/configs/manifest.json
+
+# 5. Scale validation (compare dynamics across boid counts)
+.venv/bin/python3 scripts/validate_scale.py \
+  --runs sim-out/out0:130 sim-out/out1:100k sim-out/out2:1.4M \
+  --output sim-out/validation
 ```
 
-Produces `sim-out/analysis/` with:
-- 3×3 infection curve grid, overlay plot, recovery curves
-- Heatmaps: peak infection count, time to eradication
+### Analysis Scripts
 
-Requires `matplotlib` (`pip3 install matplotlib`).
+| Script | Input | Output |
+|---|---|---|
+| `scripts/compare_results.py` | `sim-out/outN/` dirs | `sim-out/analysis/` — infection grids, heatmaps, growth rates |
+| `scripts/analyze_sweep.py` | sweep manifest + CSVs | `sim-out/sweep-analysis/` — correlation, Pareto, tornado, violin plots |
+| `scripts/validate_scale.py` | 2+ run dirs with labels | `sim-out/validation/` — cross-scale SIR comparison |
+| `scripts/compare_covid.py` | sim output + COVID data | COVID real-data overlay plots |
+
+All scripts require `.venv/bin/python3` with matplotlib, numpy, pandas, scipy.
 
 ---
 
