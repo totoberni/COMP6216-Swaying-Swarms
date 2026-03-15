@@ -7,6 +7,9 @@
 #include "sim/sweep.h"
 #include "components.h"
 #include "render_state.h"
+#ifdef USE_CUDA
+#include "gpu/cuda_sim.h"
+#endif
 #include <flecs.h>
 #include <raylib.h>
 #include <algorithm>
@@ -229,7 +232,11 @@ int main(int argc, char* argv[]) {
     }
 
     if (config.nogui) {
+#ifdef USE_CUDA
+        gpu_run_headless(world, config, args.config_path);
+#else
         run_headless(world, config, args.config_path);
+#endif
     } else {
         run_gui(world, config);
     }
