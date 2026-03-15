@@ -1,6 +1,7 @@
 #include "spatial_grid.h"
 #include "toroidal.h"
 #include <cmath>
+#include <algorithm>
 #include <raymath.h>
 
 namespace {
@@ -15,14 +16,17 @@ SpatialGrid::SpatialGrid(float world_w, float world_h, float cell_size, bool tor
     , cols_(static_cast<int>(std::ceil(world_w / cell_size)))
     , rows_(static_cast<int>(std::ceil(world_h / cell_size)))
     , toroidal_(toroidal)
+    , total_cells_(cols_ * rows_)
 {
-    cells_.resize(cols_ * rows_);
+    entries_.resize(1024);
+    cell_start_.resize(total_cells_, -1);
+    cell_end_.resize(total_cells_, -1);
 }
 
 void SpatialGrid::clear() {
-    for (auto& cell : cells_) {
-        cell.clear();
-    }
+    entry_count_ = 0;
+    built_ = false;
+    std::fill(cell_start_.begin(), cell_start_.end(), -1);
 }
 
 void SpatialGrid::insert(uint64_t entity_id, float x, float y,
@@ -31,10 +35,37 @@ void SpatialGrid::insert(uint64_t entity_id, float x, float y,
     x = std::max(0.0f, std::min(x, world_w_ - BOUNDARY_EPSILON));
     y = std::max(0.0f, std::min(y, world_h_ - BOUNDARY_EPSILON));
 
-    int idx = cell_index(x, y);
-    if (idx >= 0 && idx < static_cast<int>(cells_.size())) {
-        cells_[idx].push_back({entity_id, x, y, vx, vy, swarm_type, infected});
+    int col = static_cast<int>(x / cell_size_);
+    int row = static_cast<int>(y / cell_size_);
+    uint32_t cid = static_cast<uint32_t>(col + cols_ * row);
+
+    if (cid >= static_cast<uint32_t>(total_cells_)) return;
+
+    if (static_cast<size_t>(entry_count_) >= entries_.size()) {
+        entries_.resize(entries_.size() * 2);
     }
+    entries_[entry_count_++] = {entity_id, x, y, vx, vy, swarm_type, infected, cid};
+    built_ = false;
+}
+
+void SpatialGrid::build() const {
+    // Sort entries by cell_id (stable sort preserves insertion order within same cell)
+    std::stable_sort(entries_.begin(), entries_.begin() + entry_count_,
+        [](const Entry& a, const Entry& b) { return a.cell_id < b.cell_id; });
+
+    // Reset cell_start_ (cell_end_ doesn't need reset — only read when start >= 0)
+    std::fill(cell_start_.begin(), cell_start_.end(), -1);
+
+    // Single pass: fill cell_start_/cell_end_ from sorted entries
+    for (int i = 0; i < entry_count_; ++i) {
+        uint32_t cid = entries_[i].cell_id;
+        if (cell_start_[cid] < 0) {
+            cell_start_[cid] = i;
+        }
+        cell_end_[cid] = i + 1;
+    }
+
+    built_ = true;
 }
 
 // Finds all neighbors within a 360 degree radius of a given position.
@@ -42,6 +73,7 @@ void SpatialGrid::query_neighbors(
     float x, float y, float radius, std::vector<QueryResult>& results
 ) const {
     results.clear();
+    if (!built_) build();
 
     // Determine cell of query point
     int col = static_cast<int>(x / cell_size_);
@@ -66,13 +98,12 @@ void SpatialGrid::query_neighbors(
                 }
             }
 
-            int idx = check_col + cols_ * check_row;
-            if (idx < 0 || idx >= static_cast<int>(cells_.size())) {
-                continue;
-            }
+            int cid = check_col + cols_ * check_row;
+            if (cid < 0 || cid >= total_cells_) continue;
+            if (cell_start_[cid] < 0) continue;
 
-            // Check all entries in this cell
-            for (const auto& entry : cells_[idx]) {
+            for (int i = cell_start_[cid]; i < cell_end_[cid]; ++i) {
+                const Entry& entry = entries_[i];
                 float dist_sq;
                 if (toroidal_) {
                     dist_sq = torus_dist_sq(entry.x, entry.y, x, y, world_w_, world_h_);
@@ -84,7 +115,7 @@ void SpatialGrid::query_neighbors(
                 if (dist_sq <= radius_sq) {
                     results.push_back({&entry, dist_sq});
                 }
-            };
+            }
         }
     }
 }
@@ -96,6 +127,7 @@ void SpatialGrid::query_neighbors_fov(
     float fov, float vx, float vy
 ) const {
     results.clear();
+    if (!built_) build();
 
     // Determine cell of query point
     int col = static_cast<int>(x / cell_size_);
@@ -128,13 +160,12 @@ void SpatialGrid::query_neighbors_fov(
                 }
             }
 
-            int idx = check_col + cols_ * check_row;
-            if (idx < 0 || idx >= static_cast<int>(cells_.size())) {
-                continue;
-            }
+            int cid = check_col + cols_ * check_row;
+            if (cid < 0 || cid >= total_cells_) continue;
+            if (cell_start_[cid] < 0) continue;
 
-            // Check all entries in this cell
-            for (const auto& entry : cells_[idx]) {
+            for (int i = cell_start_[cid]; i < cell_end_[cid]; ++i) {
+                const Entry& entry = entries_[i];
                 float diff_x, diff_y;
                 if (toroidal_) {
                     diff_x = torus_diff(x, entry.x, world_w_);
@@ -162,14 +193,7 @@ void SpatialGrid::query_neighbors_fov(
                         }
                     }
                 }
-            };
+            }
         }
     }
-}
-
-int SpatialGrid::cell_index(float x, float y) const {
-    // Cell indexing: row-major layout [col + cols_ * row]
-    int col = static_cast<int>(x / cell_size_);
-    int row = static_cast<int>(y / cell_size_);
-    return col + cols_ * row;
 }

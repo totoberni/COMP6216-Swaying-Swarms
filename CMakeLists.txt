@@ -52,6 +52,12 @@ CPMAddPackage(
 # --- Threading ---
 find_package(Threads REQUIRED)
 
+# --- OpenMP (optional — enables parallel loops in Phase 3+) ---
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    message(STATUS "OpenMP found: ${OpenMP_CXX_VERSION}")
+endif()
+
 # --- Collect sources ---
 file(GLOB_RECURSE MAIN_SOURCES
     src/*.cpp
@@ -77,6 +83,9 @@ target_link_libraries(boid_swarm PRIVATE
     raylib
     Threads::Threads
 )
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(boid_swarm PRIVATE OpenMP::OpenMP_CXX)
+endif()
 
 # Optimization flags (compatible with GCC, Clang, MSVC)
 if(MSVC)
@@ -122,6 +131,9 @@ if(TEST_SOURCES)
         gtest_main
         gtest
     )
+    if(OpenMP_CXX_FOUND)
+        target_link_libraries(tests PRIVATE OpenMP::OpenMP_CXX)
+    endif()
 
     enable_testing()
     add_test(NAME unit_tests COMMAND tests)

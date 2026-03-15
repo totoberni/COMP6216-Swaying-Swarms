@@ -357,3 +357,103 @@ TEST_F(SpatialGridTest, BackwardCompatInsertUsesDefaults) {
     EXPECT_EQ(entry->swarm_type, 0);
     EXPECT_FALSE(entry->infected);
 }
+
+// --- Sort-based grid: brute-force correctness (10k entries, 100 queries, 13500x13500 world) ---
+TEST_F(SpatialGridTest, SortGrid_10k_BruteForceCorrectness) {
+    constexpr float BIG_W = 13500.0f;
+    constexpr float BIG_H = 13500.0f;
+    constexpr float BIG_CELL = 100.0f;
+    SpatialGrid grid(BIG_W, BIG_H, BIG_CELL, true);  // toroidal = true
+
+    std::mt19937 rng(77777);
+    std::uniform_real_distribution<float> dist_x(0.0f, BIG_W);
+    std::uniform_real_distribution<float> dist_y(0.0f, BIG_H);
+
+    struct EntityPos { uint64_t id; float x, y; };
+    std::vector<EntityPos> entities;
+
+    for (uint64_t i = 0; i < 10000; ++i) {
+        float x = dist_x(rng);
+        float y = dist_y(rng);
+        entities.push_back({i, x, y});
+        grid.insert(i, x, y);
+    }
+
+    std::vector<SpatialGrid::QueryResult> grid_results;
+    std::uniform_real_distribution<float> dist_r(10.0f, 200.0f);
+
+    for (int q = 0; q < 100; ++q) {
+        float qx = dist_x(rng);
+        float qy = dist_y(rng);
+        float qr = dist_r(rng);
+        float qr_sq = qr * qr;
+
+        grid.query_neighbors(qx, qy, qr, grid_results);
+
+        // Brute-force with toroidal distance
+        std::unordered_set<uint64_t> bf_ids;
+        for (const auto& e : entities) {
+            float dx = e.x - qx;
+            float dy = e.y - qy;
+            // Toroidal wrap
+            if (dx > BIG_W * 0.5f) dx -= BIG_W;
+            if (dx < -BIG_W * 0.5f) dx += BIG_W;
+            if (dy > BIG_H * 0.5f) dy -= BIG_H;
+            if (dy < -BIG_H * 0.5f) dy += BIG_H;
+            if (dx * dx + dy * dy <= qr_sq) {
+                bf_ids.insert(e.id);
+            }
+        }
+
+        std::unordered_set<uint64_t> grid_ids;
+        for (const auto& r : grid_results) {
+            grid_ids.insert(r.entry->entity_id);
+        }
+
+        ASSERT_EQ(grid_ids.size(), bf_ids.size())
+            << "Query " << q << " at (" << qx << "," << qy << ") r=" << qr
+            << ": grid=" << grid_ids.size() << " bf=" << bf_ids.size();
+
+        for (uint64_t id : bf_ids) {
+            EXPECT_TRUE(grid_ids.count(id))
+                << "Query " << q << ": missing entity " << id;
+        }
+    }
+}
+
+// --- Sort-based grid: 100k benchmark (insert + build + 1000 queries) ---
+TEST_F(SpatialGridTest, SortGrid_100k_Benchmark) {
+    constexpr float BIG_W = 13500.0f;
+    constexpr float BIG_H = 13500.0f;
+    constexpr float BIG_CELL = 100.0f;
+    SpatialGrid grid(BIG_W, BIG_H, BIG_CELL);
+
+    std::mt19937 rng(88888);
+    std::uniform_real_distribution<float> dist_x(0.0f, BIG_W);
+    std::uniform_real_distribution<float> dist_y(0.0f, BIG_H);
+
+    auto t0 = std::chrono::high_resolution_clock::now();
+
+    for (uint64_t i = 0; i < 100000; ++i) {
+        grid.insert(i, dist_x(rng), dist_y(rng));
+    }
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+
+    std::vector<SpatialGrid::QueryResult> neighbors;
+    for (int i = 0; i < 1000; ++i) {
+        grid.query_neighbors(dist_x(rng), dist_y(rng), 30.0f, neighbors);
+    }
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+
+    auto insert_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+    auto query_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+    auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t0).count();
+
+    std::cout << "100k benchmark: insert=" << insert_ms << "ms"
+              << " query(1000)=" << query_ms << "ms"
+              << " total=" << total_ms << "ms" << std::endl;
+
+    EXPECT_LT(total_ms, 500) << "100k insert + 1000 queries exceeded 500ms budget";
+}
