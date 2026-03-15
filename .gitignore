@@ -17,6 +17,7 @@ __pycache__/
 sim-out/*
 !sim-out/analysis/
 !sim-out/sweep-analysis/
+
 # Generated sweep configs (reproducible from C++ sweep runner)
 /configs/sweep/
 
